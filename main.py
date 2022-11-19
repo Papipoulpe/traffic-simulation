@@ -1,4 +1,4 @@
-from cours.tipe import simulation
+import simulation
 
 sim = simulation.Simulation(1440, 840, logging_level=3)
 
