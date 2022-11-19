@@ -34,7 +34,7 @@ class Simulation:
         self.bg_color = bg_color
         self.surface.fill(bg_color)
         self.font = pygame.font.Font("ressources/jbmono.ttf", 15)
-        arrow = pygame.image.load("/Users/hippolytecosserat/PycharmProjects/perso/cours/tipe/ressources/arrow.png").convert_alpha()
+        arrow = pygame.image.load("/Users/hippolytecosserat/PycharmProjects/tipe-ts/ressources/arrow.png").convert_alpha()
         self.ARROW = pygame.transform.scale(arrow, (20, 20))
 
     def start_loop(self):
