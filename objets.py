@@ -178,7 +178,7 @@ class Road:
 
 
 class Car:
-    def __init__(self, v=200, a=0, color=VOITURE_BLEUVERT, l=30, w=24, obj_id=None):
+    def __init__(self, v=200, a=0, color=VOITURE_BLEUVERT, l=50, w=24, obj_id=None):
         self.id = new_id(self, obj_id)
         self.color = color
         self.length, self.width = l, w

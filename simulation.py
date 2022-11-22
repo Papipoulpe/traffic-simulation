@@ -1,5 +1,6 @@
 import pygame
 from objets import *
+from draw_tools import *
 from res import *
 
 
@@ -35,7 +36,7 @@ class Simulation:
         self.surface.fill(bg_color)
         self.font = pygame.font.Font("ressources/jbmono.ttf", 15)
         arrow = pygame.image.load("/Users/hippolytecosserat/PycharmProjects/tipe-ts/ressources/arrow.png").convert_alpha()
-        self.ARROW = pygame.transform.scale(arrow, (20, 20))
+        self.ARROW = pygame.transform.smoothscale(arrow, (20, 20))
 
     def start_loop(self):
         """Ouvre une fenêtre et lance la simulation."""
@@ -72,23 +73,22 @@ class Simulation:
 
     def print_infos(self, info, bg_color=FOND_BLEU):
         """Affiche des infos en haut à gauche de la fenêtre."""
-        pygame.draw.rect(self.surface, bg_color, pygame.Rect(0, 0, 100, 30))
-        infos = self.font.render(info, False, BLACK)
-        self.surface.blit(infos, (10, 10))
+        draw_rect(self.surface, bg_color, (0, 0), 100, 30)
+        print_text(self.surface, BLACK, (10, 10), info, self.font)
 
     def show_car(self, car: Car):
         """Dessine une voiture (un rectangle 10*length) en x, y (milieu du derrière)."""
-        pygame.draw.polygon(self.surface, car.color, car.coins)
+        draw_polygon(self.surface, car.color, car.coins)
 
     def show_roads(self, road_list):
         """Affiche des routes droites"""
         for road in road_list:
-            pygame.draw.polygon(self.surface, road.color, road.coins)
+            draw_polygon(self.surface, road.color, road.coins)
 
             rotated_arrow = pygame.transform.rotate(self.ARROW, road.angle)
 
-            for arrow in road.arrows_coord:
-                self.surface.blit(rotated_arrow, rotated_arrow.get_rect(center=self.ARROW.get_rect(center=arrow).center))
+            for arrow_coord in road.arrows_coord:
+                draw_image(self.surface, rotated_arrow, arrow_coord)
 
     def create_road(self, start, end, car_factory: CarFactory = None, color=ROUTE_BLEU, w=32, obj_id=None):
         """Créer une route droite de start à end, renvoie la route."""
