@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="message">
-      <change afterPath="$PROJECT_DIR$/draw_tools.py" afterDir="false" />
+    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="draw_tools">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mathsandutils.py" beforeDir="false" afterPath="$PROJECT_DIR$/mathsandutils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/objets.py" beforeDir="false" afterPath="$PROJECT_DIR$/objets.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ressources/arrow.png" beforeDir="false" afterPath="$PROJECT_DIR$/ressources/arrow.png" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/simulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -40,7 +39,8 @@
     "ASKED_ADD_EXTERNAL_FILES": "true",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "last_opened_file_path": "/Users/hippolytecosserat"
+    "last_opened_file_path": "/Users/hippolytecosserat",
+    "settings.editor.selected.configurable": "project.propVCSSupport.DirectoryMappings"
   }
 }]]></component>
   <component name="RunManager">
@@ -115,7 +115,14 @@
       <option name="project" value="LOCAL" />
       <updated>1668881746297</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="draw_tools">
+      <created>1669112343579</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1669112343579</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -144,6 +151,7 @@
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <MESSAGE value="message" />
-    <option name="LAST_COMMIT_MESSAGE" value="message" />
+    <MESSAGE value="draw_tools" />
+    <option name="LAST_COMMIT_MESSAGE" value="draw_tools" />
   </component>
 </project>

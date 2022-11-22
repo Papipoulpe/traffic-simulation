@@ -54,7 +54,7 @@ class Simulation:
             self.show_roads(self.roads)  # affiche les routes
 
             for road in self.roads:
-                road.refresh_cars_coords()
+                road.refresh_cars_coords(dt=self.dt)
                 road.new_car(road.car_factory.factory({"t": self.t}, {"t": self.t}))
 
                 for car in road.cars:
@@ -103,5 +103,5 @@ class Simulation:
     def set_road_graph(self, graph):
         self.road_graph = graph
         for road in self.roads:
-            car_sorter = CarSorter(graph[road.id])
+            car_sorter = graph[road.id] if graph[road.id] is not None else CarSorter(sort_func=empty)
             road.car_sorter = car_sorter

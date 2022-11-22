@@ -6,6 +6,9 @@ import json
 globvar = {}
 
 
+def empty(*args, **kwargs): ...
+
+
 def vect_dir(start, end):
     """Renvoyer le vecteur directeur normé d'une droite"""
     x1, y1 = start
@@ -44,10 +47,17 @@ def rc_to_wc(x, y, size):
     return x, size[1] - y
 
 
-def coord_mvm_apres_dt(d, v=1, a=0, dt=1/60):
+def coord_mvm_apres_dt(car, dt=1/60):
+    """
+    ACtualise les coordonnées du mouvement d'une voiture.
+
+    :param car: voiture à actualiser
+    :param dt: durée du mouvement
+    """
+    d, v, a = car.d, car.v, car.a
     d = d + v*dt + 1/2*a*dt*dt  # dev de taylor ordre 2
     v = v + a*dt  # dev de taylor ordre 1
-    return d, v, a
+    car.d, car.v, car.a = d, v, a
 
 
 def rec_round(obj, prec=None):
@@ -70,3 +80,13 @@ def log(string: str, level: int = 2):
     """
     if level <= globvar["logging_level"]:
         print([Fore.CYAN, Fore.RED, "", Fore.LIGHTBLACK_EX][level] + string + Fore.RESET)
+
+
+def parse(string):
+    """
+    String to dict
+
+    :param string: string to parse
+    :return: dict
+    """
+    return json.loads(string.replace("'", '"'))

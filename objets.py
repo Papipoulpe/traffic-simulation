@@ -1,11 +1,10 @@
 from res import *
 from mathsandutils import *
 
-
 ids = {-1: None}
 
 
-def new_id(obj, obj_id=None):
+def new_id(obj, obj_id):
     if obj_id is None:
         obj_id = max(ids.keys()) + 1
     ids[obj_id] = obj
@@ -22,7 +21,11 @@ class CarFactory:
         """
         self.id = new_id(self, obj_id)
 
-        self.crea_func = self.generic_creafunc(crea_func) if isinstance(crea_func, (str, list)) else crea_func
+        if isinstance(crea_func, (str, list)) or crea_func is None:
+            self.crea_func = self.generic_creafunc(crea_func)
+        else:
+            self.crea_func = crea_func
+
         self.fact_func = fact_func
 
     def __str__(self):
@@ -34,10 +37,7 @@ class CarFactory:
         :param args_fact: args de fréquence de création
         """
         if self.fact_func and self.fact_func(**args_crea):
-            if self.crea_func is None:
-                returning = Car()
-            else:
-                returning = self.crea_func(**args_fact)
+            returning = self.crea_func(**args_fact)
             log(f"{self} is creating {returning}", 2)
             return returning
 
@@ -46,7 +46,7 @@ class CarFactory:
         if isinstance(func_name, str):
             func_name = [func_name]
 
-        kwargs = {"v": 200, "a": 0, "color": VOITURE_BLEUVERT, "w": 24, "l": 30}
+        kwargs = {"v": 200, "a": 0, "color": VOITURE_BLEUVERT, "width": 24, "length": 30, "obj_id": None}
 
         def crea_func(*a, **kw):
             car = Car(**kwargs)
@@ -57,7 +57,7 @@ class CarFactory:
             if "rand_width" in func_name:
                 kwargs["w"] = np.random.randint(18, 24)
             try:
-                attrs_dic = json.loads(func_name[0].replace("'", '"'))
+                attrs_dic = parse(func_name[0])
             except ValueError:
                 attrs_dic = {}
             for attr in attrs_dic:
@@ -101,7 +101,7 @@ class CarSorter:
 
 
 class Road:
-    def __init__(self, start=(0, 0), end=(1, 1), width=32, car_factory: CarFactory = None, color=ROUTE_BLEU, obj_id=None):
+    def __init__(self, start, end, width, car_factory: CarFactory, color, obj_id):
         self.id = new_id(self, obj_id)
         self.start, self.end = start, end
         self.width = width
@@ -112,7 +112,7 @@ class Road:
         self.vd = vect_dir(self.start, self.end)  # vecteur directeur de la route
         vnx, vny = vect_norm(self.vd, self.width / 2)  # vecteur normal pour les coord des coins
         self.coins = (startx + vnx, starty + vny), (startx - vnx, starty - vny), (endx - vnx, endy - vny), (
-                      endx + vnx, endy + vny)
+            endx + vnx, endy + vny)
         self.angle = angle(self.vd)
 
         self.car_factory = car_factory if car_factory is not None else CarFactory("rand_colors", None)
@@ -126,7 +126,7 @@ class Road:
     @property
     def arrows_coord(self):
         rarete = 100  # inverse de la fréquence des flèches
-        num = int(self.length/rarete)  # nombre de flèches pour la route
+        num = int(self.length / rarete)  # nombre de flèches pour la route
         x, y = self.start
         vx, vy = self.vd
         x, y = x + vx * rarete / 2, y + vy * rarete / 2
@@ -137,14 +137,12 @@ class Road:
         log(f"{arrows=}", 3)
         return arrows
 
-    def refresh_cars_coords(self, dt=1/60):
-        """Bouge les voitures de la route à leurs position après dt."""
+    def refresh_cars_coords(self, dt):
+        """Bouge les voitures de la route à leurs positions après dt."""
         for car in self.cars:
-            d, v, a = coord_mvm_apres_dt(d=car.d, v=car.v, a=car.a, dt=dt)
+            coord_mvm_apres_dt(car, dt=dt)
             vdx, vdy = self.vd
-            dx, dy = vdx * d, vdy * d
-
-            car.d, car.v, car.a = d, v, a  # mise à jour des coords du mvm
+            dx, dy = vdx * car.d, vdy * car.d
 
             startx, starty = self.start
             car.x, car.y = startx + dx, starty + dy  # mise à jour des coords de pos
@@ -152,14 +150,15 @@ class Road:
             vnx, vny = vect_norm(self.vd, car.width / 2)
             c1, c2 = (car.x + vnx, car.y + vny), (car.x - vnx, car.y - vny)
             c3, c4 = (car.x - vnx + car.length * vdx, car.y - vny + car.length * vdy), (
-                      car.x + vnx + car.length * vdx, car.y + vny + car.length * vdy)
+                car.x + vnx + car.length * vdx, car.y + vny + car.length * vdy)
 
             car.coins = c1, c2, c3, c4
 
             log(f"Updating {car} of {self}", 3)
 
-            if d + car.length*int(self.car_sorter.method is not None) >= self.length:  # si le sorter de la route est None, attendre
-                self.exiting_cars.append(car)                                          # que la voiture soit totalement partie pour la retirer
+            if car.d + car.length * int(
+                    self.car_sorter.method is not None) >= self.length:  # si le sorter de la route est None, attendre
+                self.exiting_cars.append(car)  # que la voiture soit totalement partie pour la retirer
                 self.cars.remove(car)
                 log(f"Removing {car} of {self}", 2)
 
@@ -170,7 +169,7 @@ class Road:
             startx, starty = self.start
             endx, endy = startx + car.length * vdx, starty + car.length * vdy
             car.coins = (startx + vnx, starty + vny), (startx - vnx, starty - vny), (endx - vnx, endy - vny), (
-                         endx + vnx, endy + vny)
+                endx + vnx, endy + vny)
             car.x, car.y = self.start
             car.d = 0
             self.cars.append(car)
@@ -178,10 +177,10 @@ class Road:
 
 
 class Car:
-    def __init__(self, v=200, a=0, color=VOITURE_BLEUVERT, l=50, w=24, obj_id=None):
+    def __init__(self, v, a, color, length, width, obj_id):
         self.id = new_id(self, obj_id)
         self.color = color
-        self.length, self.width = l, w
+        self.length, self.width = length, width
 
         self.d = 0  # distance du derrière depuis le début de la route
         self.x, self.y = 0, 0  # position du mileu du derrière dans la fenêtre
@@ -194,7 +193,7 @@ class Car:
 
 
 class Feu:
-    def __init__(self, x, y, state, obj_id=None):
+    def __init__(self, x, y, state, obj_id):
         self.id = new_id(self, obj_id)
         self.x, self.y = x, y
         self.state = state
