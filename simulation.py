@@ -103,5 +103,9 @@ class Simulation:
     def set_road_graph(self, graph):
         self.road_graph = graph
         for road in self.roads:
-            car_sorter = graph[road.id] if graph[road.id] is not None else CarSorter(sort_func=empty)
+            if isinstance(graph[road.id], CarSorter):
+                car_sorter = graph[road.id]
+            else:
+                car_sorter = CarSorter(method=graph[road.id])
+
             road.car_sorter = car_sorter

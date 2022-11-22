@@ -68,31 +68,29 @@ class CarFactory:
 
 
 class CarSorter:
-    def __init__(self, prob_dic: dict = None, sort_func=None):
+    def __init__(self, method):
         """
         Gestion des voitures à la sortie d'une route. Nécessite soit prob_dic, soit sort_func.
 
-        :param prob_dic: Dictionnaire associant une probabilité à une autre route
-        :param sort_func: Fonction de tri
+        :param method: Dictionnaire associant une probabilité à une autre route, fonction de tri, None
         """
-        if prob_dic:
+        if isinstance(method, dict):  # si la méthode est un dict de proba
             self.method = "probs"
             probs, roads = [], []
-            for p in prob_dic:
-                probs.append(prob_dic[p])
+            for p in method:
+                probs.append(method[p])
                 roads.append(p)
 
             def sort_func(*args, **kwargs):
                 return ids[np.random.choice(roads, p=probs)]
 
-        elif sort_func is None:
+        elif method is None:  # si la méthode est None, les voitures sont supprimées
             self.method = None
-
-            def sort_func(*args, **kwargs):
-                pass
+            sort_func = empty
 
         else:
             self.method = "func"
+            sort_func = method
 
         self.sort_func = sort_func
 
@@ -117,7 +115,7 @@ class Road:
 
         self.car_factory = car_factory if car_factory is not None else CarFactory("rand_colors", None)
         self.cars: list[Car] = []
-        self.car_sorter = CarSorter()
+        self.car_sorter = CarSorter(None)
         self.exiting_cars: list[Car] = []
 
     def __str__(self):
@@ -156,9 +154,9 @@ class Road:
 
             log(f"Updating {car} of {self}", 3)
 
-            if car.d + car.length * int(
-                    self.car_sorter.method is not None) >= self.length:  # si le sorter de la route est None, attendre
-                self.exiting_cars.append(car)  # que la voiture soit totalement partie pour la retirer
+            if car.d + car.length * int(self.car_sorter.method is not None) >= self.length:
+                # si le sorter de la route est None, attendre que la voiture soit totalement partie pour la retirer
+                self.exiting_cars.append(car)
                 self.cars.remove(car)
                 log(f"Removing {car} of {self}", 2)
 
