@@ -4,7 +4,14 @@ from mathsandutils import *
 ids = {-1: None}
 
 
-def new_id(obj, obj_id):
+def new_id(obj, obj_id=None):
+    """
+    Créer ou ajoute un identifiant à un objet.
+
+    :param obj: objet
+    :param obj_id: identifiant
+    :return: nouvel identifiant
+    """
     if obj_id is None:
         obj_id = max(ids.keys()) + 1
     ids[obj_id] = obj
