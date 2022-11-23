@@ -77,22 +77,23 @@ class Simulation:
         print_text(self.surface, BLACK, (10, 10), info, self.font)
 
     def show_car(self, car: Car):
-        """Dessine une voiture (un rectangle 10*length) en x, y (milieu du derrière)."""
+        """Dessine une voiture."""
         draw_polygon(self.surface, car.color, car.coins)
 
     def show_roads(self, road_list):
-        """Affiche des routes droites"""
+        """Affiche des routes."""
         for road in road_list:
             draw_polygon(self.surface, road.color, road.coins)
 
             rotated_arrow = pygame.transform.rotate(self.ARROW, road.angle)
 
-            for arrow_coord in road.arrows_coord:
-                draw_image(self.surface, rotated_arrow, arrow_coord)
+            for arrow_coord in road.arrows_coords:
+                x, y, _ = arrow_coord
+                draw_image(self.surface, rotated_arrow, (x, y))
 
     def create_road(self, start, end, car_factory: CarFactory = None, color=ROUTE_BLEU, w=32, obj_id=None):
-        """Créer une route droite de start à end, renvoie la route."""
-        road = Road(start, end, width=w, car_factory=car_factory, obj_id=obj_id, color=color)
+        """Créer une route."""
+        road = Road(start, end, width=w, color=color, car_factory=car_factory, obj_id=obj_id)
         self.roads.append(road)
         return road
 

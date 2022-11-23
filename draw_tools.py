@@ -1,3 +1,4 @@
+import pygame.draw
 from pygame import gfxdraw as gfx
 
 
@@ -51,3 +52,9 @@ def draw_image(surface, image, coords):
     :param coords: coordonées du centre de l'image
     """
     surface.blit(image, image.get_rect(center=image.get_rect(center=coords).center))
+
+
+def draw_arc(surface, center, radius, start_angle, end_angle, color, width):
+    a, b = center
+    rect = a - radius, b - radius, 2*radius, 2*radius
+    pygame.draw.arc(surface, color, rect, start_angle, end_angle, width)

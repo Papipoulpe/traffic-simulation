@@ -9,8 +9,15 @@ globvar = {}
 def empty(*args, **kwargs): ...
 
 
+def length(point1, point2):
+    """Longueur point1-point2."""
+    x1, y1 = point1
+    x2, y2 = point2
+    return np.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2))
+
+
 def vect_dir(start, end):
-    """Renvoyer le vecteur directeur normé d'une droite"""
+    """Renvoyer le vecteur directeur normé d'une droite."""
     x1, y1 = start
     x2, y2 = end
     a, b = x2 - x1, y2 - y1
@@ -19,48 +26,36 @@ def vect_dir(start, end):
 
 
 def norme(vect):
-    """Norme du vecteur"""
+    """Norme du vecteur."""
     a, b = vect
     return np.sqrt(a*a + b*b)
 
 
 def vect_norm(vecteur, nouv_norme=1):
-    """Vecteur normal et normé à un autre vecteur"""
+    """Vecteur normal et normé à un autre vecteur."""
     a, b = vecteur
     coeff = nouv_norme/norme(vecteur)
     return -b*coeff, a*coeff
 
 
-def angle(vect):
-    """Angle du vecteur, en degrés"""
+def vect_angle(vect):
+    """Angle du vecteur, en degrés."""
     a, b = vect
     return -np.degrees(np.angle(a+1j*b))
 
 
 def wc_to_rc(x, y, size):
-    """Convertit des coordonnées pygame en coordonnées classiques"""
+    """Convertit des coordonnées pygame en coordonnées classiques."""
     return x, size[1] - y
 
 
 def rc_to_wc(x, y, size):
-    """Convertit des coordonnées classiques en coordonnées pygame"""
+    """Convertit des coordonnées classiques en coordonnées pygame."""
     return x, size[1] - y
 
 
-def coord_mvm_apres_dt(car, dt=1/60):
-    """
-    ACtualise les coordonnées du mouvement d'une voiture.
-
-    :param car: voiture à actualiser
-    :param dt: durée du mouvement
-    """
-    d, v, a = car.d, car.v, car.a
-    d = d + v*dt + 1/2*a*dt*dt  # dev de taylor ordre 2
-    v = v + a*dt  # dev de taylor ordre 1
-    car.d, car.v, car.a = d, v, a
-
-
 def rec_round(obj, prec=None):
+    """Arrondi récursif."""
     if isinstance(obj, list) or isinstance(obj, tuple):
         res = []
         for e in obj:
@@ -74,7 +69,8 @@ def rec_round(obj, prec=None):
 
 def log(string: str, level: int = 2):
     """
-    Affiche un message
+    Affiche un message.
+
     :param string: message
     :param level: 0 = essentiel, 1 = erreur, 2 = info, 3 = debug
     """
@@ -90,3 +86,49 @@ def parse(string):
     :return: dict
     """
     return json.loads(string.replace("'", '"'))
+
+
+def update_taylor(d, v, a, dt):
+    """Calcule les vecteurs du mouvement avec de simples séries de Taylor"""
+    v = v + a*dt  # dev de taylor ordre 1
+    d = d + v*dt + 1/2*a*dt*dt  # dev de taylor ordre 2
+    return d, v, a
+
+
+def update_taylor_protected(d, v, a, dt):
+    """Calcule les vecteurs du mouvement avec de simples séries de Taylor, en évitant v < 0"""
+    v = max(v + a*dt, 0)  # dev de taylor ordre 1, protégé
+    d = d + v*dt + 1/2*a*dt*dt  # dev de taylor ordre 2
+    return d, v, a
+
+
+def idm(d, v, dd, dv, dt):
+    """Intelligent Driver Model."""
+    dd_min = 5  # distance minimum entre deux voitures
+    v_max = 100  # vitesse maximum d'une voiture
+    a_max = 20  # accéleration maximum d'une voiture
+    a_min = 30  # décélération minimum d'une voiture
+    a_exp = 2  # exposant de l'accéleration, contrôle la douceur
+    t_react = 0.1  # temps de réaction du conducteur
+
+    dd_parfait = dd_min + v*t_react + v * dv / np.sqrt(2 * a_min * a_max)
+
+    a = a_max * (1 - (v/v_max)**a_exp - (dd_parfait/dd)**2)
+
+    return update_taylor_protected(d, v, a, dt)
+
+
+def arc_type(start, end, sens):
+    sx, sy = start
+    ex, ey = end
+    if ex > sx:
+        if ey > sy:
+            returning = "hd"
+        else:
+            returning = "bd"
+    else:
+        if ey > sy:
+            returning = "hg"
+        else:
+            returning = "bg"
+    return returning + sens
