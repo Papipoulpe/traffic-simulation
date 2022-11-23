@@ -1,13 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="new_id">
+    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="idm, update_mvt et update_coin sont maintenant des méthodes de car">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/draw_tools.py" beforeDir="false" afterPath="$PROJECT_DIR$/draw_tools.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mathsandutils.py" beforeDir="false" afterPath="$PROJECT_DIR$/mathsandutils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/objets.py" beforeDir="false" afterPath="$PROJECT_DIR$/objets.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/simulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -38,23 +34,30 @@
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
   <component name="ProjectId" id="2Hm9Y4a74JJ8Lf0qwKypKg5KDOb" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true">
     <ConfirmationsSetting value="2" id="Add" />
   </component>
   <component name="ProjectViewState">
+    <option name="autoscrollFromSource" value="true" />
+    <option name="autoscrollToSource" value="true" />
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_ADD_EXTERNAL_FILES&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/hippolytecosserat&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;screenshoter&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_ADD_EXTERNAL_FILES": "true",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "full.screen.before.presentation.mode": "true",
+    "last_opened_file_path": "/Users/hippolytecosserat",
+    "run.code.analysis.last.selected.profile": "aDefault",
+    "settings.editor.selected.configurable": "editor.preferences.smartKeys"
   }
-}</component>
+}]]></component>
   <component name="RunManager" selected="Python.main">
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="tipe-ts" />
@@ -206,7 +209,14 @@
       <option name="project" value="LOCAL" />
       <updated>1669115969936</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="idm, update_mvt et update_coin sont maintenant des méthodes de car">
+      <created>1669237647423</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1669237647423</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -239,6 +249,7 @@
     <MESSAGE value="clean up" />
     <MESSAGE value="carfactory plus clair" />
     <MESSAGE value="new_id" />
-    <option name="LAST_COMMIT_MESSAGE" value="new_id" />
+    <MESSAGE value="idm, update_mvt et update_coin sont maintenant des méthodes de car" />
+    <option name="LAST_COMMIT_MESSAGE" value="idm, update_mvt et update_coin sont maintenant des méthodes de car" />
   </component>
 </project>

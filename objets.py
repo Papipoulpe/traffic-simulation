@@ -57,23 +57,23 @@ class CarFactory:
         if isinstance(func_name, str):
             func_name = [func_name]
 
-        kwargs = {"v": 200, "a": 0, "color": VOITURE_BLEUVERT, "width": 24, "le": 30, "obj_id": None}
+        attrs = {"v": 200, "a": 0, "color": VOITURE_BLEUVERT, "width": 24, "le": 30, "obj_id": None}
 
-        def crea_func(*a, **kw):
+        def crea_func(*args, **kwargs):
             if "rand_color" in func_name:
-                kwargs["color"] = np.random.randint(0, 256), np.random.randint(0, 256), np.random.randint(0, 256)
+                attrs["color"] = np.random.randint(0, 256), np.random.randint(0, 256), np.random.randint(0, 256)
             if "rand_length" in func_name:
-                kwargs["le"] = np.random.randint(25, 45)
+                attrs["le"] = np.random.randint(25, 45)
             if "rand_width" in func_name:
-                kwargs["width"] = np.random.randint(18, 24)
+                attrs["width"] = np.random.randint(18, 24)
             try:
                 attrs_dic = parse(func_name[0])
                 log("Cannot parse crea_func", 2)
             except ValueError:
                 attrs_dic = {}
-            for attr in attrs_dic:
-                kwargs[attr] = attrs_dic[attr]
-            return Car(**kwargs)
+            for key in attrs_dic:
+                attrs[key] = attrs_dic[key]
+            return Car(**attrs)
 
         return crea_func
 
