@@ -1,5 +1,5 @@
-from res import *
 from mathsandutils import *
+import settings as s
 
 
 ids = {-1: None}  # dict des identifiants, initialisé à -1 pour max(id.keys())
@@ -57,15 +57,15 @@ class CarFactory:
         if isinstance(func_name, str):
             func_name = [func_name]
 
-        attrs = {"v": 200, "a": 0, "color": VOITURE_BLEUVERT, "width": 24, "le": 30, "obj_id": None}
+        attrs = {"v": s.CAR_V, "a": s.CAR_A, "color": s.CAR_COLOR, "width": s.CAR_WIDTH, "le": s.CAR_LENGTH, "obj_id": None}
 
         def crea_func(*args, **kwargs):
             if "rand_color" in func_name:
-                attrs["color"] = np.random.randint(0, 256), np.random.randint(0, 256), np.random.randint(0, 256)
+                attrs["color"] = [np.random.randint(s.CAR_RAND_COLOR_MIN, s.CAR_RAND_COLOR_MAX) for _ in range(3)]
             if "rand_length" in func_name:
-                attrs["le"] = np.random.randint(25, 45)
+                attrs["le"] = np.random.randint(s.CAR_RAND_WIDTH_MIN, s.CAR_RAND_WIDTH_MAX)
             if "rand_width" in func_name:
-                attrs["width"] = np.random.randint(18, 24)
+                attrs["width"] = np.random.randint(s.CAR_RAND_LENGTH_MIN, s.CAR_RAND_LENGTH_MAX)
             try:
                 attrs_dic = parse(func_name[0])
                 log("Cannot parse crea_func", 2)
@@ -81,10 +81,10 @@ class CarFactory:
     def generic_factfunc(func_name):
         if func_name[0] == func_name[1]:  # si func_name est de type [a, a]
             def fact_func(t):
-                return round(t % func_name[0], 2) == 0
+                return round(t, 2) % func_name[0] == 0
             return fact_func
         else:
-            def fact_func(t):
+            def fact_func(t):  # TODO: pas terrible...
                 mod = np.random.uniform(func_name[0], func_name[1])
                 return round(t % mod, 2) == 0
             return fact_func
@@ -208,7 +208,7 @@ class Road:
 
     @property
     def arrows_coords(self):
-        rarete = 100  # inverse de la fréquence des flèches
+        rarete = s.ARROW_RARETE  # inverse de la fréquence des flèches
         num = round(self.length / rarete)  # nombre de flèches pour la route
         x, y = self.start
         vx, vy = self.vd

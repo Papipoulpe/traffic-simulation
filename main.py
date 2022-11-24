@@ -1,9 +1,9 @@
 from simulation import Simulation
 from objets import CarFactory
 
-sim = Simulation(1440, 840, logging_level=3)
+sim = Simulation()
 
-cf = CarFactory(["rand_color", "rand_size"], [1, 2])
+cf = CarFactory(["rand_color", "rand_size"], [0.5, 2])
 
 road_list = [{"obj_id": 1, "start": (0, 700), "end": (1200, 550), "car_factory": cf},
              {"obj_id": 2, "start": (1188, 550), "end": (1188, 0)},

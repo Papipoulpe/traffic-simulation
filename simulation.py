@@ -1,26 +1,18 @@
 import pygame
 from objets import *
 from draw_tools import *
-from res import *
+import settings as s
 
 
 class Simulation:
-    def __init__(self, taille_x=1400, taille_y=800, bg_color=FOND_BLEU, logging_level=0):
-        """
-        Simulation du traffic.
-
-        :param taille_x: largeur de la fenêtre
-        :param taille_y: hauteur de la fenêtre
-        :param bg_color: couleur de l'arrière plan
-        :param logging_level: niveau de logging, 0 = essentiel, 1 = erreur, 2 = info, 3 = debug
-        """
+    def __init__(self):
+        """Simulation du traffic."""
         self.id = 0  # identifiant
         ids[0] = self
-        globvar["logging_level"] = logging_level  # donne le niveau de log à mathsandutils.py
-        self.size = taille_x, taille_y
+        self.size = s.WIN_WIDTH, s.WIN_HEIGTH
         self.t = 0.0
         self.frame_count = 0
-        self.FPS = 60
+        self.FPS = s.FPS
         self.dt = 1/self.FPS
         self.over = False
 
@@ -32,11 +24,11 @@ class Simulation:
         self.surface = pygame.display.set_mode(self.size)
         self.clock = pygame.time.Clock()
         self.surfrect = self.surface.get_rect()
-        self.bg_color = bg_color
-        self.surface.fill(bg_color)
-        self.font = pygame.font.Font("ressources/jbmono.ttf", 15)
-        arrow = pygame.image.load("/Users/hippolytecosserat/PycharmProjects/tipe-ts/ressources/arrow.png").convert_alpha()
-        self.ARROW = pygame.transform.smoothscale(arrow, (20, 20))
+        self.bg_color = s.BG_COLOR
+        self.surface.fill(self.bg_color)
+        self.font = pygame.font.Font(s.FONT_PATH, s.FONT_SIZE)
+        arrow = pygame.image.load(s.ARROW_PATH).convert_alpha()
+        self.ARROW = pygame.transform.smoothscale(arrow, s.ARROW_SIZE)
 
     def start_loop(self):
         """Ouvre une fenêtre et lance la simulation."""
@@ -71,10 +63,10 @@ class Simulation:
             self.t += self.dt
             self.clock.tick(self.FPS)
 
-    def print_infos(self, info, bg_color=FOND_BLEU):
+    def print_infos(self, info):
         """Affiche des infos en haut à gauche de la fenêtre."""
-        draw_rect(self.surface, bg_color, (0, 0), 100, 30)
-        print_text(self.surface, BLACK, (10, 10), info, self.font)
+        draw_rect(self.surface, s.INFOS_BG_COLOR, (0, 0), 300, 40)
+        print_text(self.surface, s.FONT_COLOR, (10, 10), info, self.font)
 
     def show_car(self, car: Car):
         """Dessine une voiture."""
@@ -91,7 +83,7 @@ class Simulation:
                 x, y, _ = arrow_coord
                 draw_image(self.surface, rotated_arrow, (x, y))
 
-    def create_road(self, start, end, car_factory: CarFactory = None, color=ROUTE_BLEU, w=32, obj_id=None):
+    def create_road(self, start, end, car_factory: CarFactory = None, color=s.ROAD_COLOR, w=s.ROAD_WIDTH, obj_id=None):
         """Créer une route."""
         road = Road(start, end, width=w, color=color, car_factory=car_factory, obj_id=obj_id)
         self.roads.append(road)

@@ -1,9 +1,7 @@
 import numpy as np
 from colorama import Fore
 import json
-
-
-globvar = {}
+import settings as s
 
 
 def empty(*args, **kwargs): ...
@@ -74,7 +72,7 @@ def log(string: str, level: int = 2):
     :param string: message
     :param level: 0 = essentiel, 1 = erreur, 2 = info, 3 = debug
     """
-    if level <= globvar["logging_level"]:
+    if level <= s.LOGGING_LEVEL:
         print([Fore.CYAN, Fore.RED, "", Fore.LIGHTBLACK_EX][level] + string + Fore.RESET)
 
 
@@ -104,16 +102,10 @@ def update_taylor_protected(d, v, a, dt):
 
 def idm(d, v, dd, dv, dt):
     """Intelligent Driver Model."""
-    dd_min = 5  # distance minimum entre deux voitures
-    v_max = 100  # vitesse maximum d'une voiture
-    a_max = 20  # accéleration maximum d'une voiture
-    a_min = 30  # décélération minimum d'une voiture
-    a_exp = 2  # exposant de l'accéleration, contrôle la douceur
-    t_react = 0.1  # temps de réaction du conducteur
 
-    dd_parfait = dd_min + v*t_react + v * dv / np.sqrt(2 * a_min * a_max)
+    dd_parfait = s.DD_MIN + max(0, v*s.T_REACT + v * dv / np.sqrt(2 * s.A_MIN * s.A_MAX))
 
-    a = a_max * (1 - (v/v_max)**a_exp - (dd_parfait/dd)**2)
+    a = s.A_MAX * (1 - (v/s.V_MAX)**s.A_EXP - (dd_parfait/dd)**2)
 
     return update_taylor_protected(d, v, a, dt)
 

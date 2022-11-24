@@ -25,7 +25,7 @@ def draw_rect(surface, color, up_left_corner, width, heigth):
     :param heigth: hauteur
     """
     x, y = up_left_corner
-    draw_polygon(surface, color, ((x, y), (x + width, y), (x, y + heigth), (x + width, y + heigth)))
+    draw_polygon(surface, color, ((x, y), (x + width, y), (x + width, y + heigth), (x, y + heigth)))
 
 
 def print_text(surface, color, coords, text, font, anti_aliasing=True):
