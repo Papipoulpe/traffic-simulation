@@ -84,7 +84,7 @@ class CarFactory:
                 return round(t, 2) % func_name[0] == 0 and (not last_car or last_car.d > last_car.length + s.DD_MIN)
             return fact_func
         else:
-            def fact_func(t, last_car):  # TODO: pas terrible...
+            def fact_func(t, last_car):  # TODO: pas terrible
                 mod = np.random.uniform(func_name[0], func_name[1])
                 return round(t % mod, 2) == 0 and (not last_car or last_car.d > last_car.length + s.DD_MIN)
             return fact_func

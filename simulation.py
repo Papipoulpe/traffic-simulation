@@ -47,7 +47,7 @@ class Simulation:
 
             for road in self.roads:
                 road.refresh_cars_coords(dt=self.dt)
-                road.new_car(road.car_factory.factory({"t": self.t}, {"t": self.t, "last_car": road.cars[-1] if road.cars != [] else None}))
+                road.new_car(road.car_factory.factory({"t": self.t}, {"t": self.t, "last_car": road.cars[-1] if road.cars else None}))
 
                 for car in road.cars:
                     self.show_car(car)

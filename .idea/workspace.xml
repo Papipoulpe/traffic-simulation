@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="settings implementation, idm fix">
-      <change beforePath="$PROJECT_DIR$/objets.py" beforeDir="false" afterPath="$PROJECT_DIR$/objets.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/simulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation.py" afterDir="false" />
-    </list>
+    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="carfactory attends d'avoir de la place de créer une voiture" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -249,7 +246,14 @@
       <option name="project" value="LOCAL" />
       <updated>1669324809606</updated>
     </task>
-    <option name="localTasksCounter" value="14" />
+    <task id="LOCAL-00014" summary="carfactory attends d'avoir de la place de créer une voiture">
+      <created>1669325403992</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1669325403992</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -284,6 +288,7 @@
     <MESSAGE value="idm, update_mvt et update_coin sont maintenant des méthodes de car" />
     <MESSAGE value="clean up" />
     <MESSAGE value="settings implementation, idm fix" />
-    <option name="LAST_COMMIT_MESSAGE" value="settings implementation, idm fix" />
+    <MESSAGE value="carfactory attends d'avoir de la place de créer une voiture" />
+    <option name="LAST_COMMIT_MESSAGE" value="carfactory attends d'avoir de la place de créer une voiture" />
   </component>
 </project>
