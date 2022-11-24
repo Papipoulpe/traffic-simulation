@@ -45,7 +45,7 @@ CAR_RAND_WIDTH_MAX = 24  # niveau maximum pour les largeurs aléatoires des voit
 
 DD_MIN = 50  # distance minimum entre deux voitures
 V_MAX = 100  # vitesse maximum d'une voiture
-A_MAX = 20  # accéleration maximum d'une voiture
+A_MAX = 50  # accéleration maximum d'une voiture
 A_MIN = 30  # décélération minimum d'une voiture
-A_EXP = 1.5  # exposant de l'accéleration, contrôle la douceur
+A_EXP = 4  # exposant de l'accéleration, contrôle la douceur
 T_REACT = 0.1  # temps de réaction du conducteur

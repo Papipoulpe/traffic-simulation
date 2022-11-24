@@ -80,13 +80,13 @@ class CarFactory:
     @staticmethod
     def generic_factfunc(func_name):
         if func_name[0] == func_name[1]:  # si func_name est de type [a, a]
-            def fact_func(t):
-                return round(t, 2) % func_name[0] == 0
+            def fact_func(t, last_car):
+                return round(t, 2) % func_name[0] == 0 and (not last_car or last_car.d > last_car.length + s.DD_MIN)
             return fact_func
         else:
-            def fact_func(t):  # TODO: pas terrible...
+            def fact_func(t, last_car):  # TODO: pas terrible...
                 mod = np.random.uniform(func_name[0], func_name[1])
-                return round(t % mod, 2) == 0
+                return round(t % mod, 2) == 0 and (not last_car or last_car.d > last_car.length + s.DD_MIN)
             return fact_func
 
 
