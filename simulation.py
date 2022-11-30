@@ -2,6 +2,7 @@ import pygame
 from objets import *
 from draw_tools import *
 import settings as s
+from res import *
 
 
 class Simulation:
@@ -9,7 +10,7 @@ class Simulation:
         """Simulation du traffic."""
         self.id = 0  # identifiant
         ids[0] = self
-        self.size = s.WIN_WIDTH, s.WIN_HEIGTH
+        self.size = s.WIN_WIDTH, s.WIN_HEIGHT
         self.t = 0.0
         self.frame_count = 0
         self.FPS = s.FPS
@@ -44,10 +45,17 @@ class Simulation:
             self.print_infos(f"t = {round(self.t, 2)}")  # affiche l'horloge
 
             self.show_roads(self.roads)  # affiche les routes
+            self.show_traffic_lights()  # affiche les feux de signalisation
 
             for road in self.roads:
-                road.refresh_cars_coords(dt=self.dt)
-                road.new_car(road.car_factory.factory({"t": self.t}, {"t": self.t, "last_car": road.cars[-1] if road.cars else None}))
+                if road.traffic_light:
+                    road.traffic_light.update(t=self.t)
+
+                road.update_cars_coords(dt=self.dt)
+
+                new_car = road.car_factory.factory({"t": self.t}, {"t": self.t, "last_car": road.cars[-1] if road.cars else None})
+                if new_car is not None:
+                    road.new_car(new_car)
 
                 for car in road.cars:
                     self.show_car(car)
@@ -83,22 +91,35 @@ class Simulation:
                 x, y, _ = arrow_coord
                 draw_image(self.surface, rotated_arrow, (x, y))
 
-    def create_road(self, start, end, car_factory: CarFactory = None, color=s.ROAD_COLOR, w=s.ROAD_WIDTH, obj_id=None):
+    def create_road(self, start, end, car_factory: CarFactory = None, traffic_light: TrafficLight = None, color=s.ROAD_COLOR, w=s.ROAD_WIDTH, obj_id=None):
         """Créer une route."""
-        road = Road(start, end, width=w, color=color, car_factory=car_factory, obj_id=obj_id)
+        road = Road(start, end, width=w, color=color, car_factory=car_factory, traffic_light=traffic_light, obj_id=obj_id)
         self.roads.append(road)
         return road
 
     def create_roads(self, road_list):
-        """Créer des routes droites, renvoie la liste des routes."""
+        """Créer des routes, renvoie la liste des routes."""
         return [self.create_road(**road) for road in road_list]
 
     def set_road_graph(self, graph):
         self.road_graph = graph
         for road in self.roads:
-            if isinstance(graph[road.id], CarSorter):
-                car_sorter = graph[road.id]
+            val = graph[road.id]
+            if isinstance(val, CarSorter):
+                car_sorter = val
+            elif isinstance(val, int):
+                car_sorter = CarSorter(method={val: 1})
             else:
-                car_sorter = CarSorter(method=graph[road.id])
+                car_sorter = CarSorter(method=val)
 
             road.car_sorter = car_sorter
+
+    def show_traffic_lights(self):
+        for road in self.roads:
+            if road.traffic_light:
+                if road.traffic_light.green:
+                    color = FEU_STOP_VERT
+                else:
+                    color = FEU_STOP_ROUGE
+
+                draw_polygon(self.surface, color, road.traffic_light.coins)

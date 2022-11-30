@@ -2,23 +2,6 @@ from mathsandutils import *
 import settings as s
 
 
-ids = {-1: None}  # dict des identifiants, initialisé à -1 pour max(id.keys())
-
-
-def new_id(obj, obj_id=None):
-    """
-    Créer ou ajoute un identifiant à un objet.
-
-    :param obj: objet
-    :param obj_id: identifiant
-    :return: nouvel identifiant
-    """
-    if obj_id is None:
-        obj_id = max(ids.keys()) + 1
-    ids[obj_id] = obj
-    return obj_id
-
-
 class CarFactory:
     def __init__(self, crea_func=None, fact_func=None, obj_id=None):
         """
@@ -144,19 +127,18 @@ class Car:
 
         self.coins = ((0, 0), (0, 0), (0, 0), (0, 0))  # coordonnées des coins, pour affichage
 
-        self.dd = float("+inf")  # distance entre le devant de la voiture et le derrière de la voiture précédente
-        self.dv = v  # différence de vitesse entre la voiture et la voiture précédente
-
     def __str__(self):
-        return f"Car(id={self.id}, x={self.x}, y={self.y}, d={self.d}, v={self.v}, a={self.a}, dd={self.dd}, dv={self.dv}, coins={rec_round(self.coins)}, color{self.color})"
+        return f"Car(id={self.id}, x={self.x}, y={self.y}, d={self.d}, v={self.v}, a={self.a}, coins={rec_round(self.coins)}, color{self.color})"
 
-    def update_mvt(self, dt):
+    def update_mvt(self, dt, prev_car):
         """
         Actualise les coordonnées du mouvement.
 
         :param dt: durée du mouvement
+        :param prev_car: éventuelle voiture devant
         """
-        self.d, self.v, self.a = idm(self.d, self.v, self.dd, self.dv, dt)
+
+        idm(self, prev_car, dt)
 
     def update_coins(self, vd):
         """
@@ -173,8 +155,38 @@ class Car:
         self.coins = c1, c2, c3, c4
 
 
+class TrafficLight:
+    def __init__(self, green: bool, delay: float = s.TL_DELAY, obj_id: int = None):
+        self.id = new_id(self, obj_id)
+        self.road: Road = ...  # route auquel le feu est rattaché
+        self.coins = (0, 0), (0, 0), (0, 0), (0, 0)  # coins pour affichage
+        self.width = s.TL_WIDTH
+
+        self.green = self.green_init = green  # signalisation du feu, rouge ou vert
+        self.delay = delay  # durée entre les changements de signalisation
+
+    def __str__(self):
+        return f"TrafficLight(id={self.id}, green={self.green}, road={self.road})"
+
+    def update(self, t):
+        """Actualise l'état du feu, c'est-à-dire rouge ou vert."""
+        if int(t/self.delay) % 2 == 0:
+            self.green = self.green_init
+        else:
+            self.green = not self.green_init
+
+    @property
+    def fake_car(self):
+        if self.green:
+            return None
+        else:
+            fake_car = Car(0, 0, 1, 1, (0, 0, 0), -2)
+            fake_car.d = self.road.length
+            return fake_car
+
+
 class Road:
-    def __init__(self, start, end, width, color, car_factory: CarFactory, obj_id):
+    def __init__(self, start, end, width, color, car_factory: CarFactory, traffic_light: TrafficLight, obj_id):
         """
         Route droite.
 
@@ -186,81 +198,94 @@ class Road:
         :param obj_id: éventuel identifiant
         """
         self.id = new_id(self, obj_id)
+        self.road = None
         self.start, self.end = start, end
         self.width = width
         self.color = color
 
         (startx, starty), (endx, endy) = self.start, self.end
         self.length = length(start, end)
-        self.vd = vect_dir(self.start, self.end)  # vecteur directeur de la route
+        self.vd = vect_dir(self.start, self.end)  # vecteur directeur de la route, normé
         vnx, vny = vect_norm(self.vd, self.width / 2)  # vecteur normal pour les coord des coins
         self.coins = (startx + vnx, starty + vny), (startx - vnx, starty - vny), (endx - vnx, endy - vny), (
             endx + vnx, endy + vny)
         self.angle = vect_angle(self.vd)
 
-        self.car_factory = car_factory if car_factory is not None else CarFactory()
+        if car_factory is None:
+            self.car_factory = CarFactory()
+        else:
+            self.car_factory = car_factory
+
         self.cars: list[Car] = []
+
         self.car_sorter = CarSorter()
+
         self.exiting_cars: list[Car] = []
 
+        self.traffic_light: TrafficLight = self.new_traffic_light(traffic_light)
+
     def __str__(self):
-        return f"Route(id={self.id}, length={round(self.length, 2)}, coins={rec_round(self.coins, 2)}, color={self.color})"
+        return f"Road(id={self.id}, length={round(self.length, 2)}, coins={rec_round(self.coins, 2)}, color={self.color})"
+
+    def dist_to_pos(self, d):
+        startx, starty = self.start
+        vdx, vdy = self.vd
+        return startx + vdx * d, starty + vdy * d
 
     @property
     def arrows_coords(self):
         rarete = s.ARROW_RARETE  # inverse de la fréquence des flèches
         num = round(self.length / rarete)  # nombre de flèches pour la route
-        x, y = self.start
-        vx, vy = self.vd
-        x, y = x + vx * rarete / 2, y + vy * rarete / 2
         arrows = []
         for i in range(num):
-            arrows.append((x + i * vx * rarete, y + i * vy * rarete, self.angle))
+            x, y = self.dist_to_pos((i + 0.5) * rarete)  # "+ O.5" pour centrer les flèches sur la longueur
+            arrows.append((x, y, self.angle))
         log(f"{arrows=}", 3)
         return arrows
 
-    def refresh_cars_coords(self, dt):
+    def update_cars_coords(self, dt):
         """Bouge les voitures de la route à leurs positions après dt."""
         for index, car in enumerate(self.cars):
-            car.update_mvt(dt)  # mise à jour des vecteurs du mouvement
+            if index > 0:  # pour toutes les voitures sauf la première, donner la voiture devant
+                prev_car = self.cars[index - 1]
+            else:
+                prev_car = self.traffic_light.fake_car
 
-            vdx, vdy = self.vd
-            startx, starty = self.start
-            car.x, car.y = startx + vdx * car.d, starty + vdy * car.d  # mise à jour de la position
+            # mise à jour des vecteurs du mouvement
+            car.update_mvt(dt, prev_car)
 
-            if index > 0:  # toutes les voitures sauf la première
-                car.dd = self.cars[index - 1].d - (car.d + car.length)  # mise à jour de la distance avec la voiture de devant
-                car.dv = self.cars[index - 1].v - car.v  # mise à jour de la différence de vitesse avec la voiture de devant
+            # mise à jour de la position
+            car.x, car.y = self.dist_to_pos(car.d)
 
-            car.update_coins(self.vd)  # mise à jour des coins, pour l'affichage
+            # mise à jour des coins, pour l'affichage
+            car.update_coins(self.vd)
 
             log(f"Updating {car} of {self}", 3)
 
-            if car.d + car.length * int(self.car_sorter.method is not None) >= self.length:
-                # si le sorter de la route est None, attendre que la voiture soit totalement partie pour la retirer
+            if car.d >= self.length:
                 self.exiting_cars.append(car)
                 self.cars.remove(car)
                 log(f"Removing {car} of {self}", 2)
 
-    def new_car(self, car):
-        if car is not None:
-            vnx, vny = vect_norm(self.vd, car.width / 2)  # vecteur normal pour les coord des coins
-            vdx, vdy = self.vd
-            startx, starty = self.start
-            endx, endy = startx + car.length * vdx, starty + car.length * vdy
-            car.coins = (startx + vnx, starty + vny), (startx - vnx, starty - vny), (endx - vnx, endy - vny), (
-                endx + vnx, endy + vny)
-            car.x, car.y = self.start
-            car.d = 0
-            self.cars.append(car)
-            log(f"Creating {car} on road {self}", 2)
+    def new_car(self, car: Car):  # TODO: ajouter car au mileu de la route
+        car.road = self
+        vnx, vny = vect_norm(self.vd, car.width / 2)  # vecteur normal pour les coord des coins
+        sx, sy = self.start
+        ex, ey = self.dist_to_pos(car.length)
+        car.coins = (sx + vnx, sy + vny), (sx - vnx, sy - vny), (ex - vnx, ey - vny), (ex + vnx, ey + vny)
+        car.x, car.y = self.start
+        car.d = 0
+        self.cars.append(car)
+        log(f"Creating {car} on road {self}", 2)
 
+    def new_traffic_light(self, tl: TrafficLight):
+        if tl is None:
+            return TrafficLight(green=True, delay=float("+inf"))
 
-class Feu:
-    def __init__(self, x, y, state, obj_id):
-        self.id = new_id(self, obj_id)
-        self.x, self.y = x, y
-        self.state = state
-
-    def __str__(self):
-        return f"Feu(id={self.id}, x={self.x}, y={self.y}, state={self.state})"
+        tl.road = self
+        vnx, vny = vect_norm(self.vd, self.width/2)
+        x1, y1 = self.dist_to_pos(self.length)
+        x2, y2 = self.dist_to_pos(self.length - tl.width)
+        tl.coins = (x1 + vnx, y1 + vny), (x1 - vnx, y1 - vny), (x2 - vnx, y2 - vny), (x2 + vnx, y2 + vny)
+        log(f"Creating {tl} on road {self}", 2)
+        return tl
