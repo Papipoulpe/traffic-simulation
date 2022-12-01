@@ -4,6 +4,8 @@ import json
 import settings as s
 
 
+np.seterr("raise")
+
 ids = {-1: None}  # dict des identifiants, initialisé à -1 pour max(id.keys())
 
 
@@ -101,7 +103,7 @@ def update_taylor(car, dt):
 def update_taylor_protected(car, dt):
     """Calcule les vecteurs du mouvement avec de simples séries de Taylor, en évitant v < 0"""
     car.v = max(car.v + car.a*dt, 0)  # dev de taylor ordre 1, protégé
-    car.d = car.d + car.v*dt + 1/2*car.a*dt*dt  # dev de taylor ordre 2
+    car.d = car.d + max(0, car.v*dt + 1/2*car.a*dt*dt)  # dev de taylor ordre 2
 
 
 def idm(car, prev_car, dt):
@@ -120,17 +122,22 @@ def idm(car, prev_car, dt):
     update_taylor_protected(car, dt)
 
 
-def arc_type(start, end, sens):
-    sx, sy = start
-    ex, ey = end
-    if ex > sx:
-        if ey > sy:
-            returning = "hd"
-        else:
-            returning = "bd"
-    else:
-        if ey > sy:
-            returning = "hg"
-        else:
-            returning = "bg"
-    return returning + sens
+def intersection_droites(p1, vd1, p2, vd2):
+    """Renvoie le point d'intersections de deux droites sachant un de leur point et leur vecteur directeur"""
+    x1, y1 = p1
+    x2, y2 = p2
+    a1, b1 = vd1
+    a2, b2 = vd2
+    t = (a2*(y2-y1) - b2*(x2-x1))/(a2*b1 - b2*a1)
+    return x1 + a1*t, y1 + b1*t
+
+
+def courbe_bezier(p1, p2, p3, n):
+    """Renvoie n points de la courbe de Bézier définie par les points de contrôle p1, p2 et p3"""
+    points = []
+    a1, a2, a3 = np.array(p1), np.array(p2), np.array(p3)
+    for i in range(n + 1):
+        t = i/n
+        a = (1 - t)*(1 - t) * a1 + 2 * (1 - t) * t * a2 + t * t * a3
+        points.append(a.tolist())
+    return points

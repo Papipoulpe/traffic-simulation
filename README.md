@@ -1,2 +1,2 @@
 # traffic-simulation
-Modélisation du traffic en python
+Modélisation du traffic routier en python, pour comparer l'efficacité de différentes intersections

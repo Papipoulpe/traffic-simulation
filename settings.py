@@ -15,10 +15,10 @@ FPS = 60  # images par secondes de la simulation
 
 # Ressources
 
-FONT_PATH = "ressources/jbmono.ttf"  # chemin à la police de caractère du texte
+FONT_PATH = FONT  # chemin à la police de caractère du texte
 FONT_SIZE = 15  # taille du texte
 FONT_COLOR = BLACK  # couleur du texte
-ARROW_PATH = "ressources/arrow.png"  # chemin à l'image de flèche
+ARROW_PATH = ARROW  # chemin à l'image de flèche
 ARROW_SIZE = (15, 15)  # taille des flèches
 ARROW_RARETE = 100  # inverse de la fréquence des flèches
 
@@ -26,6 +26,7 @@ ARROW_RARETE = 100  # inverse de la fréquence des flèches
 
 ROAD_WIDTH = 30  # largeur des routes
 ROAD_COLOR = ROUTE_BLEU  # couleur des routes
+DEF_ARCROAD_N = 10  # nombre de routes droites par défaut pour les routes courbées
 
 # Voitures
 
@@ -33,7 +34,7 @@ CAR_A = 0  # accéleration par défaut des voitures
 CAR_V = 50  # vitesse par défaut des voitures
 CAR_COLOR = VOITURE_BLEUVERT  # couleur par défaut des voitures
 CAR_WIDTH = 18  # largeur par défaut des voitures
-CAR_LENGTH = 45  # longueur par défaut des voitures
+CAR_LENGTH = 30  # longueur par défaut des voitures
 CAR_RAND_COLOR_MIN = 0  # niveau minimum de rgb pour les couleurs aléatoires des voitures
 CAR_RAND_COLOR_MAX = 210  # niveau maximum de rgb pour les couleurs aléatoires des voitures
 CAR_RAND_LENGTH_MIN = 20  # niveau minimum pour les longueurs aléatoires des voitures

@@ -1,3 +1,9 @@
+FONT = "ressources/jbmono.ttf"
+ARROW = "ressources/arrow.png"
+
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+
 FOND_BLEU = (240, 248, 255)
 FOND_BLEU_M = (227, 253, 242)
 
@@ -14,6 +20,3 @@ FEU_STOP_VERT = (0, 255, 0, 255)
 FEU_SLOW_VERT = (0, 255, 0, 155)
 FEU_STOP_ROUGE = (255, 64, 64, 255)
 FEU_SLOW_ROUGE = (255, 64, 64, 155)
-
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)

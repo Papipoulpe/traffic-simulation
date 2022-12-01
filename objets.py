@@ -46,9 +46,9 @@ class CarFactory:
             if "rand_color" in func_name:
                 attrs["color"] = [np.random.randint(s.CAR_RAND_COLOR_MIN, s.CAR_RAND_COLOR_MAX) for _ in range(3)]
             if "rand_length" in func_name:
-                attrs["le"] = np.random.randint(s.CAR_RAND_WIDTH_MIN, s.CAR_RAND_WIDTH_MAX)
+                attrs["le"] = np.random.randint(s.CAR_RAND_LENGTH_MIN, s.CAR_RAND_LENGTH_MAX)
             if "rand_width" in func_name:
-                attrs["width"] = np.random.randint(s.CAR_RAND_LENGTH_MIN, s.CAR_RAND_LENGTH_MAX)
+                attrs["width"] = np.random.randint(s.CAR_RAND_WIDTH_MIN, s.CAR_RAND_WIDTH_MAX)
             try:
                 attrs_dic = parse(func_name[0])
                 log("Cannot parse crea_func", 2)
@@ -186,7 +186,7 @@ class TrafficLight:
 
 
 class Road:
-    def __init__(self, start, end, width, color, car_factory: CarFactory, traffic_light: TrafficLight, obj_id):
+    def __init__(self, start, end, width, color, with_arrows, car_factory, traffic_light, obj_id):
         """
         Route droite.
 
@@ -194,14 +194,15 @@ class Road:
         :param end: coordonnées de la fin
         :param width: largeur
         :param color: couleur
-        :param car_factory: CarFactory
+        :param car_factory: éventuelle CarFactory
+        :param traffic_light: éventuel feu de signalisation
         :param obj_id: éventuel identifiant
         """
         self.id = new_id(self, obj_id)
-        self.road = None
         self.start, self.end = start, end
         self.width = width
         self.color = color
+        self.with_arrows = with_arrows
 
         (startx, starty), (endx, endy) = self.start, self.end
         self.length = length(start, end)
@@ -225,7 +226,7 @@ class Road:
         self.traffic_light: TrafficLight = self.new_traffic_light(traffic_light)
 
     def __str__(self):
-        return f"Road(id={self.id}, length={round(self.length, 2)}, coins={rec_round(self.coins, 2)}, color={self.color})"
+        return f"Road(id={self.id}, start={self.start}, end={self.end}, color={self.color})"
 
     def dist_to_pos(self, d):
         startx, starty = self.start
@@ -234,6 +235,8 @@ class Road:
 
     @property
     def arrows_coords(self):
+        if not self.with_arrows:
+            return []
         rarete = s.ARROW_RARETE  # inverse de la fréquence des flèches
         num = round(self.length / rarete)  # nombre de flèches pour la route
         arrows = []
@@ -289,3 +292,66 @@ class Road:
         tl.coins = (x1 + vnx, y1 + vny), (x1 - vnx, y1 - vny), (x2 - vnx, y2 - vny), (x2 + vnx, y2 + vny)
         log(f"Creating {tl} on road {self}", 2)
         return tl
+
+
+class ArcRoad:
+    def __init__(self, start, end, vdstart, vdend, n, width, color, car_factory, obj_id):
+        """
+        Route courbée.
+
+        :param start: coordonnées du début
+        :param end: coordonnées de la fin
+        :param vdstart: vecteur directeur de la droite asymptote au début
+        :param vdend: vecteur directeur de la droite asymptote à la fin
+        :param n: nombre de routes droites formant la route courbée
+        :param width: largeur
+        :param color: couleur
+        :param car_factory: éventuelle CarFactory
+        :param obj_id: éventuel identifiant
+        """
+        self.id = new_id(self, obj_id)
+        self.start, self.end = start, end
+        self.width = width
+        self.color = color
+
+        intersec = intersection_droites(start, vdstart, end, vdend)
+        self.points = courbe_bezier(start, intersec, end, n)
+        self.roads = []
+        for i in range(len(self.points) - 1):
+            rstart = self.points[i]
+            rend = self.points[i + 1]
+            road = Road(rstart, rend, width, color, False, None, None, -(1000*self.id+i))
+            self.roads.append(road)
+
+        self.exiting_cars: list[Car] = []
+
+        if car_factory is None:
+            self.car_factory = CarFactory()
+        else:
+            self.car_factory = car_factory
+
+        self.car_sorter = CarSorter()
+
+        self.cars = []  # TODO: mieux, pour last_car de car factory
+
+        self.traffic_light = None
+
+    def __str__(self):
+        return f"ArcRoad(id={self.id}, start={self.start}, end={self.end}, color={self.color})"
+
+    def update_cars_coords(self, dt):
+        for index, road in enumerate(self.roads):
+            road.update_cars_coords(dt)
+
+            if index == len(self.roads) - 1:  # si dernière route droite
+                self.exiting_cars = road.exiting_cars
+            else:
+                next_road = self.roads[index + 1]
+                for car in road.exiting_cars:
+                    next_road.new_car(car)
+
+            road.exiting_cars = []
+
+    def new_car(self, car):
+        self.roads[0].new_car(car)
+        self.cars.append(car)

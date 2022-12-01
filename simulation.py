@@ -17,7 +17,7 @@ class Simulation:
         self.dt = 1/self.FPS
         self.over = False
 
-        self.roads: list[Road] = []
+        self.roads = []
         self.road_graph = {}
 
         pygame.init()
@@ -83,18 +83,36 @@ class Simulation:
     def show_roads(self, road_list):
         """Affiche des routes."""
         for road in road_list:
-            draw_polygon(self.surface, road.color, road.coins)
+            log(f"Showing {road}", 2)
+            if isinstance(road, Road):
+                draw_polygon(self.surface, road.color, road.coins)
 
-            rotated_arrow = pygame.transform.rotate(self.ARROW, road.angle)
+                rotated_arrow = pygame.transform.rotate(self.ARROW, road.angle)
 
-            for arrow_coord in road.arrows_coords:
-                x, y, _ = arrow_coord
-                draw_image(self.surface, rotated_arrow, (x, y))
+                for arrow_coord in road.arrows_coords:
+                    x, y, _ = arrow_coord
+                    draw_image(self.surface, rotated_arrow, (x, y))
+            elif isinstance(road, ArcRoad):
+                self.show_roads(road.roads)
 
-    def create_road(self, start, end, car_factory: CarFactory = None, traffic_light: TrafficLight = None, color=s.ROAD_COLOR, w=s.ROAD_WIDTH, obj_id=None):
+    def create_road(self, **kw):
         """Créer une route."""
-        road = Road(start, end, width=w, color=color, car_factory=car_factory, traffic_light=traffic_light, obj_id=obj_id)
+        if kw["type"] == "road":  # si on crée une route droite
+            start, end, car_factory, traffic_light, color, wa, w, obj_id = kw.get("start"), kw.get("end"), kw.get("car_factory"), kw.get("traffic_light"), kw.get("color", s.ROAD_COLOR), kw.get("with_arrows", True), kw.get("width", s.ROAD_WIDTH), kw.get("id")
+            road = Road(start, end, width=w, color=color, with_arrows=wa, car_factory=car_factory, traffic_light=traffic_light, obj_id=obj_id)
+        else:  # si on crée une route courbée
+            start, end, vdstart, vdend, n, car_factory, color, w, obj_id = kw.get("start"), kw.get("end"), kw.get("vdstart"), kw.get("vdend"), kw.get("n", s.DEF_ARCROAD_N), kw.get("car_factory"), kw.get("color", s.ROAD_COLOR), kw.get("width", s.ROAD_WIDTH), kw.get("id")
+            if isinstance(start, int):  # si l'argument start est un id de route
+                rstart = get_by_id(start)
+                start = rstart.end
+                vdstart = rstart.vd
+            if isinstance(end, int):  # si l'argument end est un id de route
+                rend = get_by_id(end)
+                end = rend.start
+                vdend = rend.vd
+            road = ArcRoad(start, end, vdstart, vdend, n, width=w, color=color, car_factory=car_factory, obj_id=obj_id)
         self.roads.append(road)
+        log(f"Creating {road}")
         return road
 
     def create_roads(self, road_list):
