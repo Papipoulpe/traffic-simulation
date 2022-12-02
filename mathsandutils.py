@@ -4,12 +4,12 @@ import json
 import settings as s
 
 
-np.seterr("raise")
+np.seterr("raise")  # change la gestion des erreurs de maths (division par zéro, racine de réel négatif...)
 
 ids = {-1: None}  # dict des identifiants, initialisé à -1 pour max(id.keys())
 
 
-def empty(*args, **kwargs): ...
+def empty(*args, **kwargs): ...  # fonction qui à tout associe rien
 
 
 def new_id(obj, obj_id=None):
@@ -123,7 +123,7 @@ def idm(car, prev_car, dt):
 
 
 def intersection_droites(p1, vd1, p2, vd2):
-    """Renvoie le point d'intersections de deux droites sachant un de leur point et leur vecteur directeur"""
+    """Renvoie le point d'intersections de deux droites grâce à un de leur point et leur vecteur directeur."""
     x1, y1 = p1
     x2, y2 = p2
     a1, b1 = vd1

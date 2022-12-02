@@ -1,18 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="TrafficLights, clean main, car.update_mvt update, global clean up">
-      <change afterPath="$PROJECT_DIR$/carrefour.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/carrefour2.py" afterDir="false" />
+    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="arcroad, exemples, with_arrows arg in road, Béziers">
+      <change afterPath="$PROJECT_DIR$/rondpoint.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/draw_tools.py" beforeDir="false" afterPath="$PROJECT_DIR$/draw_tools.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/carrefour2.py" beforeDir="false" afterPath="$PROJECT_DIR$/carrefour2.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mathsandutils.py" beforeDir="false" afterPath="$PROJECT_DIR$/mathsandutils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/objets.py" beforeDir="false" afterPath="$PROJECT_DIR$/objets.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/res.py" beforeDir="false" afterPath="$PROJECT_DIR$/res.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/settings.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/simulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -310,7 +303,14 @@
       <option name="project" value="LOCAL" />
       <updated>1669828849666</updated>
     </task>
-    <option name="localTasksCounter" value="17" />
+    <task id="LOCAL-00017" summary="arcroad, exemples, with_arrows arg in road, Béziers">
+      <created>1669927692370</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1669927692370</updated>
+    </task>
+    <option name="localTasksCounter" value="18" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -348,6 +348,7 @@
     <MESSAGE value="carfactory attends d'avoir de la place de créer une voiture" />
     <MESSAGE value="carfactory attend d'avoir de la place de créer une voiture" />
     <MESSAGE value="TrafficLights, clean main, car.update_mvt update, global clean up" />
-    <option name="LAST_COMMIT_MESSAGE" value="TrafficLights, clean main, car.update_mvt update, global clean up" />
+    <MESSAGE value="arcroad, exemples, with_arrows arg in road, Béziers" />
+    <option name="LAST_COMMIT_MESSAGE" value="arcroad, exemples, with_arrows arg in road, Béziers" />
   </component>
 </project>
