@@ -6,7 +6,7 @@ from res import *
 
 
 class Simulation:
-    def __init__(self):
+    def __init__(self, win_title="Traffic Simulation"):
         """Simulation du traffic."""
         self.id = 0  # identifiant
         ids[0] = self
@@ -21,6 +21,7 @@ class Simulation:
         self.road_graph = {}
 
         pygame.init()
+        pygame.display.set_caption(win_title)
 
         self.surface = pygame.display.set_mode(self.size)
         self.clock = pygame.time.Clock()
@@ -39,6 +40,9 @@ class Simulation:
                     self.over = True
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                     self.over = True
+
+            if pygame.mouse.get_pressed()[0]:
+                continue
 
             self.surface.fill(self.bg_color)  # efface tout
 
@@ -61,6 +65,7 @@ class Simulation:
                     self.show_car(car)
 
                 for car in road.exiting_cars:
+                    self.show_car(car)
                     new_road = road.car_sorter.sorter(t=self.t)
                     if new_road is not None:
                         new_road.new_car(car)
@@ -141,3 +146,15 @@ class Simulation:
                     color = FEU_STOP_ROUGE
 
                 draw_polygon(self.surface, color, road.traffic_light.coins)
+
+    def get_leading_car(self, car: Car):
+        """Renvoie la voiture devant, en regardant les prochaines routes."""
+        road = car.road
+        if road.id < 0:  # si la route de la voiture est une sous route de d'une arcroad
+            return None  # TODO c'est peut être faisable
+        if isinstance(self.road_graph[road.id], int):
+            next_road = get_by_id(self.road_graph[road.id])
+            while next_road.cars == [] and isinstance(self.road_graph[next_road.id], int):
+                next_road = get_by_id(self.road_graph[road.id])
+            if next_road.cars:
+                return next_road.cars[0]

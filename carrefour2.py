@@ -2,7 +2,7 @@ from simulation import Simulation
 from objets import CarFactory, TrafficLight
 
 
-sim = Simulation()
+sim = Simulation("Carrefour")
 
 road_list = [{"id": 1, "type": "road", "start": (-60, 440), "end": (650, 440),  # routes de gauche
               "car_factory": CarFactory(["rand_color"], [0.2, 1.5]), "traffic_light": TrafficLight(False)},

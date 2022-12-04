@@ -42,7 +42,7 @@ class CarFactory:
 
         attrs = {"v": s.CAR_V, "a": s.CAR_A, "color": s.CAR_COLOR, "width": s.CAR_WIDTH, "le": s.CAR_LENGTH, "obj_id": None}
 
-        def crea_func(*args, **kwargs):
+        def crea_func(*_, **__):
             if "rand_color" in func_name:
                 attrs["color"] = [np.random.randint(s.CAR_RAND_COLOR_MIN, s.CAR_RAND_COLOR_MAX) for _ in range(3)]
             if "rand_length" in func_name:
@@ -87,7 +87,7 @@ class CarSorter:
                 probs.append(method[p])
                 roads.append(p)
 
-            def sort_func(*args, **kwargs):
+            def sort_func(*_, **__):
                 return ids[np.random.choice(roads, p=probs)]
 
         elif method is None:  # si la méthode est None, les voitures sont supprimées
@@ -119,6 +119,7 @@ class Car:
         self.id = new_id(self, obj_id)
         self.color = color
         self.length, self.width = le, width
+        self.road = None
 
         self.d = 0  # distance du derrière depuis le début de la route
         self.x, self.y = 0, 0  # position du mileu du derrière dans la fenêtre
@@ -292,6 +293,9 @@ class Road:
         tl.coins = (x1 + vnx, y1 + vny), (x1 - vnx, y1 - vny), (x2 - vnx, y2 - vny), (x2 + vnx, y2 + vny)
         log(f"Creating {tl} on road {self}", 2)
         return tl
+
+
+# TODO: subclass sroad de road, qui sont les routes droites de arcroad
 
 
 class ArcRoad:

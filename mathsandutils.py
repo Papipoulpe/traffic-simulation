@@ -9,7 +9,7 @@ np.seterr("raise")  # change la gestion des erreurs de maths (division par zéro
 ids = {-1: None}  # dict des identifiants, initialisé à -1 pour max(id.keys())
 
 
-def empty(*args, **kwargs): ...  # fonction qui à tout associe rien
+def empty(*_, **__): ...  # fonction qui à tout associe rien
 
 
 def new_id(obj, obj_id=None):
@@ -94,23 +94,25 @@ def parse(string: str):
     return json.loads(string.replace("'", '"'))
 
 
-def update_taylor(car, dt):
+def update_taylor(car, dt: float):
     """Calcule les vecteurs du mouvement avec de simples séries de Taylor"""
     car.v = car.v + car.a*dt  # dev de taylor ordre 1
     car.d = car.d + car.v*dt + 1/2*car.a*dt*dt  # dev de taylor ordre 2
 
 
-def update_taylor_protected(car, dt):
+def update_taylor_protected(car, dt: float):
     """Calcule les vecteurs du mouvement avec de simples séries de Taylor, en évitant v < 0"""
     car.v = max(car.v + car.a*dt, 0)  # dev de taylor ordre 1, protégé
     car.d = car.d + max(0, car.v*dt + 1/2*car.a*dt*dt)  # dev de taylor ordre 2
 
 
-def idm(car, prev_car, dt):
+def idm(car, prev_car, dt: float):
     """Intelligent Driver Model."""
 
     if prev_car:
         delta_d = prev_car.d - (car.d + car.length)
+        if delta_d <= 0:  # si la voiture est en avance, la faire attendre et ralentir
+            car.d, car.v, car.a = car.d, 0, car.a
         delta_v = car.v - prev_car.v
         dd_parfait = s.DD_MIN + max(0, car.v * s.T_REACT + car.v * delta_v / np.sqrt(2 * s.A_MIN * s.A_MAX))
         a_interaction = (dd_parfait/delta_d)**2
@@ -122,8 +124,8 @@ def idm(car, prev_car, dt):
     update_taylor_protected(car, dt)
 
 
-def intersection_droites(p1, vd1, p2, vd2):
-    """Renvoie le point d'intersections de deux droites grâce à un de leur point et leur vecteur directeur."""
+def intersection_droites(p1: (float, float), vd1: (float, float), p2: (float, float), vd2: (float, float)):
+    """Renvoie le point d'intersections de deux droites grâce à un de leurs points et leurs vecteurs directeurs."""
     x1, y1 = p1
     x2, y2 = p2
     a1, b1 = vd1
@@ -132,8 +134,8 @@ def intersection_droites(p1, vd1, p2, vd2):
     return x1 + a1*t, y1 + b1*t
 
 
-def courbe_bezier(p1, p2, p3, n):
-    """Renvoie n points de la courbe de Bézier définie par les points de contrôle p1, p2 et p3"""
+def courbe_bezier(p1: (float, float), p2: (float, float), p3: (float, float), n: int):
+    """Renvoie n points de la courbe de Bézier définie par les points de contrôle p1, p2 et p3."""
     points = []
     a1, a2, a3 = np.array(p1), np.array(p2), np.array(p3)
     for i in range(n + 1):
@@ -141,3 +143,15 @@ def courbe_bezier(p1, p2, p3, n):
         a = (1 - t)*(1 - t) * a1 + 2 * (1 - t) * t * a2 + t * t * a3
         points.append(a.tolist())
     return points
+
+
+def milieu(p1: (float, float), p2: (float, float)):
+    """Renvoie le milieu de deux points."""
+    (x1, y1), (x2, y2) = p1, p2
+    return (x1 + x2)/2, (y1 + y2)/2
+
+
+def sont_paralleles(vd1: (float, float), vd2: (float, float)):
+    """Renvoie si deux droites définies par leurs vecteurs directeurs sont parallèles."""
+    (x1, y1), (x2, y2) = vd1, vd2
+    return x1*y2 - x2*y1 == 0
