@@ -10,9 +10,9 @@ class Simulation:
         """Simulation du traffic."""
         self.id = 0  # identifiant
         ids[0] = self
-        self.size = s.WIN_WIDTH, s.WIN_HEIGHT
-        self.t = 0.0
-        self.frame_count = 0
+        self.size = s.WIN_WIDTH, s.WIN_HEIGHT  # taille de la fenêtre
+        self.t = 0.0  # suivi du temps
+        self.frame_count = 0  # suivi du nombre d'image
         self.FPS = s.FPS
         self.dt = 1/self.FPS
         self.over = False
@@ -46,7 +46,7 @@ class Simulation:
 
             self.surface.fill(self.bg_color)  # efface tout
 
-            self.print_infos(f"t = {round(self.t, 2)}")  # affiche l'horloge
+            self.print_infos(f"t = {round(self.t, 2):<10} n = {self.frame_count}")  # affiche l'horloge et le nombre d'image
 
             self.show_roads(self.roads)  # affiche les routes
             self.show_traffic_lights()  # affiche les feux de signalisation
@@ -55,7 +55,7 @@ class Simulation:
                 if road.traffic_light:
                     road.traffic_light.update(t=self.t)
 
-                road.update_cars_coords(dt=self.dt)
+                road.update_cars_coords(self.dt, self.get_avg_leading_car_coords(road))
 
                 new_car = road.car_factory.factory({"t": self.t}, {"t": self.t, "last_car": road.cars[-1] if road.cars else None})
                 if new_car is not None:
@@ -74,6 +74,7 @@ class Simulation:
 
             pygame.display.flip()
             self.t += self.dt
+            self.frame_count += 1
             self.clock.tick(self.FPS)
 
     def print_infos(self, info):
@@ -147,14 +148,28 @@ class Simulation:
 
                 draw_polygon(self.surface, color, road.traffic_light.coins)
 
-    def get_leading_car(self, car: Car):
-        """Renvoie la voiture devant, en regardant les prochaines routes."""
-        road = car.road
-        if road.id < 0:  # si la route de la voiture est une sous route de d'une arcroad
-            return None  # TODO c'est peut être faisable
-        if isinstance(self.road_graph[road.id], int):
-            next_road = get_by_id(self.road_graph[road.id])
-            while next_road.cars == [] and isinstance(self.road_graph[next_road.id], int):
-                next_road = get_by_id(self.road_graph[road.id])
+    def get_avg_leading_car_coords(self, road: Road):
+        """Renvoie la moyenne des distances depuis la fin de la route et des vitesses des dernières voitures des
+        prochaines routes, pondérée par la probabilité que la première voiture aille sur ces routes."""
+        next_roads_probs = self.road_graph[road.id]
+
+        if next_roads_probs is None:  # si pas de prochaine route
+            return None
+        elif isinstance(next_roads_probs, int):  # si un seul choix de prochaine route
+            next_roads_probs = {next_roads_probs: 1}
+
+        d, v = 0, 0
+
+        for road_id in next_roads_probs:
+            prob = next_roads_probs[road_id]
+            next_road = get_by_id(road_id)
+
             if next_road.cars:
-                return next_road.cars[0]
+                next_car = next_road.cars[-1]
+                next_d, next_v = next_car.d + road.length, next_car.v
+                d += prob*next_d
+                v += prob*next_v
+            else:
+                return None
+
+        return d, v

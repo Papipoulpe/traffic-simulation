@@ -131,15 +131,15 @@ class Car:
     def __str__(self):
         return f"Car(id={self.id}, x={self.x}, y={self.y}, d={self.d}, v={self.v}, a={self.a}, coins={rec_round(self.coins)}, color{self.color})"
 
-    def update_mvt(self, dt, prev_car):
+    def update_mvt(self, dt, avg_leading_car_coords):
         """
         Actualise les coordonnées du mouvement.
 
         :param dt: durée du mouvement
-        :param prev_car: éventuelle voiture devant
+        :param avg_leading_car_coords: distance et vitesse d'une éventuelle voiture devant
         """
 
-        idm(self, prev_car, dt)
+        idm(self, avg_leading_car_coords, dt)
 
     def update_coins(self, vd):
         """
@@ -171,6 +171,8 @@ class TrafficLight:
 
     def update(self, t):
         """Actualise l'état du feu, c'est-à-dire rouge ou vert."""
+        # TODO: feu orange ? avec ralentissement petit si tres proche ou tres loin, grand sinon
+        # autre TODO: décalage pour que tous les feux soient rouges à un certain moment, laissant les voitures déjà dans le carroufour se dépatouiller, compatible avec get_leading_car
         if int(t/self.delay) % 2 == 0:
             self.green = self.green_init
         else:
@@ -178,11 +180,13 @@ class TrafficLight:
 
     @property
     def fake_car(self):
+        """Renvoie une fausse voiture, qui fera ralentir la première voiture de la route."""
         if self.green:
             return None
         else:
             fake_car = Car(0, 0, 1, 1, (0, 0, 0), -2)
             fake_car.d = self.road.length
+            fake_car.road = self.road
             return fake_car
 
 
@@ -247,16 +251,22 @@ class Road:
         log(f"{arrows=}", 3)
         return arrows
 
-    def update_cars_coords(self, dt):
+    def update_cars_coords(self, dt, avg_leading_car_coords):
         """Bouge les voitures de la route à leurs positions après dt."""
         for index, car in enumerate(self.cars):
             if index > 0:  # pour toutes les voitures sauf la première, donner la voiture devant
-                prev_car = self.cars[index - 1]
-            else:
-                prev_car = self.traffic_light.fake_car
+                leading_car = self.cars[index - 1]
+                avg_leading_car_coords = leading_car.d, leading_car.v
+            elif self.traffic_light.fake_car:  # si le feu est rouge, donner la fake_car du feu
+                leading_car = self.traffic_light.fake_car
+                avg_leading_car_coords = leading_car.d, leading_car.v
+            elif avg_leading_car_coords is not None:  # sinon pour la première voiture, donner la prochaine voiture
+                avg_leading_car_d = avg_leading_car_coords[0] + self.length - car.d
+                avg_leading_car_v = avg_leading_car_coords[1]
+                avg_leading_car_coords = avg_leading_car_d, avg_leading_car_v
 
             # mise à jour des vecteurs du mouvement
-            car.update_mvt(dt, prev_car)
+            car.update_mvt(dt, avg_leading_car_coords)
 
             # mise à jour de la position
             car.x, car.y = self.dist_to_pos(car.d)
@@ -295,7 +305,22 @@ class Road:
         return tl
 
 
-# TODO: subclass sroad de road, qui sont les routes droites de arcroad
+class SRoad(Road):
+    def __init__(self, start, end, width, color, arcroad, obj_id):
+        """Route droite dérivant de Road, servant pour les sous-routes de ArcRoad"""
+        super().__init__(start, end, width, color, False, None, None, obj_id)
+        self.arcroad = arcroad
+
+    def new_car(self, car: Car):  # TODO: ajouter car au mileu de la route
+        car.road = self.arcroad
+        vnx, vny = vect_norm(self.vd, car.width / 2)  # vecteur normal pour les coord des coins
+        sx, sy = self.start
+        ex, ey = self.dist_to_pos(car.length)
+        car.coins = (sx + vnx, sy + vny), (sx - vnx, sy - vny), (ex - vnx, ey - vny), (ex + vnx, ey + vny)
+        car.x, car.y = self.start
+        car.d = 0
+        self.cars.append(car)
+        log(f"Creating {car} on road {self}", 2)
 
 
 class ArcRoad:
@@ -317,6 +342,7 @@ class ArcRoad:
         self.start, self.end = start, end
         self.width = width
         self.color = color
+        self.length = 0
 
         intersec = intersection_droites(start, vdstart, end, vdend)
         self.points = courbe_bezier(start, intersec, end, n)
@@ -324,8 +350,9 @@ class ArcRoad:
         for i in range(len(self.points) - 1):
             rstart = self.points[i]
             rend = self.points[i + 1]
-            road = Road(rstart, rend, width, color, False, None, None, -(1000*self.id+i))
+            road = SRoad(rstart, rend, width, color, self, -(1000*self.id+i))
             self.roads.append(road)
+            self.length += road.length
 
         self.exiting_cars: list[Car] = []
 
@@ -336,18 +363,18 @@ class ArcRoad:
 
         self.car_sorter = CarSorter()
 
-        self.cars = []  # TODO: mieux, pour last_car de car factory
+        self.cars = []
 
         self.traffic_light = None
 
     def __str__(self):
         return f"ArcRoad(id={self.id}, start={self.start}, end={self.end}, color={self.color})"
 
-    def update_cars_coords(self, dt):
+    def update_cars_coords(self, dt, avg_leading_car_coords):
         for index, road in enumerate(self.roads):
-            road.update_cars_coords(dt)
+            road.update_cars_coords(dt, avg_leading_car_coords)
 
-            if index == len(self.roads) - 1:  # si dernière route droite
+            if index == len(self.roads) - 1:  # si dernière sroad
                 self.exiting_cars = road.exiting_cars
             else:
                 next_road = self.roads[index + 1]

@@ -3,7 +3,7 @@ from res import *
 
 # Général
 
-LOGGING_LEVEL = 0  # niveau de logging
+LOGGING_LEVEL = 1  # niveau de logging
 
 # Simulation
 
