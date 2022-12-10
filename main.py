@@ -1,7 +1,9 @@
 from simulation import Simulation
-from objets import CarFactory, TrafficLight
+from objets import CarFactory
+
 
 sim = Simulation()
+
 
 road_list = [{"id": 1, "type": "road", "start": (-60, 400), "end": (650, 200), "car_factory": CarFactory(["rand_color"], [0.2, 1.5])},
              {"id": 2, "type": "road", "start": (790, 200), "end": (1500, 400)},

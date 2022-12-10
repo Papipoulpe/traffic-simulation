@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="click to pause, get_leading_car, win title">
+    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="get_avg_lead_coords, affichage du nombre d'image, SRoad">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mathsandutils.py" beforeDir="false" afterPath="$PROJECT_DIR$/mathsandutils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/objets.py" beforeDir="false" afterPath="$PROJECT_DIR$/objets.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/settings.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/simulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation.py" afterDir="false" />
@@ -176,8 +176,8 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.carrefour2" />
-        <item itemvalue="Python.main" />
         <item itemvalue="Python.carrefour" />
+        <item itemvalue="Python.main" />
         <item itemvalue="Python.settings" />
         <item itemvalue="Python.objets" />
       </list>
@@ -325,7 +325,14 @@
       <option name="project" value="LOCAL" />
       <updated>1670163644987</updated>
     </task>
-    <option name="localTasksCounter" value="20" />
+    <task id="LOCAL-00020" summary="get_avg_lead_coords, affichage du nombre d'image, SRoad">
+      <created>1670346915582</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1670346915582</updated>
+    </task>
+    <option name="localTasksCounter" value="21" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -366,6 +373,7 @@
     <MESSAGE value="arcroad, exemples, with_arrows arg in road, Béziers" />
     <MESSAGE value="click to pause, get_leading_car" />
     <MESSAGE value="click to pause, get_leading_car, win title" />
-    <option name="LAST_COMMIT_MESSAGE" value="click to pause, get_leading_car, win title" />
+    <MESSAGE value="get_avg_lead_coords, affichage du nombre d'image, SRoad" />
+    <option name="LAST_COMMIT_MESSAGE" value="get_avg_lead_coords, affichage du nombre d'image, SRoad" />
   </component>
 </project>

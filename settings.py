@@ -12,6 +12,7 @@ WIN_HEIGHT = 840  # hauteur de la fenêtre de simulation
 BG_COLOR = FOND_BLEU_M  # couleur de l'arrière plan de la fenêtre
 INFOS_BG_COLOR = FOND_BLEU_M_TEXTE  # couleur de l'arrière plan du texte
 FPS = 60  # images par secondes de la simulation
+SPEED = 1
 
 # Ressources
 

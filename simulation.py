@@ -15,6 +15,7 @@ class Simulation:
         self.frame_count = 0  # suivi du nombre d'image
         self.FPS = s.FPS
         self.dt = 1/self.FPS
+        self.speed_ajusted_dt = self.dt * s.SPEED
         self.over = False
 
         self.roads = []
@@ -46,7 +47,7 @@ class Simulation:
 
             self.surface.fill(self.bg_color)  # efface tout
 
-            self.print_infos(f"t = {round(self.t, 2):<10} n = {self.frame_count}")  # affiche l'horloge et le nombre d'image
+            self.print_infos(f"t = {round(self.t, 2):<6} n = {self.frame_count:<7} vitesse × {s.SPEED}")  # affiche l'horloge et le nombre d'image
 
             self.show_roads(self.roads)  # affiche les routes
             self.show_traffic_lights()  # affiche les feux de signalisation
@@ -55,7 +56,7 @@ class Simulation:
                 if road.traffic_light:
                     road.traffic_light.update(t=self.t)
 
-                road.update_cars_coords(self.dt, self.get_avg_leading_car_coords(road))
+                road.update_cars_coords(dt=self.speed_ajusted_dt, avg_leading_car_coords=self.get_avg_leading_car_coords(road))
 
                 new_car = road.car_factory.factory({"t": self.t}, {"t": self.t, "last_car": road.cars[-1] if road.cars else None})
                 if new_car is not None:
@@ -73,13 +74,13 @@ class Simulation:
                 road.exiting_cars = []
 
             pygame.display.flip()
-            self.t += self.dt
+            self.t += self.speed_ajusted_dt
             self.frame_count += 1
             self.clock.tick(self.FPS)
 
     def print_infos(self, info):
         """Affiche des infos en haut à gauche de la fenêtre."""
-        draw_rect(self.surface, s.INFOS_BG_COLOR, (0, 0), 300, 40)
+        draw_rect(self.surface, s.INFOS_BG_COLOR, (0, 0), 350, 40)
         print_text(self.surface, s.FONT_COLOR, (10, 10), info, self.font)
 
     def show_car(self, car: Car):

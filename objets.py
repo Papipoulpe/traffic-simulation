@@ -149,10 +149,10 @@ class Car:
         """
         vdx, vdy = vd
         vnx, vny = vect_norm(vd, self.width / 2)
-        c1 = self.x + vnx, self.y + vny
-        c2 = self.x - vnx, self.y - vny
-        c3 = self.x - vnx + self.length * vdx, self.y - vny + self.length * vdy
-        c4 = self.x + vnx + self.length * vdx, self.y + vny + self.length * vdy
+        c1 = self.x + vnx - self.length * vdx / 2, self.y + vny - self.length * vdy / 2
+        c2 = self.x - vnx - self.length * vdx / 2, self.y - vny - self.length * vdy / 2
+        c3 = self.x - vnx + self.length * vdx / 2, self.y - vny + self.length * vdy / 2
+        c4 = self.x + vnx + self.length * vdx / 2, self.y + vny + self.length * vdy / 2
         self.coins = c1, c2, c3, c4
 
 
