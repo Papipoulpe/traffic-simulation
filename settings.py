@@ -34,7 +34,7 @@ DEF_ARCROAD_N = 10  # nombre de routes droites par défaut pour les routes courb
 CAR_A = 0  # accéleration par défaut des voitures
 CAR_V = 50  # vitesse par défaut des voitures
 CAR_COLOR = VOITURE_BLEUVERT  # couleur par défaut des voitures
-CAR_SHOW_ARROW = True  # si on affiche une flèche sur le toit des voitures vers l'avant
+CAR_SHOW_ARROW = False  # si on affiche une flèche sur le toit des voitures vers l'avant
 CAR_WIDTH = 18  # largeur par défaut des voitures
 CAR_LENGTH = 30  # longueur par défaut des voitures
 CAR_RAND_COLOR_MIN = 0  # niveau minimum de rgb pour les couleurs aléatoires des voitures
@@ -55,5 +55,10 @@ T_REACT = 0.1  # temps de réaction du conducteur
 
 # Traffic Lights
 
-TL_DELAY = 8  # temps entre rouge et vert
+TL_RED_DELAY = 8  # durée du feu rouge
+TL_ORANGE_DELAY = 3  # durée du feu orange
+TL_GREEN_DELAY = TL_RED_DELAY - TL_ORANGE_DELAY  # durée du feu vert
 TL_WIDTH = 5  # largeur du trait du feu
+TL_RED = FEU_ROUGE
+TL_ORANGE = FEU_ORANGE
+TL_GREEN = FEU_VERT

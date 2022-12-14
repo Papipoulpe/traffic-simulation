@@ -170,37 +170,50 @@ class Car:
 
 
 class TrafficLight:
-    def __init__(self, green: bool, delay: float = s.TL_DELAY, obj_id: int = None):
+    def __init__(self, state_init: int, static=False, obj_id: int = None):
         self.id = new_id(self, obj_id)
         self.road: Road = ...  # route auquel le feu est rattaché
         self.coins = (0, 0), (0, 0), (0, 0), (0, 0)  # coins pour affichage
         self.width = s.TL_WIDTH
 
-        self.green = self.green_init = green  # signalisation du feu, rouge ou vert
-        self.delay = delay  # durée entre les changements de signalisation
+        self.state = self.state_init = state_init  # signalisation du feu : rouge 0, orange 1 ou vert 2
+        self.static = static
 
     def __str__(self):
-        return f"TrafficLight(id={self.id}, green={self.green}, road={self.road})"
+        return f"TrafficLight(id={self.id}, state={self.state}, road={self.road})"
 
     def update(self, t):
         """Actualise l'état du feu, c'est-à-dire rouge ou vert."""
         # TODO: feu orange ? avec ralentissement petit si tres proche ou tres loin, grand sinon
-        # autre TODO: décalage pour que tous les feux soient rouges à un certain moment, laissant les voitures déjà dans le carroufour se dépatouiller, compatible avec get_leading_car
-        if int(t/self.delay) % 2 == 0:
-            self.green = self.green_init
+        #  + décalage pour que tous les feux soient rouges à un certain moment, laissant les voitures déjà dans le
+        #  carroufour se dépatouiller, compatible avec get_leading_car
+        if self.static:
+            return
+        state_init_delay = {0: s.TL_GREEN_DELAY + s.TL_ORANGE_DELAY,
+                            1: s.TL_GREEN_DELAY,
+                            2: 0}[self.state_init]
+        t2 = (t + state_init_delay) % (s.TL_RED_DELAY + s.TL_ORANGE_DELAY + s.TL_GREEN_DELAY)
+        if 0 <= t2 < s.TL_GREEN_DELAY:
+            self.state = 2
+        elif s.TL_GREEN_DELAY <= t2 < s.TL_GREEN_DELAY + s.TL_ORANGE_DELAY:
+            self.state = 1
         else:
-            self.green = not self.green_init
+            self.state = 0
 
     @property
     def fake_car(self):
-        """Renvoie une fausse voiture, qui fera ralentir la première voiture de la route."""
-        if self.green:
-            return None
-        else:
-            fake_car = Car(0, 0, 1, 1, (0, 0, 0), -2)
+        """Renvoie une fausse voiture, qui fera ralentir la première voiture de la route selon la couleur du feu."""
+        if self.state == 0:  # si feu rouge
+            fake_car = Car(0, 0, 1, 1, (0, 0, 0), None)
             fake_car.d = self.road.length
             fake_car.road = self.road
-            return fake_car
+        elif self.state == 1:  # si feu orange
+            fake_car = Car(0, 0, 1, 1, (0, 0, 0), None)
+            fake_car.d = self.road.length + 2*s.CAR_LENGTH
+            fake_car.road = self.road
+        else:  # si feu vert
+            fake_car = None
+        return fake_car
 
 
 class Road:
@@ -295,6 +308,8 @@ class Road:
                 log(f"Removing {car} of {self}", 2)
 
     def new_car(self, car: Car):  # TODO: ajouter car au mileu de la route
+        if car is None:
+            return
         car.road = self
         vnx, vny = vect_norm(self.vd, car.width / 2)  # vecteur normal pour les coord des coins
         sx, sy = self.start
@@ -307,7 +322,7 @@ class Road:
 
     def new_traffic_light(self, tl: TrafficLight):
         if tl is None:
-            return TrafficLight(green=True, delay=float("+inf"))
+            return TrafficLight(state_init=2, static=True)
 
         tl.road = self
         vnx, vny = vect_norm(self.vd, self.width/2)
@@ -325,6 +340,8 @@ class SRoad(Road):
         self.arcroad = arcroad
 
     def new_car(self, car: Car):  # TODO: ajouter car au mileu de la route
+        if car is None:
+            return
         car.road = self.arcroad
         vnx, vny = vect_norm(self.vd, car.width / 2)  # vecteur normal pour les coord des coins
         sx, sy = self.start
@@ -397,5 +414,7 @@ class ArcRoad:
             road.exiting_cars = []
 
     def new_car(self, car):
+        if car is None:
+            return
         self.roads[0].new_car(car)
         self.cars.append(car)

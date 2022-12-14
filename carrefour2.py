@@ -5,19 +5,19 @@ from objets import CarFactory, TrafficLight
 sim = Simulation("Carrefour")
 
 road_list = [{"id": 1, "type": "road", "start": (-60, 440), "end": (650, 440),  # routes de gauche
-              "car_factory": CarFactory(["rand_color"], [1, 4.5]), "traffic_light": TrafficLight(False)},
+              "car_factory": CarFactory(["rand_color"], [1, 4.5]), "traffic_light": TrafficLight(0)},
              {"id": 2, "type": "road", "start": (650, 400), "end": (-60, 400)},
 
              {"id": 3, "type": "road", "start": (1500, 400), "end": (790, 400),  # routes de droite
-              "car_factory": CarFactory(["rand_color"], [1, 4.5]), "traffic_light": TrafficLight(False)},
+              "car_factory": CarFactory(["rand_color"], [1, 4.5]), "traffic_light": TrafficLight(0)},
              {"id": 4, "type": "road", "start": (790, 440), "end": (1500, 440)},
 
              {"id": 5, "type": "road", "start": (700, -60), "end": (700, 350),  # routes du haut
-              "car_factory": CarFactory(["rand_color"], [1, 4.5]), "traffic_light": TrafficLight(True)},
+              "car_factory": CarFactory(["rand_color"], [1, 4.5]), "traffic_light": TrafficLight(2)},
              {"id": 6, "type": "road", "start": (740, 350), "end": (740, -60)},
 
              {"id": 7, "type": "road", "start": (740, 900), "end": (740, 490),  # routes du bas
-              "car_factory": CarFactory(["rand_color"], [1, 4.5]), "traffic_light": TrafficLight(True)},
+              "car_factory": CarFactory(["rand_color"], [1, 4.5]), "traffic_light": TrafficLight(2)},
              {"id": 8, "type": "road", "start": (700, 490), "end": (700, 900)},
 
              {"id": 14, "type": "road", "start": (650, 440), "end": (790, 440), "with_arrows": False},  # routes du carrefour

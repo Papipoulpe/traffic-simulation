@@ -2,7 +2,6 @@ import pygame
 from objets import *
 from draw_tools import *
 import settings as s
-from res import *
 
 
 class Simulation:
@@ -48,7 +47,8 @@ class Simulation:
 
             self.surface.fill(self.bg_color)  # efface tout
 
-            self.print_infos(f"t = {round(self.t, 2):<6} n = {self.frame_count:<7} vitesse × {s.SPEED}")  # affiche l'horloge et le nombre d'image
+            infos = f"t = {round(self.t, 2):<6} n = {self.frame_count:<7} vitesse × {s.SPEED}"
+            self.print_infos(infos)  # affiche l'horloge et le nombre d'image
 
             self.show_roads(self.roads)  # affiche les routes
             self.show_traffic_lights()  # affiche les feux de signalisation
@@ -59,9 +59,10 @@ class Simulation:
 
                 road.update_cars_coords(dt=self.speed_ajusted_dt, avg_leading_car_coords=self.get_avg_leading_car_coords(road))
 
-                new_car = road.car_factory.factory({"t": self.t}, {"t": self.t, "last_car": road.cars[-1] if road.cars else None})
-                if new_car is not None:
-                    road.new_car(new_car)
+                args_crea = {"t": self.t}
+                args_fact = {"t": self.t, "last_car": road.cars[-1] if road.cars else None}
+                new_car = road.car_factory.factory(args_crea=args_crea, args_fact=args_fact)
+                road.new_car(new_car)
 
                 for car in road.cars:
                     self.show_car(car)
@@ -106,6 +107,14 @@ class Simulation:
             elif isinstance(road, ArcRoad):
                 self.show_roads(road.roads)
 
+    def show_traffic_lights(self):
+        """Affiche les feux de signalisations."""
+        for road in self.roads:
+            tl: TrafficLight = road.traffic_light
+            if tl is not None and not tl.static:
+                color = {0: s.TL_RED, 1: s.TL_ORANGE, 2: s.TL_GREEN}[tl.state]
+                draw_polygon(self.surface, color, tl.coins)
+
     def create_road(self, **kw):
         """Créer une route."""
         if kw["type"] == "road":  # si on crée une route droite
@@ -143,18 +152,8 @@ class Simulation:
 
             road.car_sorter = car_sorter
 
-    def show_traffic_lights(self):
-        for road in self.roads:
-            if road.traffic_light:
-                if road.traffic_light.green:
-                    color = FEU_STOP_VERT
-                else:
-                    color = FEU_STOP_ROUGE
-
-                draw_polygon(self.surface, color, road.traffic_light.coins)
-
     def get_avg_leading_car_coords(self, road: Road):
-        """Renvoie la moyenne des distances depuis la fin de la route et des vitesses des dernières voitures des
+        """Renvoie la moyenne des distances, depuis la fin de la route, et des vitesses des dernières voitures des
         prochaines routes, pondérée par la probabilité que la première voiture aille sur ces routes."""
         next_roads_probs = self.road_graph[road.id]
 
