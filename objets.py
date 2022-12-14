@@ -7,17 +7,19 @@ class CarFactory:
         """
         Création de voitures à l'entrée d'une route.
 
-        :param crea_func: choix de voiture à créer, "{'arg': val}" puis "rand_color", "rand_length" et/ou "rand_width"
-        :param fact_func: fréquence de création de voiture, fonction ou [a, b] pour fréquence aléatoire
+        :param fact_func: fréquence de création de voiture, peut être de type [a, b] pour une pause aléatoire entre la création de deux voiture, a pour une fréquence constante ou une fonction
+        :param crea_func: manière de choisir la voiture à créer, peut être de type "{'arg': val}", "rand_color", "rand_length" et/ou "rand_width", une fonction ou vide pour la voiture par défaut
         """
         self.id = new_id(self, obj_id)
 
-        if isinstance(crea_func, (str, list)) or crea_func is None:
+        self.next_t = 0  # éventuelement utilisé pour fréquence aléatoire
+
+        if isinstance(crea_func, (str, list, type(None))):
             self.crea_func = self.generic_creafunc(crea_func)
         else:
             self.crea_func = crea_func
 
-        if isinstance(fact_func, list):
+        if isinstance(fact_func, (list, float, int)):
             self.fact_func = self.generic_factfunc(fact_func)
         else:
             self.fact_func = fact_func
@@ -27,8 +29,8 @@ class CarFactory:
 
     def factory(self, args_crea, args_fact):
         """
-        :param args_crea: args de choix
-        :param args_fact: args de fréquence de création
+        :param args_crea: arguments de la fonction de création
+        :param args_fact: arguments de la fonction de fréquence de création
         """
         if self.fact_func and self.fact_func(**args_fact):
             returning = self.crea_func(**args_crea)
@@ -60,16 +62,27 @@ class CarFactory:
 
         return crea_func
 
-    @staticmethod
-    def generic_factfunc(func_name):
-        if func_name[0] == func_name[1]:  # si func_name est de type [a, a]
+    def generic_factfunc(self, func_name):
+        if isinstance(func_name, (int, float)) or func_name[0] == func_name[1]:
+            # si func_name est de type a ou [a, a], renvoie True toutes les a secondes
+            if isinstance(func_name, (list, tuple)):
+                a = func_name[0]
+            else:
+                a = func_name
+
             def fact_func(t, last_car):
-                return round(t, 2) % func_name[0] == 0 and (not last_car or last_car.d > last_car.length + s.DD_MIN)
+                place_dispo = last_car is None or last_car.d > last_car.length + s.DD_MIN  # s'il y a de la place disponible ou non
+                bon_moment = round(t, 2) % a == 0
+                return bon_moment and place_dispo
             return fact_func
         else:
-            def fact_func(t, last_car):  # TODO: pas terrible
-                mod = np.random.uniform(func_name[0], func_name[1])
-                return round(t % mod, 2) == 0 and (not last_car or last_car.d > last_car.length + s.DD_MIN)
+            # sinon, de type [a, b], attend aléatoirement entre a et b secondes
+            def fact_func(t, last_car):
+                if t >= self.next_t:
+                    delay = np.random.uniform(func_name[0], func_name[1])
+                    self.next_t = t + delay
+                    place_dispo = last_car is None or last_car.d > last_car.length + s.DD_MIN  # s'il y a de la place disponible ou non
+                    return place_dispo
             return fact_func
 
 
@@ -78,7 +91,7 @@ class CarSorter:
         """
         Gestion des voitures à la sortie d'une route.
 
-        :param method: Dictionnaire associant une probabilité à une autre route, fonction de tri, None
+        :param method: dictionnaire associant une probabilité à une autre route, fonction ou None
         """
         if isinstance(method, dict):  # si la méthode est un dict de proba
             self.method = "probs"

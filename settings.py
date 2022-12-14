@@ -34,6 +34,7 @@ DEF_ARCROAD_N = 10  # nombre de routes droites par défaut pour les routes courb
 CAR_A = 0  # accéleration par défaut des voitures
 CAR_V = 50  # vitesse par défaut des voitures
 CAR_COLOR = VOITURE_BLEUVERT  # couleur par défaut des voitures
+CAR_SHOW_ARROW = True  # si on affiche une flèche sur le toit des voitures vers l'avant
 CAR_WIDTH = 18  # largeur par défaut des voitures
 CAR_LENGTH = 30  # longueur par défaut des voitures
 CAR_RAND_COLOR_MIN = 0  # niveau minimum de rgb pour les couleurs aléatoires des voitures

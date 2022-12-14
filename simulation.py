@@ -31,7 +31,8 @@ class Simulation:
         self.surface.fill(self.bg_color)
         self.font = pygame.font.Font(s.FONT_PATH, s.FONT_SIZE)
         arrow = pygame.image.load(s.ARROW_PATH).convert_alpha()
-        self.ARROW = pygame.transform.smoothscale(arrow, s.ARROW_SIZE)
+        self.ROAD_ARROW = pygame.transform.smoothscale(arrow, s.ARROW_SIZE)
+        self.CAR_ARROW = pygame.transform.smoothscale(arrow, (s.CAR_WIDTH - 2, s.CAR_WIDTH - 2))
 
     def start_loop(self):
         """Ouvre une fenêtre et lance la simulation."""
@@ -86,6 +87,9 @@ class Simulation:
     def show_car(self, car: Car):
         """Dessine une voiture."""
         draw_polygon(self.surface, car.color, car.coins)
+        if s.CAR_SHOW_ARROW:
+            rotated_arrow = pygame.transform.rotate(self.CAR_ARROW, car.road.angle)
+            draw_image(self.surface, rotated_arrow, car.road.dist_to_pos(car.d))
 
     def show_roads(self, road_list):
         """Affiche des routes."""
@@ -94,7 +98,7 @@ class Simulation:
             if isinstance(road, Road):
                 draw_polygon(self.surface, road.color, road.coins)
 
-                rotated_arrow = pygame.transform.rotate(self.ARROW, road.angle)
+                rotated_arrow = pygame.transform.rotate(self.ROAD_ARROW, road.angle)
 
                 for arrow_coord in road.arrows_coords:
                     x, y, _ = arrow_coord
