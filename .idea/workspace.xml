@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="carfactory random freq corrigée">
+    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="feu orange">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/carrefour2.py" beforeDir="false" afterPath="$PROJECT_DIR$/carrefour2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/draw_tools.py" beforeDir="false" afterPath="$PROJECT_DIR$/draw_tools.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mathsandutils.py" beforeDir="false" afterPath="$PROJECT_DIR$/mathsandutils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/objets.py" beforeDir="false" afterPath="$PROJECT_DIR$/objets.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/res.py" beforeDir="false" afterPath="$PROJECT_DIR$/res.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/settings.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/simulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -347,7 +345,14 @@
       <option name="project" value="LOCAL" />
       <updated>1671026547102</updated>
     </task>
-    <option name="localTasksCounter" value="23" />
+    <task id="LOCAL-00023" summary="feu orange">
+      <created>1671035266943</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1671035266943</updated>
+    </task>
+    <option name="localTasksCounter" value="24" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -391,6 +396,7 @@
     <MESSAGE value="get_avg_lead_coords, affichage du nombre d'image, SRoad" />
     <MESSAGE value="speed settings" />
     <MESSAGE value="carfactory random freq corrigée" />
-    <option name="LAST_COMMIT_MESSAGE" value="carfactory random freq corrigée" />
+    <MESSAGE value="feu orange" />
+    <option name="LAST_COMMIT_MESSAGE" value="feu orange" />
   </component>
 </project>

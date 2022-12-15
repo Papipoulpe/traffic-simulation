@@ -1,7 +1,9 @@
+import pygame
 from pygame import gfxdraw as gfx
+from typing import *
 
 
-def draw_polygon(surface, color, points):
+def draw_polygon(surface: pygame.Surface, color: (int, int, int), points: (float, float)):
     """
     Dessine un polygone.
 
@@ -13,7 +15,7 @@ def draw_polygon(surface, color, points):
     gfx.filled_polygon(surface, points, color)
 
 
-def draw_rect(surface, color, up_left_corner, width, heigth):
+def draw_rect(surface: pygame.Surface, color: (int, int, int), up_left_corner: (float, float), width: float, heigth: float):
     """
     Dessine un rectange.
 
@@ -27,7 +29,7 @@ def draw_rect(surface, color, up_left_corner, width, heigth):
     draw_polygon(surface, color, ((x, y), (x + width, y), (x + width, y + heigth), (x, y + heigth)))
 
 
-def print_text(surface, color, coords, text, font, anti_aliasing=True):
+def print_text(surface: pygame.Surface, color: (int, int, int), coords: (float, float), text: str, font: pygame.font.Font, anti_aliasing: bool = True):
     """
     Affiche du texte.
 
@@ -42,7 +44,7 @@ def print_text(surface, color, coords, text, font, anti_aliasing=True):
     surface.blit(rendered, coords)
 
 
-def draw_image(surface, image, coords):
+def draw_image(surface: pygame.Surface, image, coords: (float, float)):
     """
     Affiche une image.
 

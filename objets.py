@@ -184,9 +184,6 @@ class TrafficLight:
 
     def update(self, t):
         """Actualise l'état du feu, c'est-à-dire rouge ou vert."""
-        # TODO: feu orange ? avec ralentissement petit si tres proche ou tres loin, grand sinon
-        #  + décalage pour que tous les feux soient rouges à un certain moment, laissant les voitures déjà dans le
-        #  carroufour se dépatouiller, compatible avec get_leading_car
         if self.static:
             return
         state_init_delay = {0: s.TL_GREEN_DELAY + s.TL_ORANGE_DELAY,
@@ -241,7 +238,7 @@ class Road:
         vnx, vny = vect_norm(self.vd, self.width / 2)  # vecteur normal pour les coord des coins
         self.coins = (startx + vnx, starty + vny), (startx - vnx, starty - vny), (endx - vnx, endy - vny), (
             endx + vnx, endy + vny)
-        self.angle = vect_angle(self.vd)
+        self.angle = angle_of_vect(self.vd)
 
         if car_factory is None:
             self.car_factory = CarFactory()
