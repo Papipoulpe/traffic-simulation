@@ -1,6 +1,5 @@
 import pygame
 from pygame import gfxdraw as gfx
-from typing import *
 
 
 def draw_polygon(surface: pygame.Surface, color: (int, int, int), points: (float, float)):

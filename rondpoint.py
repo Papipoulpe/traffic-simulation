@@ -4,13 +4,13 @@ from objets import CarFactory
 
 sim = Simulation()
 
-road_list = [{"id": 1, "type": "road", "start": (-60, 440), "end": (650, 440),  # routes de gauche
+road_list = [{"id": 1, "type": "road", "start": (-60, 410), "end": (630, 410),  # routes de gauche
               "car_factory": CarFactory(["rand_color"], [0.2, 1.5])},
-             {"id": 2, "type": "road", "start": (650, 400), "end": (-60, 400)},
+             {"id": 2, "type": "road", "start": (630, 370), "end": (-60, 370)},
 
-             {"id": 3, "type": "road", "start": (1500, 400), "end": (790, 400),  # routes de droite
+             {"id": 3, "type": "road", "start": (1500, 430), "end": (790, 430),  # routes de droite
               "car_factory": CarFactory(["rand_color"], [0.2, 1.5])},
-             {"id": 4, "type": "road", "start": (790, 440), "end": (1500, 440)},
+             {"id": 4, "type": "road", "start": (790, 450), "end": (1500, 450)},
 
              {"id": 5, "type": "road", "start": (700, -60), "end": (700, 350),  # routes du haut
               "car_factory": CarFactory(["rand_color"], [0.2, 1.5])},
@@ -20,7 +20,7 @@ road_list = [{"id": 1, "type": "road", "start": (-60, 440), "end": (650, 440),  
               "car_factory": CarFactory(["rand_color"], [0.2, 1.5])},
              {"id": 8, "type": "road", "start": (700, 490), "end": (700, 900)},
 
-             {"id": 14, "type": "road", "start": (650, 440), "end": (790, 440), "with_arrows": False},  # routes du carrefour
+             {"id": 14, "type": "road", "start": (650, 440), "end": (790, 440), "with_arrows": False},  # routes du rond point
              {"id": 16, "type": "arcroad", "start": 1, "end": 6},
              {"id": 18, "type": "arcroad", "start": 1, "end": 8},
 
