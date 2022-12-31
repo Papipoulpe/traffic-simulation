@@ -19,6 +19,7 @@ class Simulation:
         self.FPS = s.FPS  # images par seconde
         self.dt = 1/self.FPS  # pas de temps
         self.speed_ajusted_dt = self.dt * s.SPEED  # pas de temps ajusté pour la vitesse de la simulation
+        self.speed = s.SPEED  # vitesse de la simulation
         self.over = self.paused = False  # si la simulation est finie ou en pause
 
         self.roads = []  # liste des routes
@@ -47,6 +48,7 @@ class Simulation:
             for event in pygame.event.get():  # on regarde les dernières actions de l'utilisateur
                 if event.type == pygame.QUIT:
                     self.over = True
+
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         # quitte quand on appuie sur escape
@@ -54,32 +56,39 @@ class Simulation:
                     elif event.key == pygame.K_SPACE:
                         # met la simulation en pause quand on appuie sur espace
                         self.paused = not self.paused
+                    elif event.key == pygame.K_LEFT and self.speed >= 0.5:
+                        # si l'utilisateur appuie sur la flèche gauche, ralentir jusqu'à 0.25
+                        self.speed = round(self.speed/2, 2)
+                        self.speed_ajusted_dt = round(self.speed_ajusted_dt/2, 2)
+                    elif event.key == pygame.K_RIGHT and self.speed <= 16:
+                        # si l'utilisateur appuie sur la flèche droite, accélérer jusqu'à 32
+                        self.speed = round(self.speed*2, 2)
+                        self.speed_ajusted_dt = round(self.speed_ajusted_dt*2, 2)
+
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     # si l'utilisateur clique
                     x, y = pygame.mouse.get_pos()
                     x0, y0 = self.off_set
                     self.mouse_last = (x - x0, y - y0)
                     self.dragging = True
+
                 elif event.type == pygame.MOUSEMOTION and self.dragging:
                     # bouge la simulation
                     x1, y1 = self.mouse_last
                     x2, y2 = pygame.mouse.get_pos()
                     self.off_set = (x2 - x1, y2 - y1)
+
                 elif event.type == pygame.MOUSEBUTTONUP:
-                    # si l'utilisateur clique plus
+                    # si l'utilisateur ne clique plus
                     self.dragging = False
 
             if self.paused:
-                infos = f"t = {round(self.t, 2):<6} n = {self.frame_count:<7} vitesse × {s.SPEED:<6} en pause"
-                self.print_infos(infos)  # affiche les infos
+                self.print_infos(self.infos)  # affiche l'horloge et le nombre d'image
                 pygame.display.flip()  # actualisation de la fenêtre
                 self.clock.tick(self.FPS)  # pause d'une durée dt
                 continue  # saute le reste de la boucle et passe à l'itération suivante
 
             self.surface.fill(self.bg_color)  # efface tout
-
-            infos = f"t = {round(self.t, 2):<6} n = {self.frame_count:<7} vitesse × {s.SPEED}"
-            self.print_infos(infos)  # affiche l'horloge et le nombre d'image
 
             self.show_roads(self.roads)  # affiche les routes
             self.show_traffic_lights()  # affiche les feux de signalisation
@@ -112,6 +121,8 @@ class Simulation:
 
                 road.exiting_cars = []
 
+            self.print_infos(self.infos)  # affiche les informations
+
             pygame.display.flip()  # actualisation de la fenêtre
             self.t += self.speed_ajusted_dt  # actualisation du suivi du temps
             self.frame_count += 1  # actualisation du suivi du nombre d'images
@@ -122,6 +133,11 @@ class Simulation:
         text_width, text_height = self.font.size(info)
         draw_rect(self.surface, s.INFOS_BG_COLOR, (0, 0), text_width + 30, text_height + 20)
         print_text(self.surface, s.FONT_COLOR, (10, 10), info, self.font)
+
+    @property
+    def infos(self):
+        """Renvoie les informations à afficher : horloge, nombre d'images, vitesse..."""
+        return f"t = {round(self.t, 2):<7} | n = {self.frame_count:<7} | vitesse = ×{self.speed:<4} | {'en pause' if self.paused else 'en cours'} | ESPACE pour mettre en pause, FLÈCHE DROITE ou FLÈCHE GAUCHE pour ralentir ou accélérer"
 
     def show_car(self, car: Car):
         """Dessine une voiture."""

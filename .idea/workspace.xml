@@ -4,9 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="unités correctes dans settings.py, pause avec espace, documentation plus complète, get_leader_coords min ou avg, v_max propre à route et le reste propre à la voiture">
+    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="dragging">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/draw_tools.py" beforeDir="false" afterPath="$PROJECT_DIR$/draw_tools.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/simulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -375,7 +374,14 @@
       <option name="project" value="LOCAL" />
       <updated>1672496611117</updated>
     </task>
-    <option name="localTasksCounter" value="27" />
+    <task id="LOCAL-00027" summary="dragging">
+      <created>1672499785541</created>
+      <option name="number" value="00027" />
+      <option name="presentableId" value="LOCAL-00027" />
+      <option name="project" value="LOCAL" />
+      <updated>1672499785541</updated>
+    </task>
+    <option name="localTasksCounter" value="28" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -423,6 +429,7 @@
     <MESSAGE value="typing hints dde mathsandutils.py et draw_tools.py" />
     <MESSAGE value="carrefour et carrefour_avec_feux" />
     <MESSAGE value="unités correctes dans settings.py, pause avec espace, documentation plus complète, get_leader_coords min ou avg, v_max propre à route et le reste propre à la voiture" />
-    <option name="LAST_COMMIT_MESSAGE" value="unités correctes dans settings.py, pause avec espace, documentation plus complète, get_leader_coords min ou avg, v_max propre à route et le reste propre à la voiture" />
+    <MESSAGE value="dragging" />
+    <option name="LAST_COMMIT_MESSAGE" value="dragging" />
   </component>
 </project>
