@@ -1,15 +1,16 @@
 import json
 from typing import *
 import numpy as np
-from colorama import Fore
-import settings as s
+
 
 np.seterr("raise")  # change la gestion des erreurs de maths (division par zéro, racine de réel négatif...)
 
 ids = {-1: None}  # dict des identifiants, initialisé à -1 pour max(id.keys())
 
+Vecteur: TypeAlias = tuple[float, float]  # définiton du type Vecteur = (a, b)
 
-def empty(*_, **__): ...  # fonction qui à tout associe rien
+
+def empty_function(*_, **__): ...  # fonction qui à tout associe rien
 
 
 def new_id(obj, obj_id: Optional[int] = None) -> int:
@@ -25,14 +26,14 @@ def get_by_id(obj_id: int) -> Any:
     return ids[obj_id]
 
 
-def length(point1: (float, float), point2: (float, float)) -> float:
+def length(point1: Vecteur, point2: Vecteur) -> float:
     """Longueur point1-point2."""
     x1, y1 = point1
     x2, y2 = point2
     return np.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2))
 
 
-def vect_dir(start: (float, float), end: (float, float)) -> (float, float):
+def vect_dir(start: Vecteur, end: Vecteur) -> Vecteur:
     """Renvoyer le vecteur directeur normé d'une droite."""
     x1, y1 = start
     x2, y2 = end
@@ -41,23 +42,23 @@ def vect_dir(start: (float, float), end: (float, float)) -> (float, float):
     return a / n, b / n
 
 
-def norme(vect: (float, float)) -> float:
+def norme(vect: Vecteur) -> float:
     """Norme du vecteur."""
     a, b = vect
     return np.sqrt(a * a + b * b)
 
 
-def vect_norm(vecteur: (float, float), nouv_norme: float = 1) -> (float, float):
+def vect_norm(vecteur: Vecteur, nouv_norme: float = 1) -> Vecteur:
     """Vecteur normal et normé à un autre vecteur."""
     a, b = vecteur
     coeff = nouv_norme / norme(vecteur)
     return -b * coeff, a * coeff
 
 
-def angle_of_vect(vect: (float, float)) -> float:
+def angle_of_vect(vect: Vecteur) -> float:
     """Angle du vecteur, en degrés."""
     a, b = vect
-    return -float(np.degrees(np.angle(a + 1j * b)))
+    return -float(np.angle([a + 1j * b], deg=True))
 
 
 def rec_round(obj: Union[Iterable, float], prec: Optional[int] = None) -> Union[Iterable, float]:
@@ -71,17 +72,6 @@ def rec_round(obj: Union[Iterable, float], prec: Optional[int] = None) -> Union[
         return res
     else:
         return round(obj, prec)
-
-
-def log(message: str, level: int = 2):
-    """
-    Affiche un message.
-
-    :param message: message
-    :param level: 0 = essentiel, 1 = erreur, 2 = info, 3 = debug
-    """
-    if level <= s.LOGGING_LEVEL:
-        print([Fore.CYAN, Fore.RED, "", Fore.LIGHTBLACK_EX][level] + message + Fore.RESET)
 
 
 def parse(string: str) -> dict:
@@ -107,7 +97,7 @@ def update_taylor_protected(car, dt: float):
 
 
 def idm(car, avg_leading_car_coords: Optional[tuple[float, float]], dt: float):
-    """Intelligent Driver Model."""
+    """Intelligent Driver Model. Calcule l'accélération idéale de la voiture."""
 
     if avg_leading_car_coords:
         lead_d, lead_v = avg_leading_car_coords
@@ -115,17 +105,17 @@ def idm(car, avg_leading_car_coords: Optional[tuple[float, float]], dt: float):
         if delta_d <= 0:  # si la voiture est en avance, la faire attendre et ralentir
             car.d, car.v, car.a = car.d, 0, car.a
         delta_v = car.v - lead_v
-        dd_parfait = s.DD_MIN + max(0, car.v * s.T_REACT + car.v * delta_v / np.sqrt(2 * s.A_MIN * s.A_MAX))
+        dd_parfait = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * car.a_min * car.a_max))
         a_interaction = (dd_parfait / delta_d) ** 2
     else:
         a_interaction = 0
 
-    car.a = s.A_MAX * (1 - (car.v / s.V_MAX) ** s.A_EXP - a_interaction)
+    car.a = car.a_max * (1 - (car.v / car.road.v_max) ** car.a_exp - a_interaction)
 
     update_taylor_protected(car, dt)
 
 
-def intersection_droites(p1: (float, float), vd1: (float, float), p2: (float, float), vd2: (float, float)) -> (float, float):
+def intersection_droites(p1: Vecteur, vd1: Vecteur, p2: Vecteur, vd2: Vecteur) -> Vecteur:
     """Renvoie le point d'intersections de deux droites grâce à un de leurs points et leurs vecteurs directeurs."""
     x1, y1 = p1
     x2, y2 = p2
@@ -135,7 +125,7 @@ def intersection_droites(p1: (float, float), vd1: (float, float), p2: (float, fl
     return x1 + a1 * t, y1 + b1 * t
 
 
-def courbe_bezier(p1: (float, float), p2: (float, float), p3: (float, float), n: int) -> list[(float, float)]:
+def courbe_bezier(p1: Vecteur, p2: Vecteur, p3: Vecteur, n: int) -> list[Vecteur]:
     """Renvoie n points de la courbe de Bézier définie par les points de contrôle p1, p2 et p3."""
     points = []
     a1, a2, a3 = np.array(p1), np.array(p2), np.array(p3)
@@ -146,13 +136,13 @@ def courbe_bezier(p1: (float, float), p2: (float, float), p3: (float, float), n:
     return points
 
 
-def milieu(p1: (float, float), p2: (float, float)) -> (float, float):
+def milieu(p1: Vecteur, p2: Vecteur) -> Vecteur:
     """Renvoie le milieu de deux points."""
     (x1, y1), (x2, y2) = p1, p2
     return (x1 + x2) / 2, (y1 + y2) / 2
 
 
-def sont_paralleles(vd1: (float, float), vd2: (float, float)) -> bool:
+def sont_paralleles(vd1: Vecteur, vd2: Vecteur) -> bool:
     """Renvoie si deux droites définies par leurs vecteurs directeurs sont parallèles."""
     (x1, y1), (x2, y2) = vd1, vd2
     return x1 * y2 - x2 * y1 == 0

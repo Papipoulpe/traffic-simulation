@@ -14,13 +14,13 @@ class CarFactory:
 
         self.next_t = 0  # éventuelement utilisé pour fréquence aléatoire
 
-        if isinstance(crea_func, (str, list, type(None))):
-            self.crea_func = self.generic_creafunc(crea_func)
+        if isinstance(crea_func, (str, list, type(None))):  # si crea_func n'est pas une fonction
+            self.crea_func = self.generic_creafunc(crea_func)  # on génère une fonction de création
         else:
             self.crea_func = crea_func
 
-        if isinstance(fact_func, (list, float, int)):
-            self.fact_func = self.generic_factfunc(fact_func)
+        if isinstance(fact_func, (list, float, int)):  # si fact_func n'est pas une fonction
+            self.fact_func = self.generic_factfunc(fact_func)  # on génère une fonction de fréquence de création
         else:
             self.fact_func = fact_func
 
@@ -32,13 +32,12 @@ class CarFactory:
         :param args_crea: arguments de la fonction de création
         :param args_fact: arguments de la fonction de fréquence de création
         """
-        if self.fact_func and self.fact_func(**args_fact):
-            returning = self.crea_func(**args_crea)
-            log(f"{self} is creating {returning}", 2)
-            return returning
+        if self.fact_func and self.fact_func(**args_fact):  # si une fonction de fréquence est définie et qu'elle autorise la création
+            return self.crea_func(**args_crea)  # on renvoie la voiture créée par la fonction de création
 
     @staticmethod
     def generic_creafunc(func_name):
+        """Génère une fonction de création."""
         if isinstance(func_name, str):
             func_name = [func_name]
 
@@ -53,7 +52,6 @@ class CarFactory:
                 attrs["width"] = np.random.randint(s.CAR_RAND_WIDTH_MIN, s.CAR_RAND_WIDTH_MAX)
             try:
                 attrs_dic = parse(func_name[0])
-                log("Cannot parse crea_func", 2)
             except ValueError:
                 attrs_dic = {}
             for key in attrs_dic:
@@ -63,6 +61,7 @@ class CarFactory:
         return crea_func
 
     def generic_factfunc(self, func_name):
+        """Génère une fonction de fréquence de création."""
         if isinstance(func_name, (int, float)) or func_name[0] == func_name[1]:
             # si func_name est de type a ou [a, a], renvoie True toutes les a secondes
             if isinstance(func_name, (list, tuple)):
@@ -71,7 +70,7 @@ class CarFactory:
                 a = func_name
 
             def fact_func(t, last_car):
-                place_dispo = last_car is None or last_car.d > last_car.length + s.DD_MIN  # s'il y a de la place disponible ou non
+                place_dispo = last_car is None or last_car.d > last_car.length + s.DELTA_D_MIN  # s'il y a de la place disponible ou non
                 bon_moment = round(t, 2) % a == 0
                 return bon_moment and place_dispo
             return fact_func
@@ -81,7 +80,7 @@ class CarFactory:
                 if t >= self.next_t:
                     delay = np.random.uniform(func_name[0], func_name[1])
                     self.next_t = t + delay
-                    place_dispo = last_car is None or last_car.d > last_car.length + s.DD_MIN  # s'il y a de la place disponible ou non
+                    place_dispo = last_car is None or last_car.d > last_car.length + s.DELTA_D_MIN  # s'il y a de la place disponible ou non
                     return place_dispo
             return fact_func
 
@@ -93,7 +92,7 @@ class CarSorter:
 
         :param method: dictionnaire associant une probabilité à une autre route, fonction ou None
         """
-        if isinstance(method, dict):  # si la méthode est un dict de proba
+        if isinstance(method, dict):  # si la méthode est un dictionnaire associant une proba à une route
             self.method = "probs"
             probs, roads = [], []
             for p in method:
@@ -103,11 +102,11 @@ class CarSorter:
             def sort_func(*_, **__):
                 return ids[np.random.choice(roads, p=probs)]
 
-        elif method is None:  # si la méthode est None, les voitures sont supprimées
+        elif method is None:  # si la méthode est None, les voitures seront supprimées
             self.method = None
-            sort_func = empty
+            sort_func = empty_function
 
-        else:
+        else:  # si la méthode est une fonction
             self.method = "func"
             sort_func = method
 
@@ -132,12 +131,18 @@ class Car:
         self.id = new_id(self, obj_id)
         self.color = color
         self.length, self.width = le, width
-        self.road = None
+        self.road = self.arcroad = None
 
         self.d = 0  # distance du derrière depuis le début de la route
         self.x, self.y = 0, 0  # position du mileu du derrière dans la fenêtre
         self.v = v  # vitesse
         self.a = a  # acceleration
+
+        self.delta_d_min = s.DELTA_D_MIN  # pour l'IDM
+        self.a_max = s.A_MAX
+        self.a_min = s.A_MIN
+        self.a_exp = s.A_EXP
+        self.t_react = s.T_REACT
 
         self.coins = ((0, 0), (0, 0), (0, 0), (0, 0))  # coordonnées des coins, pour affichage
 
@@ -146,7 +151,7 @@ class Car:
 
     def update_mvt(self, dt, avg_leading_car_coords):
         """
-        Actualise les coordonnées du mouvement.
+        Actualise les coordonnées du mouvement (position, vitesse, accéleration) de la voiture.
 
         :param dt: durée du mouvement
         :param avg_leading_car_coords: distance et vitesse d'une éventuelle voiture devant
@@ -154,14 +159,10 @@ class Car:
 
         idm(self, avg_leading_car_coords, dt)
 
-    def update_coins(self, vd):
-        """
-        Actualise les coins selon la position.
-
-        :param vd: vecteur directeur de la route
-        """
-        vdx, vdy = vd
-        vnx, vny = vect_norm(vd, self.width / 2)
+    def update_coins(self):
+        """Actualise les coins selon la position."""
+        vdx, vdy = self.road.vd
+        vnx, vny = vect_norm(self.road.vd, self.width / 2)
         c1 = self.x + vnx - self.length * vdx / 2, self.y + vny - self.length * vdy / 2
         c2 = self.x - vnx - self.length * vdx / 2, self.y - vny - self.length * vdy / 2
         c3 = self.x - vnx + self.length * vdx / 2, self.y - vny + self.length * vdy / 2
@@ -222,6 +223,7 @@ class Road:
         :param end: coordonnées de la fin
         :param width: largeur
         :param color: couleur
+        :param with_arrows: si des flèches seront affichées sur la route ou non
         :param car_factory: éventuelle CarFactory
         :param traffic_light: éventuel feu de signalisation
         :param obj_id: éventuel identifiant
@@ -237,19 +239,20 @@ class Road:
         self.vd = vect_dir(self.start, self.end)  # vecteur directeur de la route, normé
         vnx, vny = vect_norm(self.vd, self.width / 2)  # vecteur normal pour les coord des coins
         self.coins = (startx + vnx, starty + vny), (startx - vnx, starty - vny), (endx - vnx, endy - vny), (
-            endx + vnx, endy + vny)
-        self.angle = angle_of_vect(self.vd)
+            endx + vnx, endy + vny)  # coordonnées des coins, pour l'affichage
+        self.angle = angle_of_vect(self.vd)  # angle de la route par rapport à l'axe des abscisses
 
         if car_factory is None:
             self.car_factory = CarFactory()
         else:
             self.car_factory = car_factory
 
-        self.cars: list[Car] = []
+        self.cars: list[Car] = []  # liste des voitures appartenant à la route
+        self.v_max = s.V_MAX  # vitesse limite de la route
 
         self.car_sorter = CarSorter()
 
-        self.exiting_cars: list[Car] = []
+        self.exiting_cars: list[Car] = []  # liste des voitures quittant la route
 
         self.traffic_light: TrafficLight = self.new_traffic_light(traffic_light)
 
@@ -257,12 +260,14 @@ class Road:
         return f"Road(id={self.id}, start={self.start}, end={self.end}, color={self.color})"
 
     def dist_to_pos(self, d):
+        """Renvoie les coordonnées d'un objet à une distance ``d`` du début le la route."""
         startx, starty = self.start
         vdx, vdy = self.vd
         return startx + vdx * d, starty + vdy * d
 
     @property
     def arrows_coords(self):
+        """Renvoie les coordonnées des flèches de la route."""
         if not self.with_arrows:
             return []
         rarete = s.ARROW_RARETE  # inverse de la fréquence des flèches
@@ -271,40 +276,41 @@ class Road:
         for i in range(num):
             x, y = self.dist_to_pos((i + 0.5) * rarete)  # "+ O.5" pour centrer les flèches sur la longueur
             arrows.append((x, y, self.angle))
-        log(f"{arrows=}", 3)
         return arrows
 
-    def update_cars_coords(self, dt, avg_leading_car_coords):
-        """Bouge les voitures de la route à leurs positions après dt."""
+    def update_cars_coords(self, dt, leader_coords):
+        """
+        Bouge les voitures de la route à leurs positions après dt.
+
+        :param dt: durée du mouvement
+        :param leader_coords: distance et vitesse de la voiture leader
+        """
         for index, car in enumerate(self.cars):
             if index > 0:  # pour toutes les voitures sauf la première, donner la voiture devant
                 leading_car = self.cars[index - 1]
-                avg_leading_car_coords = leading_car.d, leading_car.v
+                leading_car_coords = leading_car.d, leading_car.v
             elif self.traffic_light.fake_car:  # si le feu est rouge, donner la fake_car du feu
                 leading_car = self.traffic_light.fake_car
-                avg_leading_car_coords = leading_car.d, leading_car.v
-            elif avg_leading_car_coords is not None:  # sinon pour la première voiture, donner la prochaine voiture
-                avg_leading_car_d = avg_leading_car_coords[0] + self.length - car.d
-                avg_leading_car_v = avg_leading_car_coords[1]
-                avg_leading_car_coords = avg_leading_car_d, avg_leading_car_v
+                leading_car_coords = leading_car.d, leading_car.v
+            elif leader_coords is not None:  # sinon pour la première voiture, donner la prochaine voiture
+                leading_car_coords = leader_coords[0] + self.length, leader_coords[1]
+            else:
+                leading_car_coords = None
 
             # mise à jour des vecteurs du mouvement
-            car.update_mvt(dt, avg_leading_car_coords)
+            car.update_mvt(dt, leading_car_coords)
 
             # mise à jour de la position
             car.x, car.y = self.dist_to_pos(car.d)
 
             # mise à jour des coins, pour l'affichage
-            car.update_coins(self.vd)
-
-            log(f"Updating {car} of {self}", 3)
+            car.update_coins()
 
             if car.d >= self.length:
                 self.exiting_cars.append(car)
                 self.cars.remove(car)
-                log(f"Removing {car} of {self}", 2)
 
-    def new_car(self, car: Car):  # TODO: ajouter car au mileu de la route
+    def new_car(self, car: Car):
         if car is None:
             return
         car.road = self
@@ -315,7 +321,6 @@ class Road:
         car.x, car.y = self.start
         car.d = 0
         self.cars.append(car)
-        log(f"Creating {car} on road {self}", 2)
 
     def new_traffic_light(self, tl: TrafficLight):
         if tl is None:
@@ -326,28 +331,13 @@ class Road:
         x1, y1 = self.dist_to_pos(self.length)
         x2, y2 = self.dist_to_pos(self.length - tl.width)
         tl.coins = (x1 + vnx, y1 + vny), (x1 - vnx, y1 - vny), (x2 - vnx, y2 - vny), (x2 + vnx, y2 + vny)
-        log(f"Creating {tl} on road {self}", 2)
         return tl
 
 
 class SRoad(Road):
-    def __init__(self, start, end, width, color, arcroad, obj_id):
-        """Route droite dérivant de Road, servant pour les sous-routes de ArcRoad"""
+    def __init__(self, start, end, width, color, obj_id):
+        """Route droite dérivant de Road, sous-routes composant ArcRoad."""
         super().__init__(start, end, width, color, False, None, None, obj_id)
-        self.arcroad = arcroad
-
-    def new_car(self, car: Car):  # TODO: ajouter car au mileu de la route
-        if car is None:
-            return
-        car.road = self.arcroad
-        vnx, vny = vect_norm(self.vd, car.width / 2)  # vecteur normal pour les coord des coins
-        sx, sy = self.start
-        ex, ey = self.dist_to_pos(car.length)
-        car.coins = (sx + vnx, sy + vny), (sx - vnx, sy - vny), (ex - vnx, ey - vny), (ex + vnx, ey + vny)
-        car.x, car.y = self.start
-        car.d = 0
-        self.cars.append(car)
-        log(f"Creating {car} on road {self}", 2)
 
 
 class ArcRoad:
@@ -377,7 +367,8 @@ class ArcRoad:
         for i in range(len(self.points) - 1):
             rstart = self.points[i]
             rend = self.points[i + 1]
-            road = SRoad(rstart, rend, width, color, self, -(1000*self.id+i))
+            road = SRoad(rstart, rend, width, color, -(s.ARCROAD_N*self.id+i))
+            road.v_max *= s.ARCROAD_V_MAX_COEFF
             self.roads.append(road)
             self.length += road.length
 
@@ -390,28 +381,30 @@ class ArcRoad:
 
         self.car_sorter = CarSorter()
 
-        self.cars = []
+        self.cars = []  # listes des voitures appartenant à la routes
 
         self.traffic_light = None
 
     def __str__(self):
         return f"ArcRoad(id={self.id}, start={self.start}, end={self.end}, color={self.color})"
 
-    def update_cars_coords(self, dt, avg_leading_car_coords):
+    def update_cars_coords(self, dt, leader_coords):
         for index, road in enumerate(self.roads):
-            road.update_cars_coords(dt, avg_leading_car_coords)
+            road.update_cars_coords(dt, leader_coords)
 
             if index == len(self.roads) - 1:  # si dernière sroad
                 self.exiting_cars = road.exiting_cars
             else:
                 next_road = self.roads[index + 1]
+
                 for car in road.exiting_cars:
-                    next_road.new_car(car)
+                    next_road.new_car(car)  # on ajoute la voiture à la sroad suivante
 
             road.exiting_cars = []
 
     def new_car(self, car):
         if car is None:
             return
+        car.arcroad = self
         self.roads[0].new_car(car)
         self.cars.append(car)
