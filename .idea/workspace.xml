@@ -4,11 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="carrefour et carrefour_avec_feux">
+    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="unités correctes dans settings.py, pause avec espace, documentation plus complète, get_leader_coords min ou avg, v_max propre à route et le reste propre à la voiture">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mathsandutils.py" beforeDir="false" afterPath="$PROJECT_DIR$/mathsandutils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/objets.py" beforeDir="false" afterPath="$PROJECT_DIR$/objets.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/settings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/draw_tools.py" beforeDir="false" afterPath="$PROJECT_DIR$/draw_tools.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/simulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -370,7 +368,14 @@
       <option name="project" value="LOCAL" />
       <updated>1672249830230</updated>
     </task>
-    <option name="localTasksCounter" value="26" />
+    <task id="LOCAL-00026" summary="unités correctes dans settings.py, pause avec espace, documentation plus complète, get_leader_coords min ou avg, v_max propre à route et le reste propre à la voiture">
+      <created>1672496611117</created>
+      <option name="number" value="00026" />
+      <option name="presentableId" value="LOCAL-00026" />
+      <option name="project" value="LOCAL" />
+      <updated>1672496611117</updated>
+    </task>
+    <option name="localTasksCounter" value="27" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -417,6 +422,7 @@
     <MESSAGE value="feu orange" />
     <MESSAGE value="typing hints dde mathsandutils.py et draw_tools.py" />
     <MESSAGE value="carrefour et carrefour_avec_feux" />
-    <option name="LAST_COMMIT_MESSAGE" value="carrefour et carrefour_avec_feux" />
+    <MESSAGE value="unités correctes dans settings.py, pause avec espace, documentation plus complète, get_leader_coords min ou avg, v_max propre à route et le reste propre à la voiture" />
+    <option name="LAST_COMMIT_MESSAGE" value="unités correctes dans settings.py, pause avec espace, documentation plus complète, get_leader_coords min ou avg, v_max propre à route et le reste propre à la voiture" />
   </component>
 </project>

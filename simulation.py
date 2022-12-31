@@ -32,9 +32,14 @@ class Simulation:
         self.bg_color = s.BG_COLOR  # couleur d'arrière plan de la fenêtre
         self.surface.fill(self.bg_color)  # coloriage de l'arrière plan
         self.font = pygame.font.Font(s.FONT_PATH, s.FONT_SIZE)  # police d'écriture des informations
+
         arrow = pygame.image.load(s.ARROW_PATH).convert_alpha()  # chargement de l'image de flèche
         self.ROAD_ARROW = pygame.transform.smoothscale(arrow, (s.ROAD_WIDTH*0.7, s.ROAD_WIDTH*0.7))  # ajustement de la taille des flèches pour les routes
         self.CAR_ARROW = pygame.transform.smoothscale(arrow, (s.CAR_WIDTH*0.8, s.CAR_WIDTH*0.8))  # pour les voitures
+
+        self.off_set = (0, 0)  # décalage par rapport à l'origine, pour bouger la simulation
+        self.dragging = False  # si l'utilisateur est en train de bouger la simulation
+        self.mouse_last = (0, 0)  # dernière coordonnées de la souris
 
     def start_loop(self):
         """Ouvre une fenêtre et lance la simulation."""
@@ -42,13 +47,27 @@ class Simulation:
             for event in pygame.event.get():  # on regarde les dernières actions de l'utilisateur
                 if event.type == pygame.QUIT:
                     self.over = True
-                if event.type == pygame.KEYDOWN:
+                elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         # quitte quand on appuie sur escape
                         self.over = True
-                    if event.key == pygame.K_SPACE:
+                    elif event.key == pygame.K_SPACE:
                         # met la simulation en pause quand on appuie sur espace
                         self.paused = not self.paused
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    # si l'utilisateur clique
+                    x, y = pygame.mouse.get_pos()
+                    x0, y0 = self.off_set
+                    self.mouse_last = (x - x0, y - y0)
+                    self.dragging = True
+                elif event.type == pygame.MOUSEMOTION and self.dragging:
+                    # bouge la simulation
+                    x1, y1 = self.mouse_last
+                    x2, y2 = pygame.mouse.get_pos()
+                    self.off_set = (x2 - x1, y2 - y1)
+                elif event.type == pygame.MOUSEBUTTONUP:
+                    # si l'utilisateur clique plus
+                    self.dragging = False
 
             if self.paused:
                 infos = f"t = {round(self.t, 2):<6} n = {self.frame_count:<7} vitesse × {s.SPEED:<6} en pause"
@@ -106,22 +125,22 @@ class Simulation:
 
     def show_car(self, car: Car):
         """Dessine une voiture."""
-        draw_polygon(self.surface, car.color, car.coins)
+        draw_polygon(self.surface, car.color, car.coins, self.off_set)
         if s.CAR_SHOW_ARROW:
             rotated_arrow = pygame.transform.rotate(self.CAR_ARROW, car.road.angle)
-            draw_image(self.surface, rotated_arrow, car.road.dist_to_pos(car.d))
+            draw_image(self.surface, rotated_arrow, car.road.dist_to_pos(car.d), self.off_set)
 
     def show_roads(self, road_list):
         """Affiche des routes."""
         for road in road_list:
             if isinstance(road, Road):
-                draw_polygon(self.surface, road.color, road.coins)
+                draw_polygon(self.surface, road.color, road.coins, self.off_set)
 
                 rotated_arrow = pygame.transform.rotate(self.ROAD_ARROW, road.angle)
 
                 for arrow_coord in road.arrows_coords:
                     x, y, _ = arrow_coord
-                    draw_image(self.surface, rotated_arrow, (x, y))
+                    draw_image(self.surface, rotated_arrow, (x, y), self.off_set)
             elif isinstance(road, ArcRoad):
                 self.show_roads(road.roads)
 
@@ -131,7 +150,7 @@ class Simulation:
             tl: TrafficLight = road.traffic_light
             if tl is not None and not tl.static:
                 color = {0: s.TL_RED, 1: s.TL_ORANGE, 2: s.TL_GREEN}[tl.state]
-                draw_polygon(self.surface, color, tl.coins)
+                draw_polygon(self.surface, color, tl.coins, self.off_set)
 
     def create_road(self, **kw):
         """Créer une route."""
