@@ -2,7 +2,7 @@ from simulation import Simulation
 from objets import CarFactory, TrafficLight
 
 
-sim = Simulation("Carrefour avec feux")
+sim = Simulation("Carrefour avec feux", 1440, 820)
 
 road_list = [{"id": 1, "type": "road", "start": (-60, 440), "end": (650, 440),  # routes de gauche
               "car_factory": CarFactory(["rand_color"], [1, 4.5]), "traffic_light": TrafficLight(0)},
@@ -20,21 +20,21 @@ road_list = [{"id": 1, "type": "road", "start": (-60, 440), "end": (650, 440),  
               "car_factory": CarFactory(["rand_color"], [1, 4.5]), "traffic_light": TrafficLight(2)},
              {"id": 8, "type": "road", "start": (700, 490), "end": (700, 900)},
 
-             {"id": 14, "type": "road", "start": (650, 440), "end": (790, 440), "with_arrows": False},  # routes du carrefour
+             {"id": 14, "type": "road", "start": 1, "end": 4, "with_arrows": False},  # routes du carrefour
              {"id": 16, "type": "arcroad", "start": 1, "end": 6},
              {"id": 18, "type": "arcroad", "start": 1, "end": 8},
 
-             {"id": 32, "type": "road", "start": (790, 400), "end": (650, 400), "with_arrows": False},
+             {"id": 32, "type": "road", "start": 3, "end": 2, "with_arrows": False},
              {"id": 36, "type": "arcroad", "start": 3, "end": 6},
              {"id": 38, "type": "arcroad", "start": 3, "end": 8},
 
              {"id": 52, "type": "arcroad", "start": 5, "end": 2},
              {"id": 54, "type": "arcroad", "start": 5, "end": 4},
-             {"id": 58, "type": "road", "start": (700, 350), "end": (700, 490), "with_arrows": False},
+             {"id": 58, "type": "road", "start": 5, "end": 8, "with_arrows": False},
 
              {"id": 72, "type": "arcroad", "start": 7, "end": 2},
              {"id": 74, "type": "arcroad", "start": 7, "end": 4},
-             {"id": 76, "type": "road", "start": (740, 490), "end": (740, 350), "with_arrows": False}]
+             {"id": 76, "type": "road", "start": 7, "end": 6, "with_arrows": False}]
 
 road_graph = {1: {14: 0.3, 16: 0.4, 18: 0.3}, 14: 4, 16: 6, 18: 8, 2: None,
               3: {32: 0.3, 36: 0.4, 38: 0.3}, 32: 2, 36: 6, 38: 8, 4: None,

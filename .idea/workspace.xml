@@ -4,14 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="gestion de la vitesse, meilleur interface">
+    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="correcte repr, meilleur FEU_ORANGE, closest_color, TL_ORANGE_SLOW_DOWN_COEFF, road.new_car clean up, CAR_SHOW_SPEED_MS, KMH et ID, A_MIN_CONF pour IDM, CAR_V peut etre road.v_max, pause et recentrage, print_simulation_infos">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/carrefour.py" beforeDir="false" afterPath="$PROJECT_DIR$/carrefour.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/carrefour_avec_feux.py" beforeDir="false" afterPath="$PROJECT_DIR$/carrefour_avec_feux.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/draw_tools.py" beforeDir="false" afterPath="$PROJECT_DIR$/drawing.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mathsandutils.py" beforeDir="false" afterPath="$PROJECT_DIR$/maths_and_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/objets.py" beforeDir="false" afterPath="$PROJECT_DIR$/objets.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/res.py" beforeDir="false" afterPath="$PROJECT_DIR$/ressources.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rondpoint.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/settings.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/simulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation.py" afterDir="false" />
     </list>
@@ -35,7 +33,6 @@
   </component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/drawing.py" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/main.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/maths_and_utils.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/objets.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/ressources.py" root0="FORCE_HIGHLIGHTING" />
@@ -74,7 +71,7 @@
       <recent name="$PROJECT_DIR$/trafficsimulation" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.carrefour_avec_feux">
+  <component name="RunManager" selected="Python.carrefour">
     <configuration name="carrefour" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="tipe-ts" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -182,8 +179,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.carrefour_avec_feux" />
         <item itemvalue="Python.carrefour" />
+        <item itemvalue="Python.carrefour_avec_feux" />
         <item itemvalue="Python.simulation" />
         <item itemvalue="Python.settings" />
         <item itemvalue="Python.rondpoint" />
@@ -395,7 +392,14 @@
       <option name="project" value="LOCAL" />
       <updated>1672501784457</updated>
     </task>
-    <option name="localTasksCounter" value="29" />
+    <task id="LOCAL-00029" summary="correcte repr, meilleur FEU_ORANGE, closest_color, TL_ORANGE_SLOW_DOWN_COEFF, road.new_car clean up, CAR_SHOW_SPEED_MS, KMH et ID, A_MIN_CONF pour IDM, CAR_V peut etre road.v_max, pause et recentrage, print_simulation_infos">
+      <created>1672765878461</created>
+      <option name="number" value="00029" />
+      <option name="presentableId" value="LOCAL-00029" />
+      <option name="project" value="LOCAL" />
+      <updated>1672765878461</updated>
+    </task>
+    <option name="localTasksCounter" value="30" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -445,6 +449,7 @@
     <MESSAGE value="unités correctes dans settings.py, pause avec espace, documentation plus complète, get_leader_coords min ou avg, v_max propre à route et le reste propre à la voiture" />
     <MESSAGE value="dragging" />
     <MESSAGE value="gestion de la vitesse, meilleur interface" />
-    <option name="LAST_COMMIT_MESSAGE" value="gestion de la vitesse, meilleur interface" />
+    <MESSAGE value="correcte repr, meilleur FEU_ORANGE, closest_color, TL_ORANGE_SLOW_DOWN_COEFF, road.new_car clean up, CAR_SHOW_SPEED_MS, KMH et ID, A_MIN_CONF pour IDM, CAR_V peut etre road.v_max, pause et recentrage, print_simulation_infos" />
+    <option name="LAST_COMMIT_MESSAGE" value="correcte repr, meilleur FEU_ORANGE, closest_color, TL_ORANGE_SLOW_DOWN_COEFF, road.new_car clean up, CAR_SHOW_SPEED_MS, KMH et ID, A_MIN_CONF pour IDM, CAR_V peut etre road.v_max, pause et recentrage, print_simulation_infos" />
   </component>
 </project>

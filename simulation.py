@@ -5,17 +5,18 @@ import pygame
 
 
 class Simulation:
-    def __init__(self, win_title="Traffic Simulation"):
+    def __init__(self, win_title="Traffic Simulation", width=1440, height=820):
         """
         Simulation du traffic.
 
-        :param win_title: Titre de la fenêtre
+        :param win_title: titre de la fenêtre
+        :param width: targeur de la fenêtre, en pixels
+        :param height: hauteur de la fenêtre, en pixels
         """
         self.id = 0  # identifiant
         ids[0] = self
-        self.size = s.WIN_WIDTH, s.WIN_HEIGHT  # taille de la fenêtre
+        self.size = width, height  # taille de la fenêtre
         self.t = 0.0  # suivi du temps
-        self.frame_count = 0  # suivi du nombre d'image
         self.FPS = s.FPS  # images par seconde
         self.dt = 1/self.FPS  # pas de temps
         self.speed_ajusted_dt = self.dt * s.SPEED  # pas de temps ajusté pour la vitesse de la simulation
@@ -99,7 +100,6 @@ class Simulation:
                         self.show_car(car)  # affichage des voitures de la route
                     # for car in road.exiting_cars:
                     #     self.show_car(car)  # affichage des voitures quittant la route
-                self.frame_count += 1  # actualisation du suivi du nombre d'images
                 self.print_infos(self.infos)  # affiche les informations
                 pygame.display.flip()  # actualisation de la fenêtre
                 self.clock.tick(self.FPS)  # pause d'une durée dt
@@ -134,7 +134,6 @@ class Simulation:
                     self.show_car(car)  # affichage des voitures de la route
 
             self.t += self.speed_ajusted_dt  # actualisation du suivi du temps
-            self.frame_count += 1  # actualisation du suivi du nombre d'images
             self.print_infos(self.infos)  # affiche les informations
             pygame.display.flip()  # actualisation de la fenêtre
             self.clock.tick(self.FPS)  # pause d'une durée dt
@@ -143,15 +142,15 @@ class Simulation:
 
     def print_simulation_infos(self):
         """Affiche l'ensemble des attributs des objects de la simulation dans la sortie standard."""
-        print(f"\n--- Simulation Infos ---\n\n{self.size = }\n{self.t = }\n{self.frame_count = }\n{self.FPS = }\n{self.dt = }\n{self.speed = }\n{self.speed_ajusted_dt = }\n{self.paused = }\n{self.over = }\n{self.dragging = }\n{self.off_set = }\n{self.road_graph = }\n")
+        print(f"\n--- Simulation Infos ---\n\n{self.size = }\n{self.t = }\n{self.FPS = }\n{self.dt = }\n{self.speed = }\n{self.speed_ajusted_dt = }\n{self.paused = }\n{self.over = }\n{self.dragging = }\n{self.off_set = }\n{self.road_graph = }\n")
         for road in self.roads:
-            print(f"\n{road} :\nTrafficLight : {road.traffic_light}\nCars :")
+            print(f"\n{road} :\n    TrafficLight : {road.traffic_light}\n    Cars :")
             for car in road.cars:
-                print(f"    {car}")
-            print("Exiting Cars :")
+                print(f"        {car}")
+            print("    Exiting Cars :")
             for car in road.exiting_cars:
-                print(f"    {car}")
-            print(f"CarFactory : {road.car_factory}\nCarSorter : {road.car_sorter}")
+                print(f"        {car}")
+            print(f"    CarFactory : {road.car_factory}\n    CarSorter : {road.car_sorter}")
 
     def print_infos(self, info):
         """Affiche des informations en haut à gauche de la fenêtre."""
@@ -162,7 +161,7 @@ class Simulation:
     @property
     def infos(self):
         """Renvoie les informations à afficher sur la fenêtre: horloge, nombre d'images, vitesse..."""
-        return f"t = {round(self.t, 2):<7} | n = {self.frame_count:<7} | vitesse = ×{self.speed:<4} | {'en pause' if self.paused else 'en cours'} | ESPACE : mettre en pause, FLÈCHE DROITE : ralentir, FLÈCHE GAUCHE : accélérer, ENTRER : recentrer"
+        return f"t = {round(self.t, 2):<7} | vitesse = ×{self.speed:<4} | {'en pause' if self.paused else 'en cours'} | ESPACE : mettre en pause, FLÈCHE DROITE : ralentir, FLÈCHE GAUCHE : accélérer, ENTRER : recentrer"
 
     def show_car(self, car: Car):
         """Dessine une voiture."""
@@ -174,8 +173,8 @@ class Simulation:
             coeff = 3.6 if s.CAR_SHOW_SPEED_KMH else 1
             text = str(round(coeff * car.v / s.SCALE))
             text_width, text_height = self.CAR_FONT.size(text)
-            x = car.x - text_width/2
-            y = car.y - text_height/2
+            x = car.x - text_width / 2
+            y = car.y - text_height / 2
             print_text(self.surface, s.FONT_COLOR, (x, y), text, self.CAR_FONT, off_set=self.off_set)
         elif s.CAR_SHOW_ID:  # si on affiche l'id de la voiture
             text = str(car.id)
@@ -208,7 +207,7 @@ class Simulation:
 
     def create_road(self, **kw):
         """Créer une route."""
-        start, end, vdstart, vdend = kw.get("start"), kw.get("end"), kw.get("vdstart"), kw.get("vdend")
+        start, end, vdstart, vdend, car_factory, color, w, obj_id = kw.get("start", (0, 0)), kw.get("end", (0, 0)), kw.get("vdstart"), kw.get("vdend"), kw.get("car_factory"), kw.get("color", s.ROAD_COLOR), kw.get("width", s.ROAD_WIDTH), kw.get("id")
         if isinstance(start, int):  # si l'argument start est un id de route
             rstart = get_by_id(start)
             start = rstart.end
@@ -218,16 +217,33 @@ class Simulation:
             end = rend.start
             vdend = rend.vd
         if kw["type"] == "road":  # si on crée une route droite
-            car_factory, traffic_light, color, wa, w, obj_id = kw.get("car_factory"), kw.get("traffic_light"), kw.get("color", s.ROAD_COLOR), kw.get("with_arrows", True), kw.get("width", s.ROAD_WIDTH), kw.get("id")
+            traffic_light, wa = kw.get("traffic_light"), kw.get("with_arrows", True)
             road = Road(start, end, width=w, color=color, with_arrows=wa, car_factory=car_factory, traffic_light=traffic_light, obj_id=obj_id)
         else:  # si on crée une route courbée
-            n, car_factory, color, w, obj_id = kw.get("n", s.ARCROAD_N), kw.get("car_factory"), kw.get("color", s.ROAD_COLOR), kw.get("width", s.ROAD_WIDTH), kw.get("id")
+            n = kw.get("n", s.ARCROAD_N)
             road = ArcRoad(start, end, vdstart, vdend, n, width=w, color=color, car_factory=car_factory, obj_id=obj_id)
         self.roads.append(road)
         return road
 
-    def create_roads(self, road_list):
-        """Créer des routes, renvoie la liste des routes."""
+    def create_roads(self, road_list: list[dict]):
+        """Créer des routes, renvoie la liste des routes.
+
+        Les éléments de ``road_list`` sont des dictionnaires de la forme :\n
+        - pour une route droite, ``{"id": int, "type": "road", "start": (float, float) | int, "end": (float, float) | int, "v_max": float (optionnel), "car_factory": CarFactory (optionnel), "traffic_light": TrafficLight (optionnel), "with_arrows": bool (optionnel)}``
+        - pour une route courbée, ``{"id": int, "type": "arcroad", "start": (float, float) | int, "vdstart": (float, float), "end": (float, float) | int, "vdend": (float, float), "v_max": float (optionnel), "n": int (optionnel), "car_factory": CarFactory (optionnel)}``
+
+        avec :\n
+        - ``id`` l'identifiant de la route
+        - ``start`` les coordonnées en pourcentages de la fenêtre du début de la route, ou l'identifiant d'une route dont la fin servira de début
+        - ``end`` les coordonnées en pourcentages de la fenêtre de la fin de la route, ou l'identifiant d'une route dont le début servira de fin
+        - ``v_max`` l'éventuelle limite de vitesse de la route, par défaut ``V_MAX`` pour road et ``V_MAX*ARCROAD_V_MAX_COEFF``
+        - ``car_factory`` l'éventuel CarFactory
+        - ``vdstart`` pour arcroad, si ``start`` est un couple de coordonnées, vecteur directeur du début
+        - ``vdend`` pour arcroad, si ``end`` est un couple de coordonnées, vecteur directeur de la fin
+        - ``n`` pour arcroad, l'éventuel nombre de routes droites la composant, par défaut ``N_ARCROAD``
+        - ``traffic_light`` pour road, l'éventuel TrafficLight
+        - ``with_arrow`` pour road, si des flèches seront affichées sur la route dans le sens de la circulation
+        """
         return [self.create_road(**road) for road in road_list]
 
     def set_road_graph(self, graph):
@@ -244,8 +260,11 @@ class Simulation:
             road.car_sorter = car_sorter
 
     def get_leader_coords(self, road: Road):
-        """Renvoie la moyenne des distances, depuis la fin de la route, et des vitesses des dernières voitures des
-        prochaines routes, pondérée par la probabilité que la première voiture aille sur ces routes."""
+        """Renvoie la distance et la vitesse d'un éventuel leader de la première voiture de la route.
+
+        Si GET_LEADER_COORDS_METHOD_AVG est True, renvoie la moyenne des distances, depuis la fin de la route, et des vitesses des dernières voitures des prochaines routes, pondérée par la probabilité que la première voiture aille sur ces routes.
+
+        Sinon, renvoie celles de la voiture la plus proche de la fin de la route parmi celles des prochaines routes."""
         next_roads_probs = self.road_graph[road.id]  # récupération des prochaines routes et de leurs probas
 
         if next_roads_probs is None:  # si pas de prochaine route
@@ -253,9 +272,9 @@ class Simulation:
         elif isinstance(next_roads_probs, int):  # si un seul choix de prochaine route
             next_roads_probs = {next_roads_probs: 1}
 
-        if s.GET_LEADER_COORDS_METHOD_AVG:
+        if s.GET_LEADER_COORDS_METHOD_AVG:  # si GET_LEADER_COORDS_METHOD_AVG est True
 
-            d, v = 0, 0
+            d, v = 0, 0  # initialisation de d et v pour la moyenne
 
             for next_road_id in next_roads_probs:  # pour chaque prochaine route
                 prob = next_roads_probs[next_road_id]  # on récupère la probabilité
@@ -272,9 +291,9 @@ class Simulation:
                         d += prob*(next_avg_leading_car_coords[0] + next_road.length)
                         v += prob*next_avg_leading_car_coords[1]
 
-        else:
+        else:  # si GET_LEADER_COORDS_METHOD_AVG est False
 
-            d, v = float("inf"), 0
+            d, v = float("inf"), 0  # initilisation de d et v pour le minimum en d
 
             for next_road_id in next_roads_probs:  # pour chaque prochaine route
                 next_road = get_by_id(next_road_id)

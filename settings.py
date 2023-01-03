@@ -2,8 +2,6 @@ from ressources import *
 
 # Simulation
 
-WIN_WIDTH = 1440  # pixels, largeur de la fenêtre de simulation
-WIN_HEIGHT = 840  # pixels, hauteur de la fenêtre de simulation
 BG_COLOR = FOND_BLEU_M  # couleur de l'arrière plan de la fenêtre
 INFOS_BG_COLOR = FOND_BLEU_M_TEXTE  # couleur de l'arrière plan du texte
 FPS = 60  # Hz, images par secondes de la simulation
@@ -23,7 +21,7 @@ ARROW_PATH = ARROW  # chemin à l'image de flèche
 ROAD_WIDTH = 3  # m, largeur des routes
 ROAD_COLOR = ROUTE_BLEU  # couleur des routes
 ARCROAD_N = 10  # nombre de routes droites pour les routes courbées
-ARCROAD_V_MAX_COEFF = 0.6  # coefficient de ralentissement pour les routes courbées
+ARCROAD_V_MAX_COEFF = 0.6  # coefficient de ralentissement pour les routes courbées, facteur de V_MAX
 ARROW_RARETE = 100  # inverse de la fréquence des flèches
 
 # Voitures

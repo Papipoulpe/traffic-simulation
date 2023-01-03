@@ -337,8 +337,9 @@ class Road:
 
 class SRoad(Road):
     def __init__(self, start, end, width, color, obj_id):
-        """Route droite dérivant de Road, sous-routes composant ArcRoad."""
+        """Sous-route droite composant ArcRoad, dérivant de Road."""
         super().__init__(start, end, width, color, False, None, None, obj_id)
+
 
 class ArcRoad:
     def __init__(self, start, end, vdstart, vdend, n, width, color, car_factory, obj_id):
