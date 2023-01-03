@@ -1,5 +1,5 @@
 from objets import *
-from draw_tools import *
+from drawing import *
 import settings as s
 import pygame
 
@@ -19,7 +19,7 @@ class Simulation:
         self.FPS = s.FPS  # images par seconde
         self.dt = 1/self.FPS  # pas de temps
         self.speed_ajusted_dt = self.dt * s.SPEED  # pas de temps ajusté pour la vitesse de la simulation
-        self.speed = s.SPEED  # vitesse de la simulation
+        self.speed = float(s.SPEED)  # vitesse de la simulation
         self.over = self.paused = False  # si la simulation est finie ou en pause
 
         self.roads = []  # liste des routes
@@ -32,7 +32,8 @@ class Simulation:
         self.clock = pygame.time.Clock()  # création de l'horloge pygame
         self.bg_color = s.BG_COLOR  # couleur d'arrière plan de la fenêtre
         self.surface.fill(self.bg_color)  # coloriage de l'arrière plan
-        self.font = pygame.font.Font(s.FONT_PATH, s.FONT_SIZE)  # police d'écriture des informations
+        self.FONT = pygame.font.Font(s.FONT_PATH, s.FONT_SIZE)  # police d'écriture des informations
+        self.CAR_FONT = pygame.font.Font(s.FONT_PATH, round(s.CAR_WIDTH*0.8))  # pour les voitures
 
         arrow = pygame.image.load(s.ARROW_PATH).convert_alpha()  # chargement de l'image de flèche
         self.ROAD_ARROW = pygame.transform.smoothscale(arrow, (s.ROAD_WIDTH*0.7, s.ROAD_WIDTH*0.7))  # ajustement de la taille des flèches pour les routes
@@ -46,7 +47,7 @@ class Simulation:
         """Ouvre une fenêtre et lance la simulation."""
         while not self.over:  # tant que la simulation n'est pas terminée
             for event in pygame.event.get():  # on regarde les dernières actions de l'utilisateur
-                if event.type == pygame.QUIT:
+                if event.type == pygame.QUIT:  # arrêter la boucle quand la fenêtre est fermée
                     self.over = True
 
                 elif event.type == pygame.KEYDOWN:
@@ -56,14 +57,19 @@ class Simulation:
                     elif event.key == pygame.K_SPACE:
                         # met la simulation en pause quand on appuie sur espace
                         self.paused = not self.paused
-                    elif event.key == pygame.K_LEFT and self.speed >= 0.5:
-                        # si l'utilisateur appuie sur la flèche gauche, ralentir jusqu'à 0.25
+                        if self.paused:  # si on passe de en cours à en pause, afficher les infos
+                            self.print_simulation_infos()
+                    elif event.key in (pygame.K_LEFT, pygame.K_DOWN) and self.speed >= 0.5:
+                        # si l'utilisateur appuie sur la flèche gauche ou bas, ralentir jusqu'à 0.25
                         self.speed = round(self.speed/2, 2)
                         self.speed_ajusted_dt = round(self.speed_ajusted_dt/2, 2)
-                    elif event.key == pygame.K_RIGHT and self.speed <= 16:
-                        # si l'utilisateur appuie sur la flèche droite, accélérer jusqu'à 32
+                    elif event.key in (pygame.K_RIGHT, pygame.K_UP) and self.speed <= 16:
+                        # si l'utilisateur appuie sur la flèche droite ou haut, accélérer jusqu'à 32
                         self.speed = round(self.speed*2, 2)
                         self.speed_ajusted_dt = round(self.speed_ajusted_dt*2, 2)
+                    elif event.key == pygame.K_RETURN:
+                        # si l'utilisateur appuie sur entrer, recentrer la fenêtre
+                        self.off_set = (0, 0)
 
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     # si l'utilisateur clique
@@ -82,24 +88,31 @@ class Simulation:
                     # si l'utilisateur ne clique plus
                     self.dragging = False
 
-            if self.paused:
-                self.print_infos(self.infos)  # affiche l'horloge et le nombre d'image
-                pygame.display.flip()  # actualisation de la fenêtre
-                self.clock.tick(self.FPS)  # pause d'une durée dt
-                continue  # saute le reste de la boucle et passe à l'itération suivante
-
             self.surface.fill(self.bg_color)  # efface tout
 
             self.show_roads(self.roads)  # affiche les routes
             self.show_traffic_lights()  # affiche les feux de signalisation
 
+            if self.paused:  # si en pause
+                for road in self.roads:
+                    for car in road.cars:
+                        self.show_car(car)  # affichage des voitures de la route
+                    # for car in road.exiting_cars:
+                    #     self.show_car(car)  # affichage des voitures quittant la route
+                self.frame_count += 1  # actualisation du suivi du nombre d'images
+                self.print_infos(self.infos)  # affiche les informations
+                pygame.display.flip()  # actualisation de la fenêtre
+                self.clock.tick(self.FPS)  # pause d'une durée dt
+                continue  # saute la suite de la boucle et passe à l'itération suivante
+
             for road in self.roads:
+                # affichage des voitures de la route
                 if road.traffic_light:
                     # actualisation de l'éventuel feu de la route
                     road.traffic_light.update(t=self.t)
 
                 # actualisation des coordonnées des voitures de la route
-                road.update_cars_coords(dt=self.speed_ajusted_dt, leader_coords=self.get_leader_coords(road))
+                road.update_cars(dt=self.speed_ajusted_dt, leader_coords=self.get_leader_coords(road))
 
                 # éventuelle création d'une nouvelle voiture au début de la route
                 args_crea = {"t": self.t}
@@ -107,44 +120,69 @@ class Simulation:
                 new_car = road.car_factory.factory(args_crea=args_crea, args_fact=args_fact)
                 road.new_car(new_car)
 
-                # affichage des voitures de la route
-                for car in road.cars:
-                    self.show_car(car)
-
                 # gestion des voitures quittant la route
                 for car in road.exiting_cars:
-                    self.show_car(car)
+                    # self.show_car(car)
                     new_road = road.car_sorter.sorter(t=self.t)  # récupération de la prochaine route
                     if new_road is not None:
                         # s'il y en a une, y ajouter la voiture
                         new_road.new_car(car)
 
-                road.exiting_cars = []
+                road.exiting_cars = []  # on vide la liste des voitures sortantes
 
-            self.print_infos(self.infos)  # affiche les informations
+                for car in road.cars:
+                    self.show_car(car)  # affichage des voitures de la route
 
-            pygame.display.flip()  # actualisation de la fenêtre
             self.t += self.speed_ajusted_dt  # actualisation du suivi du temps
             self.frame_count += 1  # actualisation du suivi du nombre d'images
+            self.print_infos(self.infos)  # affiche les informations
+            pygame.display.flip()  # actualisation de la fenêtre
             self.clock.tick(self.FPS)  # pause d'une durée dt
+
+        self.print_simulation_infos()  # afficher les informations quand on quitte
+
+    def print_simulation_infos(self):
+        """Affiche l'ensemble des attributs des objects de la simulation dans la sortie standard."""
+        print(f"\n--- Simulation Infos ---\n\n{self.size = }\n{self.t = }\n{self.frame_count = }\n{self.FPS = }\n{self.dt = }\n{self.speed = }\n{self.speed_ajusted_dt = }\n{self.paused = }\n{self.over = }\n{self.dragging = }\n{self.off_set = }\n{self.road_graph = }\n")
+        for road in self.roads:
+            print(f"\n{road} :\nTrafficLight : {road.traffic_light}\nCars :")
+            for car in road.cars:
+                print(f"    {car}")
+            print("Exiting Cars :")
+            for car in road.exiting_cars:
+                print(f"    {car}")
+            print(f"CarFactory : {road.car_factory}\nCarSorter : {road.car_sorter}")
 
     def print_infos(self, info):
         """Affiche des informations en haut à gauche de la fenêtre."""
-        text_width, text_height = self.font.size(info)
+        text_width, text_height = self.FONT.size(info)
         draw_rect(self.surface, s.INFOS_BG_COLOR, (0, 0), text_width + 30, text_height + 20)
-        print_text(self.surface, s.FONT_COLOR, (10, 10), info, self.font)
+        print_text(self.surface, s.FONT_COLOR, (10, 10), info, self.FONT)
 
     @property
     def infos(self):
-        """Renvoie les informations à afficher : horloge, nombre d'images, vitesse..."""
-        return f"t = {round(self.t, 2):<7} | n = {self.frame_count:<7} | vitesse = ×{self.speed:<4} | {'en pause' if self.paused else 'en cours'} | ESPACE pour mettre en pause, FLÈCHE DROITE ou FLÈCHE GAUCHE pour ralentir ou accélérer"
+        """Renvoie les informations à afficher sur la fenêtre: horloge, nombre d'images, vitesse..."""
+        return f"t = {round(self.t, 2):<7} | n = {self.frame_count:<7} | vitesse = ×{self.speed:<4} | {'en pause' if self.paused else 'en cours'} | ESPACE : mettre en pause, FLÈCHE DROITE : ralentir, FLÈCHE GAUCHE : accélérer, ENTRER : recentrer"
 
     def show_car(self, car: Car):
         """Dessine une voiture."""
         draw_polygon(self.surface, car.color, car.coins, self.off_set)
-        if s.CAR_SHOW_ARROW:
+        if s.CAR_SHOW_ARROW:  # si on affiche la direction de la voiture
             rotated_arrow = pygame.transform.rotate(self.CAR_ARROW, car.road.angle)
             draw_image(self.surface, rotated_arrow, car.road.dist_to_pos(car.d), self.off_set)
+        elif s.CAR_SHOW_SPEED_MS or s.CAR_SHOW_SPEED_KMH:  # si on affiche la vitesse de la voiture
+            coeff = 3.6 if s.CAR_SHOW_SPEED_KMH else 1
+            text = str(round(coeff * car.v / s.SCALE))
+            text_width, text_height = self.CAR_FONT.size(text)
+            x = car.x - text_width/2
+            y = car.y - text_height/2
+            print_text(self.surface, s.FONT_COLOR, (x, y), text, self.CAR_FONT, off_set=self.off_set)
+        elif s.CAR_SHOW_ID:  # si on affiche l'id de la voiture
+            text = str(car.id)
+            text_width, text_height = self.CAR_FONT.size(text)
+            x = car.x - text_width / 2
+            y = car.y - text_height / 2
+            print_text(self.surface, s.FONT_COLOR, (x, y), text, self.CAR_FONT, off_set=self.off_set)
 
     def show_roads(self, road_list):
         """Affiche des routes."""
@@ -158,7 +196,7 @@ class Simulation:
                     x, y, _ = arrow_coord
                     draw_image(self.surface, rotated_arrow, (x, y), self.off_set)
             elif isinstance(road, ArcRoad):
-                self.show_roads(road.roads)
+                self.show_roads(road.sroads)
 
     def show_traffic_lights(self):
         """Affiche les feux de signalisations."""
@@ -170,19 +208,20 @@ class Simulation:
 
     def create_road(self, **kw):
         """Créer une route."""
+        start, end, vdstart, vdend = kw.get("start"), kw.get("end"), kw.get("vdstart"), kw.get("vdend")
+        if isinstance(start, int):  # si l'argument start est un id de route
+            rstart = get_by_id(start)
+            start = rstart.end
+            vdstart = rstart.vd
+        if isinstance(end, int):  # si l'argument end est un id de route
+            rend = get_by_id(end)
+            end = rend.start
+            vdend = rend.vd
         if kw["type"] == "road":  # si on crée une route droite
-            start, end, car_factory, traffic_light, color, wa, w, obj_id = kw.get("start"), kw.get("end"), kw.get("car_factory"), kw.get("traffic_light"), kw.get("color", s.ROAD_COLOR), kw.get("with_arrows", True), kw.get("width", s.ROAD_WIDTH), kw.get("id")
+            car_factory, traffic_light, color, wa, w, obj_id = kw.get("car_factory"), kw.get("traffic_light"), kw.get("color", s.ROAD_COLOR), kw.get("with_arrows", True), kw.get("width", s.ROAD_WIDTH), kw.get("id")
             road = Road(start, end, width=w, color=color, with_arrows=wa, car_factory=car_factory, traffic_light=traffic_light, obj_id=obj_id)
         else:  # si on crée une route courbée
-            start, end, vdstart, vdend, n, car_factory, color, w, obj_id = kw.get("start"), kw.get("end"), kw.get("vdstart"), kw.get("vdend"), kw.get("n", s.ARCROAD_N), kw.get("car_factory"), kw.get("color", s.ROAD_COLOR), kw.get("width", s.ROAD_WIDTH), kw.get("id")
-            if isinstance(start, int):  # si l'argument start est un id de route
-                rstart = get_by_id(start)
-                start = rstart.end
-                vdstart = rstart.vd
-            if isinstance(end, int):  # si l'argument end est un id de route
-                rend = get_by_id(end)
-                end = rend.start
-                vdend = rend.vd
+            n, car_factory, color, w, obj_id = kw.get("n", s.ARCROAD_N), kw.get("car_factory"), kw.get("color", s.ROAD_COLOR), kw.get("width", s.ROAD_WIDTH), kw.get("id")
             road = ArcRoad(start, end, vdstart, vdend, n, width=w, color=color, car_factory=car_factory, obj_id=obj_id)
         self.roads.append(road)
         return road
@@ -214,7 +253,7 @@ class Simulation:
         elif isinstance(next_roads_probs, int):  # si un seul choix de prochaine route
             next_roads_probs = {next_roads_probs: 1}
 
-        if s.GET_LEADER_COORDS_METHOD == "avg":
+        if s.GET_LEADER_COORDS_METHOD_AVG:
 
             d, v = 0, 0
 
@@ -233,7 +272,7 @@ class Simulation:
                         d += prob*(next_avg_leading_car_coords[0] + next_road.length)
                         v += prob*next_avg_leading_car_coords[1]
 
-        elif s.GET_LEADER_COORDS_METHOD == "min":
+        else:
 
             d, v = float("inf"), 0
 
@@ -253,8 +292,5 @@ class Simulation:
                         if next_d < d:
                             d = next_d
                             v = next_v
-
-        else:
-            raise ValueError('GET_LEADER_COORDS_METHOD doit être "min" ou "avg"')
 
         return (d, v) if d not in (float("inf"), 0) else None

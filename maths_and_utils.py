@@ -1,6 +1,8 @@
 import json
 from typing import *
 import numpy as np
+import settings as s
+import webcolors
 
 
 np.seterr("raise")  # change la gestion des erreurs de maths (division par zéro, racine de réel négatif...)
@@ -8,6 +10,7 @@ np.seterr("raise")  # change la gestion des erreurs de maths (division par zéro
 ids = {-1: None}  # dict des identifiants, initialisé à -1 pour max(id.keys())
 
 Vecteur: TypeAlias = tuple[float, float]  # définiton du type Vecteur = (a, b)
+Couleur: TypeAlias = tuple[int, int, int]  # définiton du type Couleur = (r, g, b)
 
 
 def empty_function(*_, **__): ...  # fonction qui à tout associe rien
@@ -99,18 +102,21 @@ def update_taylor_protected(car, dt: float):
 def idm(car, avg_leading_car_coords: Optional[tuple[float, float]], dt: float):
     """Intelligent Driver Model. Calcule l'accélération idéale de la voiture."""
 
-    if avg_leading_car_coords:
+    if avg_leading_car_coords:  # si on a un leader
         lead_d, lead_v = avg_leading_car_coords
         delta_d = lead_d - (car.d + car.length)
+
         if delta_d <= 0:  # si la voiture est en avance, la faire attendre et ralentir
             car.d, car.v, car.a = car.d, 0, car.a
+            return
+
         delta_v = car.v - lead_v
-        dd_parfait = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * car.a_min * car.a_max))
+        dd_parfait = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * s.A_MIN_CONF * car.a_max))
         a_interaction = (dd_parfait / delta_d) ** 2
     else:
         a_interaction = 0
 
-    car.a = car.a_max * (1 - (car.v / car.road.v_max) ** car.a_exp - a_interaction)
+    car.a = min(car.a_max * (1 - (car.v / car.road.v_max) ** car.a_exp - a_interaction), car.a_min)
 
     update_taylor_protected(car, dt)
 
@@ -136,13 +142,22 @@ def courbe_bezier(p1: Vecteur, p2: Vecteur, p3: Vecteur, n: int) -> list[Vecteur
     return points
 
 
-def milieu(p1: Vecteur, p2: Vecteur) -> Vecteur:
-    """Renvoie le milieu de deux points."""
-    (x1, y1), (x2, y2) = p1, p2
-    return (x1 + x2) / 2, (y1 + y2) / 2
+def closest_colour(requested_colour: Couleur) -> str:
+    """Renvoie le nom de la couleur correspondante."""
+    min_colours = {}
+    for key, name in webcolors.CSS3_HEX_TO_NAMES.items():
+        r_c, g_c, b_c = webcolors.hex_to_rgb(key)
+        rd = (r_c - requested_colour[0]) ** 2
+        gd = (g_c - requested_colour[1]) ** 2
+        bd = (b_c - requested_colour[2]) ** 2
+        min_colours[(rd + gd + bd)] = name
+    return min_colours[min(min_colours.keys())]
 
 
-def sont_paralleles(vd1: Vecteur, vd2: Vecteur) -> bool:
-    """Renvoie si deux droites définies par leurs vecteurs directeurs sont parallèles."""
-    (x1, y1), (x2, y2) = vd1, vd2
-    return x1 * y2 - x2 * y1 == 0
+def get_colour_name(requested_colour: Couleur) -> str:
+    """Renvoie le nom de la couleur la plus proche."""
+    try:
+        closest_name = webcolors.rgb_to_name(requested_colour)
+    except ValueError:
+        closest_name = closest_colour(requested_colour)
+    return closest_name

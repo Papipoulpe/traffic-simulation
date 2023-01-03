@@ -1,4 +1,4 @@
-from mathsandutils import *
+from maths_and_utils import *
 import settings as s
 
 
@@ -24,7 +24,7 @@ class CarFactory:
         else:
             self.fact_func = fact_func
 
-    def __str__(self):
+    def __repr__(self):
         return f"CarFactory(id={self.id})"
 
     def factory(self, args_crea, args_fact):
@@ -86,12 +86,14 @@ class CarFactory:
 
 
 class CarSorter:
-    def __init__(self, method=None):
+    def __init__(self, method=None, obj_id=None):
         """
         Gestion des voitures à la sortie d'une route.
 
         :param method: dictionnaire associant une probabilité à une autre route, fonction ou None
         """
+        self.id = new_id(self, obj_id)
+
         if isinstance(method, dict):  # si la méthode est un dictionnaire associant une proba à une route
             self.method = "probs"
             probs, roads = [], []
@@ -112,6 +114,9 @@ class CarSorter:
 
         self.sort_func = sort_func
 
+    def __repr__(self):
+        return f"CarSorter(id={self.id}, method={self.method})"
+
     def sorter(self, *args, **kwargs):
         return self.sort_func(*args, **kwargs)
 
@@ -131,7 +136,7 @@ class Car:
         self.id = new_id(self, obj_id)
         self.color = color
         self.length, self.width = le, width
-        self.road = self.arcroad = None
+        self.road = None
 
         self.d = 0  # distance du derrière depuis le début de la route
         self.x, self.y = 0, 0  # position du mileu du derrière dans la fenêtre
@@ -146,8 +151,8 @@ class Car:
 
         self.coins = ((0, 0), (0, 0), (0, 0), (0, 0))  # coordonnées des coins, pour affichage
 
-    def __str__(self):
-        return f"Car(id={self.id}, x={self.x}, y={self.y}, d={self.d}, v={self.v}, a={self.a}, coins={rec_round(self.coins)}, color{self.color})"
+    def __repr__(self):
+        return f"Car(id={self.id}, x={self.x}, y={self.y}, d={self.d}, v={self.v}, a={self.a}, coins={rec_round(self.coins)}, color={closest_colour(self.color)})"
 
     def update_mvt(self, dt, avg_leading_car_coords):
         """
@@ -180,8 +185,8 @@ class TrafficLight:
         self.state = self.state_init = state_init  # signalisation du feu : rouge 0, orange 1 ou vert 2
         self.static = static
 
-    def __str__(self):
-        return f"TrafficLight(id={self.id}, state={self.state}, road={self.road})"
+    def __repr__(self):
+        return f"TrafficLight(id={self.id}, state={self.state}, state_init={self.state_init}, static={self.static})"
 
     def update(self, t):
         """Actualise l'état du feu, c'est-à-dire rouge ou vert."""
@@ -202,12 +207,12 @@ class TrafficLight:
     def fake_car(self):
         """Renvoie une fausse voiture, qui fera ralentir la première voiture de la route selon la couleur du feu."""
         if self.state == 0:  # si feu rouge
-            fake_car = Car(0, 0, 1, 1, (0, 0, 0), None)
-            fake_car.d = self.road.length
+            fake_car = Car(0, 0, 0, 0, (0, 0, 0), None)
+            fake_car.d = self.road.length + s.DELTA_D_MIN
             fake_car.road = self.road
         elif self.state == 1:  # si feu orange
-            fake_car = Car(0, 0, 1, 1, (0, 0, 0), None)
-            fake_car.d = self.road.length + 2*s.CAR_LENGTH
+            fake_car = Car(0, 0, 0, 0, (0, 0, 0), None)
+            fake_car.d = self.road.length + s.DELTA_D_MIN/s.TL_ORANGE_SLOW_DOWN_COEFF
             fake_car.road = self.road
         else:  # si feu vert
             fake_car = None
@@ -256,8 +261,8 @@ class Road:
 
         self.traffic_light: TrafficLight = self.new_traffic_light(traffic_light)
 
-    def __str__(self):
-        return f"Road(id={self.id}, start={self.start}, end={self.end}, color={self.color})"
+    def __repr__(self):
+        return f"Road(id={self.id}, start={self.start}, end={self.end}, color={closest_colour(self.color)})"
 
     def dist_to_pos(self, d):
         """Renvoie les coordonnées d'un objet à une distance ``d`` du début le la route."""
@@ -278,7 +283,7 @@ class Road:
             arrows.append((x, y, self.angle))
         return arrows
 
-    def update_cars_coords(self, dt, leader_coords):
+    def update_cars(self, dt, leader_coords):
         """
         Bouge les voitures de la route à leurs positions après dt.
 
@@ -314,18 +319,14 @@ class Road:
         if car is None:
             return
         car.road = self
-        vnx, vny = vect_norm(self.vd, car.width / 2)  # vecteur normal pour les coord des coins
-        sx, sy = self.start
-        ex, ey = self.dist_to_pos(car.length)
-        car.coins = (sx + vnx, sy + vny), (sx - vnx, sy - vny), (ex - vnx, ey - vny), (ex + vnx, ey + vny)
-        car.x, car.y = self.start
+        car.x, car.y = self.dist_to_pos(0)
         car.d = 0
+        car.update_coins()
         self.cars.append(car)
 
     def new_traffic_light(self, tl: TrafficLight):
         if tl is None:
             return TrafficLight(state_init=2, static=True)
-
         tl.road = self
         vnx, vny = vect_norm(self.vd, self.width/2)
         x1, y1 = self.dist_to_pos(self.length)
@@ -338,7 +339,6 @@ class SRoad(Road):
     def __init__(self, start, end, width, color, obj_id):
         """Route droite dérivant de Road, sous-routes composant ArcRoad."""
         super().__init__(start, end, width, color, False, None, None, obj_id)
-
 
 class ArcRoad:
     def __init__(self, start, end, vdstart, vdend, n, width, color, car_factory, obj_id):
@@ -363,13 +363,13 @@ class ArcRoad:
 
         intersec = intersection_droites(start, vdstart, end, vdend)
         self.points = courbe_bezier(start, intersec, end, n)
-        self.roads = []
+        self.sroads = []
         for i in range(len(self.points) - 1):
             rstart = self.points[i]
             rend = self.points[i + 1]
             road = SRoad(rstart, rend, width, color, -(s.ARCROAD_N*self.id+i))
             road.v_max *= s.ARCROAD_V_MAX_COEFF
-            self.roads.append(road)
+            self.sroads.append(road)
             self.length += road.length
 
         self.exiting_cars: list[Car] = []
@@ -385,26 +385,25 @@ class ArcRoad:
 
         self.traffic_light = None
 
-    def __str__(self):
-        return f"ArcRoad(id={self.id}, start={self.start}, end={self.end}, color={self.color})"
+    def __repr__(self):
+        return f"ArcRoad(id={self.id}, start={self.start}, end={self.end}, color={closest_colour(self.color)}, length={self.length}, sroads={self.sroads})"
 
-    def update_cars_coords(self, dt, leader_coords):
-        for index, road in enumerate(self.roads):
-            road.update_cars_coords(dt, leader_coords)
+    def update_cars(self, dt, leader_coords):
+        for index, sroad in enumerate(self.sroads):
+            sroad.update_cars(dt, leader_coords)
 
-            if index == len(self.roads) - 1:  # si dernière sroad
-                self.exiting_cars = road.exiting_cars
+            if index == len(self.sroads) - 1:  # si dernière sroad
+                self.exiting_cars = sroad.exiting_cars
             else:
-                next_road = self.roads[index + 1]
+                next_road = self.sroads[index + 1]
 
-                for car in road.exiting_cars:
+                for car in sroad.exiting_cars:
                     next_road.new_car(car)  # on ajoute la voiture à la sroad suivante
 
-            road.exiting_cars = []
+            sroad.exiting_cars = []
 
     def new_car(self, car):
         if car is None:
             return
-        car.arcroad = self
-        self.roads[0].new_car(car)
+        self.sroads[0].new_car(car)
         self.cars.append(car)
