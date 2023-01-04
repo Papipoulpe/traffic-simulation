@@ -142,22 +142,22 @@ def courbe_bezier(p1: Vecteur, p2: Vecteur, p3: Vecteur, n: int) -> list[Vecteur
     return points
 
 
-def closest_colour(requested_colour: Couleur) -> str:
+def closest_color(requested_color: Couleur) -> str:
     """Renvoie le nom de la couleur correspondante."""
     min_colours = {}
     for key, name in webcolors.CSS3_HEX_TO_NAMES.items():
         r_c, g_c, b_c = webcolors.hex_to_rgb(key)
-        rd = (r_c - requested_colour[0]) ** 2
-        gd = (g_c - requested_colour[1]) ** 2
-        bd = (b_c - requested_colour[2]) ** 2
+        rd = (r_c - requested_color[0]) ** 2
+        gd = (g_c - requested_color[1]) ** 2
+        bd = (b_c - requested_color[2]) ** 2
         min_colours[(rd + gd + bd)] = name
     return min_colours[min(min_colours.keys())]
 
 
-def get_colour_name(requested_colour: Couleur) -> str:
+def get_color_name(requested_color: Couleur) -> str:
     """Renvoie le nom de la couleur la plus proche."""
     try:
-        closest_name = webcolors.rgb_to_name(requested_colour)
+        closest_name = webcolors.rgb_to_name(requested_color)
     except ValueError:
-        closest_name = closest_colour(requested_colour)
+        closest_name = closest_color(requested_color)
     return closest_name

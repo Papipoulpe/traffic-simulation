@@ -4,9 +4,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="voitures sortantes qui s'affichent plus (gestion de arcroad.cars), simulation.manage_event">
+    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="get_leader de arcroad corrigé">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/carrefour.py" beforeDir="false" afterPath="$PROJECT_DIR$/carrefour.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/maths_and_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/maths_and_utils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/objets.py" beforeDir="false" afterPath="$PROJECT_DIR$/objets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/settings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/simulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -422,7 +426,14 @@
       <option name="project" value="LOCAL" />
       <updated>1672850597620</updated>
     </task>
-    <option name="localTasksCounter" value="34" />
+    <task id="LOCAL-00034" summary="get_leader de arcroad corrigé">
+      <created>1672853610480</created>
+      <option name="number" value="00034" />
+      <option name="presentableId" value="LOCAL-00034" />
+      <option name="project" value="LOCAL" />
+      <updated>1672853610480</updated>
+    </task>
+    <option name="localTasksCounter" value="35" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -450,7 +461,6 @@
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
-    <MESSAGE value="draw_tools" />
     <MESSAGE value="carfactory plus clair" />
     <MESSAGE value="new_id" />
     <MESSAGE value="idm, update_mvt et update_coin sont maintenant des méthodes de car" />
@@ -475,6 +485,7 @@
     <MESSAGE value="create_roads documentation, width et height en param dans Simulation, id à la place de start ou end pour road" />
     <MESSAGE value="voitures sortantes qui s'affichent plus (gestion de arcroad.cars), simulation.mange_event, info sans s" />
     <MESSAGE value="voitures sortantes qui s'affichent plus (gestion de arcroad.cars), simulation.manage_event" />
-    <option name="LAST_COMMIT_MESSAGE" value="voitures sortantes qui s'affichent plus (gestion de arcroad.cars), simulation.manage_event" />
+    <MESSAGE value="get_leader de arcroad corrigé" />
+    <option name="LAST_COMMIT_MESSAGE" value="get_leader de arcroad corrigé" />
   </component>
 </project>

@@ -88,9 +88,9 @@ class CarFactory:
 class CarSorter:
     def __init__(self, method=None, obj_id=None):
         """
-        Gestion des voitures à la sortie d'une route.
+        Gestion des voitures à la sortie d'une route, en fait décidé dès l'entrée de la voiture sur la route.
 
-        :param method: dictionnaire associant une probabilité à une autre route, fonction ou None
+        :param method: dictionnaire associant un id de route à une probabilité ou None
         """
         self.id = new_id(self, obj_id)
 
@@ -101,24 +101,20 @@ class CarSorter:
                 probs.append(method[p])
                 roads.append(p)
 
-            def sort_func(*_, **__):
-                return ids[np.random.choice(roads, p=probs)]
+            def sort_func():
+                return get_by_id(np.random.choice(roads, p=probs))
 
-        elif method is None:  # si la méthode est None, les voitures seront supprimées
+        else:  # si la méthode est None, les voitures seront supprimées
             self.method = None
             sort_func = empty_function
-
-        else:  # si la méthode est une fonction
-            self.method = "func"
-            sort_func = method
 
         self.sort_func = sort_func
 
     def __repr__(self):
         return f"CarSorter(id={self.id}, method={self.method})"
 
-    def sorter(self, *args, **kwargs):
-        return self.sort_func(*args, **kwargs)
+    def sorter(self):
+        return self.sort_func()
 
 
 class Car:
@@ -137,6 +133,7 @@ class Car:
         self.color = color
         self.length, self.width = le, width
         self.road = None
+        self.next_road = None
 
         self.d = 0  # distance du derrière depuis le début de la route
         self.x, self.y = 0, 0  # position du mileu du derrière dans la fenêtre
@@ -152,7 +149,7 @@ class Car:
         self.coins = ((0, 0), (0, 0), (0, 0), (0, 0))  # coordonnées des coins, pour affichage
 
     def __repr__(self):
-        return f"Car(id={self.id}, x={self.x}, y={self.y}, d={self.d}, v={self.v}, a={self.a}, coins={rec_round(self.coins)}, color={closest_colour(self.color)})"
+        return f"Car(id={self.id}, x={self.x}, y={self.y}, d={self.d}, v={self.v}, a={self.a}, next_road={self.next_road}, coins={rec_round(self.coins)}, color={closest_color(self.color)})"
 
     def update_mvt(self, dt, avg_leading_car_coords):
         """
@@ -165,7 +162,7 @@ class Car:
         idm(self, avg_leading_car_coords, dt)
 
     def update_coins(self):
-        """Actualise les coins selon la position."""
+        """Actualise les coins de la voiture selon sa position."""
         vdx, vdy = self.road.vd
         vnx, vny = vect_norm(self.road.vd, self.width / 2)
         c1 = self.x + vnx - self.length * vdx / 2, self.y + vny - self.length * vdy / 2
@@ -177,6 +174,7 @@ class Car:
 
 class TrafficLight:
     def __init__(self, state_init: int, static=False, obj_id: int = None):
+        """Feux de signalisation."""
         self.id = new_id(self, obj_id)
         self.road: Road = ...  # route auquel le feu est rattaché
         self.coins = (0, 0), (0, 0), (0, 0), (0, 0)  # coins pour affichage
@@ -189,7 +187,7 @@ class TrafficLight:
         return f"TrafficLight(id={self.id}, state={self.state}, state_init={self.state_init}, static={self.static})"
 
     def update(self, t):
-        """Actualise l'état du feu, c'est-à-dire rouge ou vert."""
+        """Actualise l'état du feu, c'est-à-dire rouge, orange ou vert."""
         if self.static:
             return
         state_init_delay = {0: s.TL_GREEN_DELAY + s.TL_ORANGE_DELAY,
@@ -257,12 +255,10 @@ class Road:
 
         self.car_sorter = CarSorter()
 
-        self.exiting_cars: list[Car] = []  # liste des voitures quittant la route
-
         self.traffic_light: TrafficLight = self.new_traffic_light(traffic_light)
 
     def __repr__(self):
-        return f"Road(id={self.id}, start={self.start}, end={self.end}, color={closest_colour(self.color)})"
+        return f"Road(id={self.id}, start={self.start}, end={self.end}, color={closest_color(self.color)})"
 
     def dist_to_pos(self, d):
         """Renvoie les coordonnées d'un objet à une distance ``d`` du début le la route."""
@@ -311,16 +307,18 @@ class Road:
             # mise à jour des coins, pour l'affichage
             car.update_coins()
 
-            if car.d >= self.length:
-                self.exiting_cars.append(car)
-                self.cars.remove(car)
+            if car.d >= self.length:  # si la voiture sort de la route
+                car.d -= self.length  # on initialise le prochain d
+                if car.next_road is not None:
+                    car.next_road.new_car(car)  # on l'ajoute à la prochaine route si elle existe
+                self.cars.remove(car)  # on retire la voiture de la liste des voitures (pas d'impact sur la boucle avec enumerate)
 
     def new_car(self, car: Car):
         if car is None:
             return
         car.road = self
-        car.x, car.y = self.dist_to_pos(0)
-        car.d = 0
+        car.next_road = self.car_sorter.sorter()
+        car.x, car.y = self.dist_to_pos(car.d)
         car.update_coins()
         self.cars.append(car)
 
@@ -375,21 +373,26 @@ class ArcRoad:
             self.sroads.append(sroad)
             self.length += sroad.length
 
-        self.exiting_cars: list[Car] = []
+        for index, sroad in enumerate(self.sroads):
+            if index < n - 1:
+                sroad.car_sorter = CarSorter(method={self.sroads[index + 1].id: 1})
 
         if car_factory is None:
             self.car_factory = CarFactory()
         else:
             self.car_factory = car_factory
 
-        self.car_sorter = CarSorter()
-
-        self.cars = []  # listes des voitures appartenant à la routes
-
         self.traffic_light = None
 
     def __repr__(self):
-        return f"ArcRoad(id={self.id}, start={self.start}, end={self.end}, color={closest_colour(self.color)}, length={self.length}, sroads={self.sroads})"
+        return f"ArcRoad(id={self.id}, start={self.start}, end={self.end}, color={closest_color(self.color)}, length={self.length}, sroads={self.sroads})"
+
+    @property
+    def cars(self):
+        car_list = []
+        for sroad in self.sroads:
+            car_list += sroad.cars
+        return car_list
 
     def update_cars(self, dt, leader_coords):
         for index, sroad in enumerate(self.sroads):
@@ -400,20 +403,15 @@ class ArcRoad:
                 leader_d += (self.n - index)*sroad.length
                 sroad.update_cars(dt, (leader_d, leader_v))
 
-            if index == len(self.sroads) - 1:  # si dernière sroad
-                self.exiting_cars = sroad.exiting_cars
-                for car in self.exiting_cars:
-                    self.cars.remove(car)
-            else:
-                next_road = self.sroads[index + 1]
+    @property
+    def car_sorter(self):
+        return self.sroads[-1].car_sorter
 
-                for car in sroad.exiting_cars:
-                    next_road.new_car(car)  # on ajoute la voiture à la sroad suivante
-
-            sroad.exiting_cars = []
+    @car_sorter.setter
+    def car_sorter(self, car_sorter):
+        self.sroads[-1].car_sorter = car_sorter
 
     def new_car(self, car):
         if car is None:
             return
         self.sroads[0].new_car(car)
-        self.cars.append(car)

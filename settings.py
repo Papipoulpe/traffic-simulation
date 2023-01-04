@@ -21,7 +21,7 @@ ARROW_PATH = ARROW  # chemin à l'image de flèche
 ROAD_WIDTH = 3  # m, largeur des routes
 ROAD_COLOR = ROUTE_BLEU  # couleur des routes
 ARCROAD_N = 10  # nombre de routes droites pour les routes courbées
-ARCROAD_V_MAX_COEFF = 0.6  # coefficient de ralentissement pour les routes courbées, facteur de V_MAX
+ARCROAD_V_MAX_COEFF = 0.45  # coefficient de ralentissement pour les routes courbées, facteur de V_MAX
 ARROW_RARETE = 100  # inverse de la fréquence des flèches
 
 # Voitures

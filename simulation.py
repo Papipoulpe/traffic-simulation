@@ -2,6 +2,7 @@ from objets import *
 from drawing import *
 import settings as s
 import pygame
+import traceback
 
 
 class Simulation:
@@ -57,8 +58,6 @@ class Simulation:
                 for road in self.roads:
                     for car in road.cars:
                         self.show_car(car)  # affichage des voitures de la route
-                    # for car in road.exiting_cars:
-                    #     self.show_car(car)  # affichage des voitures quittant la route
                 self.show_info(self.info_to_show)  # affiche les informations
                 pygame.display.flip()  # actualisation de la fenêtre
                 self.clock.tick(self.FPS)  # pause d'une durée dt
@@ -66,6 +65,9 @@ class Simulation:
 
             for road in self.roads:
                 # affichage des voitures de la route
+                for car in road.cars:
+                    self.show_car(car)
+
                 if road.traffic_light is not None:
                     road.traffic_light.update(t=self.t)  # actualisation de l'éventuel feu de la route
                     self.show_traffic_light(road.traffic_light)  # affichage du feu
@@ -79,19 +81,6 @@ class Simulation:
                 new_car = road.car_factory.factory(args_crea=args_crea, args_fact=args_fact)
                 road.new_car(new_car)
 
-                # gestion des voitures quittant la route
-                for car in road.exiting_cars:
-                    self.show_car(car)
-                    new_road = road.car_sorter.sorter(t=self.t)  # récupération de la prochaine route
-                    if new_road is not None:
-                        # s'il y en a une, y ajouter la voiture
-                        new_road.new_car(car)
-
-                road.exiting_cars = []  # on vide la liste des voitures sortantes
-
-                for car in road.cars:
-                    self.show_car(car)  # affichage des voitures de la route
-
             self.t += self.speed_ajusted_dt  # actualisation du suivi du temps
             self.show_info(self.info_to_show)  # affiche les informations
             pygame.display.flip()  # actualisation de la fenêtre
@@ -99,15 +88,20 @@ class Simulation:
 
         self.print_simulation_info()  # afficher les informations quand on quitte
 
+    def start(self):
+        """Ouvre une fenêtre et lance la simulation, affiche l'état de la simulation en cas d'erreur."""
+        try:
+            self.start_loop()
+        except Exception as exeption:
+            self.print_simulation_info()
+            print(f"\n*** Erreur : {exeption} ***\n\n{traceback.format_exc()}")
+
     def print_simulation_info(self):
         """Affiche l'ensemble des objects et leurs principaux attributs dans la sortie standard."""
         print(f"\n--- Simulation Infos ---\n\n{self.size = }\n{self.t = }\n{self.FPS = }\n{self.dt = }\n{self.speed = }\n{self.speed_ajusted_dt = }\n{self.paused = }\n{self.over = }\n{self.dragging = }\n{self.off_set = }\n{self.road_graph = }\n")
         for road in self.roads:
             print(f"\n{road} :\n    TrafficLight : {road.traffic_light}\n    Cars :")
             for car in road.cars:
-                print(f"        {car}")
-            print("    Exiting Cars :")
-            for car in road.exiting_cars:
                 print(f"        {car}")
             print(f"    CarFactory : {road.car_factory}\n    CarSorter : {road.car_sorter}")
 
@@ -249,16 +243,14 @@ class Simulation:
     def set_road_graph(self, graph: dict):
         """Définie le graphe des routes de la simulation.
 
-        :param graph: graphe des routes, de type ``{road_id1: road_id2, road_id3: {road_id1: proba1, road_id4: propa4}, road_id5: CarSorter}``"""
+        :param graph: graphe des routes, de type ``{road_id1: road_id2, road_id3: {road_id1: proba1, road_id4: propa4}}``"""
         self.road_graph = graph
         for road in self.roads:
-            val = graph[road.id]
-            if isinstance(val, CarSorter):
-                car_sorter = val
-            elif isinstance(val, int):
-                car_sorter = CarSorter(method={val: 1})
+            next_roads = graph[road.id]
+            if isinstance(next_roads, int):
+                car_sorter = CarSorter(method={next_roads: 1})
             else:
-                car_sorter = CarSorter(method=val)
+                car_sorter = CarSorter(method=next_roads)
 
             road.car_sorter = car_sorter
 
