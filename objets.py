@@ -395,6 +395,8 @@ class ArcRoad:
 
             if index == len(self.sroads) - 1:  # si dernière sroad
                 self.exiting_cars = sroad.exiting_cars
+                for car in self.exiting_cars:
+                    self.cars.remove(car)
             else:
                 next_road = self.sroads[index + 1]
 

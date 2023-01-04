@@ -7,7 +7,7 @@ import webcolors
 
 np.seterr("raise")  # change la gestion des erreurs de maths (division par zéro, racine de réel négatif...)
 
-ids = {-1: None}  # dict des identifiants, initialisé à -1 pour max(id.keys())
+ids = {}  # dict des identifiants
 
 Vecteur: TypeAlias = tuple[float, float]  # définiton du type Vecteur = (a, b)
 Couleur: TypeAlias = tuple[int, int, int]  # définiton du type Couleur = (r, g, b)

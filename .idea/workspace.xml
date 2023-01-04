@@ -4,13 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="correcte repr, meilleur FEU_ORANGE, closest_color, TL_ORANGE_SLOW_DOWN_COEFF, road.new_car clean up, CAR_SHOW_SPEED_MS, KMH et ID, A_MIN_CONF pour IDM, CAR_V peut etre road.v_max, pause et recentrage, print_simulation_infos">
+    <list default="true" id="f26a97d6-fa4a-4710-bce9-5d0da20d013a" name="Changes" comment="create_roads documentation, width et height en param dans Simulation, id à la place de start ou end pour road">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/carrefour.py" beforeDir="false" afterPath="$PROJECT_DIR$/carrefour.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/carrefour_avec_feux.py" beforeDir="false" afterPath="$PROJECT_DIR$/carrefour_avec_feux.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/maths_and_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/maths_and_utils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/objets.py" beforeDir="false" afterPath="$PROJECT_DIR$/objets.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/settings.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/simulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -399,7 +396,14 @@
       <option name="project" value="LOCAL" />
       <updated>1672765878461</updated>
     </task>
-    <option name="localTasksCounter" value="30" />
+    <task id="LOCAL-00030" summary="create_roads documentation, width et height en param dans Simulation, id à la place de start ou end pour road">
+      <created>1672778259722</created>
+      <option name="number" value="00030" />
+      <option name="presentableId" value="LOCAL-00030" />
+      <option name="project" value="LOCAL" />
+      <updated>1672778259722</updated>
+    </task>
+    <option name="localTasksCounter" value="31" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -450,6 +454,7 @@
     <MESSAGE value="dragging" />
     <MESSAGE value="gestion de la vitesse, meilleur interface" />
     <MESSAGE value="correcte repr, meilleur FEU_ORANGE, closest_color, TL_ORANGE_SLOW_DOWN_COEFF, road.new_car clean up, CAR_SHOW_SPEED_MS, KMH et ID, A_MIN_CONF pour IDM, CAR_V peut etre road.v_max, pause et recentrage, print_simulation_infos" />
-    <option name="LAST_COMMIT_MESSAGE" value="correcte repr, meilleur FEU_ORANGE, closest_color, TL_ORANGE_SLOW_DOWN_COEFF, road.new_car clean up, CAR_SHOW_SPEED_MS, KMH et ID, A_MIN_CONF pour IDM, CAR_V peut etre road.v_max, pause et recentrage, print_simulation_infos" />
+    <MESSAGE value="create_roads documentation, width et height en param dans Simulation, id à la place de start ou end pour road" />
+    <option name="LAST_COMMIT_MESSAGE" value="create_roads documentation, width et height en param dans Simulation, id à la place de start ou end pour road" />
   </component>
 </project>
