@@ -361,17 +361,19 @@ class ArcRoad:
         self.width = width
         self.color = color
         self.length = 0
+        self.n = n
 
         intersec = intersection_droites(start, vdstart, end, vdend)
         self.points = courbe_bezier(start, intersec, end, n)
         self.sroads = []
-        for i in range(len(self.points) - 1):
+        self.sroad_end_to_arcroad_end = {}
+        for i in range(n):
             rstart = self.points[i]
             rend = self.points[i + 1]
-            road = SRoad(rstart, rend, width, color, -(s.ARCROAD_N*self.id+i))
-            road.v_max *= s.ARCROAD_V_MAX_COEFF
-            self.sroads.append(road)
-            self.length += road.length
+            sroad = SRoad(rstart, rend, width, color, -(n*self.id+i))
+            sroad.v_max *= s.ARCROAD_V_MAX_COEFF
+            self.sroads.append(sroad)
+            self.length += sroad.length
 
         self.exiting_cars: list[Car] = []
 
@@ -391,7 +393,12 @@ class ArcRoad:
 
     def update_cars(self, dt, leader_coords):
         for index, sroad in enumerate(self.sroads):
-            sroad.update_cars(dt, leader_coords)
+            if leader_coords is None:
+                sroad.update_cars(dt, None)
+            else:
+                leader_d, leader_v = leader_coords
+                leader_d += (self.n - index)*sroad.length
+                sroad.update_cars(dt, (leader_d, leader_v))
 
             if index == len(self.sroads) - 1:  # si dernière sroad
                 self.exiting_cars = sroad.exiting_cars
