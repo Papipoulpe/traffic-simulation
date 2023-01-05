@@ -93,17 +93,19 @@ class Simulation:
         try:
             self.start_loop()
         except Exception as exeption:
-            self.print_simulation_info()
-            print(f"\n*** Erreur : {exeption} ***\n\n{traceback.format_exc()}")
+            if s.LOGS:
+                self.print_simulation_info()
+                print(f"\n*** Erreur : {exeption} ***\n\n{traceback.format_exc()}")
 
     def print_simulation_info(self):
         """Affiche l'ensemble des objects et leurs principaux attributs dans la sortie standard."""
-        print(f"\n--- Simulation Infos ---\n\n{self.size = }\n{self.t = }\n{self.FPS = }\n{self.dt = }\n{self.speed = }\n{self.speed_ajusted_dt = }\n{self.paused = }\n{self.over = }\n{self.dragging = }\n{self.off_set = }\n{self.road_graph = }\n")
-        for road in self.roads:
-            print(f"\n{road} :\n    TrafficLight : {road.traffic_light}\n    Cars :")
-            for car in road.cars:
-                print(f"        {car}")
-            print(f"    CarFactory : {road.car_factory}\n    CarSorter : {road.car_sorter}")
+        if s.LOGS:
+            print(f"\n--- Simulation Infos ---\n\n{self.size = }\n{self.t = }\n{self.FPS = }\n{self.dt = }\n{self.speed = }\n{self.speed_ajusted_dt = }\n{self.paused = }\n{self.over = }\n{self.dragging = }\n{self.off_set = }\n{self.road_graph = }\n")
+            for road in self.roads:
+                print(f"\n{road} :\n    TrafficLight : {road.traffic_light}\n    Cars :")
+                for car in road.cars:
+                    print(f"        {car}")
+                print(f"    CarFactory : {road.car_factory}\n    CarSorter : {road.car_sorter}")
 
     def show_info(self, info):
         """Affiche des informations en haut à gauche de la fenêtre."""
@@ -114,7 +116,7 @@ class Simulation:
     @property
     def info_to_show(self):
         """Renvoie les informations à afficher sur la fenêtre : horloge, nombre d'images, vitesse..."""
-        return f"t = {round(self.t, 2):<7} | vitesse = ×{self.speed:<4} | {'en pause' if self.paused else 'en cours'} | ESPACE : mettre en pause, FLÈCHE DROITE : ralentir, FLÈCHE GAUCHE : accélérer, ENTRER : recentrer"
+        return f"t = {round(self.t, 2):<7} = {round(self.t//60):>02}m{round(self.t) % 60:02}s | vitesse = ×{self.speed:<4} | {'en pause' if self.paused else 'en cours'} | ESPACE : mettre en pause, FLÈCHE DROITE : ralentir, FLÈCHE GAUCHE : accélérer, ENTRER : recentrer"
 
     def manage_event(self, event):
         """Gère les conséquences en cas d'un certain évenement pygame (pause, changement de vitesse, déplacement...)."""
@@ -254,20 +256,19 @@ class Simulation:
 
             road.car_sorter = car_sorter
 
-    def get_leader_coords(self, road: Road):
+    def get_leader_coords(self, road: Road, avg=s.GET_LEADER_COORDS_METHOD_AVG):
         """Renvoie la distance et la vitesse d'un éventuel leader de la première voiture de la route.
 
         Si GET_LEADER_COORDS_METHOD_AVG est True, renvoie la moyenne des distances, depuis la fin de la route, et des vitesses des dernières voitures des prochaines routes, pondérée par la probabilité que la première voiture aille sur ces routes.
 
-        Sinon, renvoie celles de la voiture la plus proche de la fin de la route parmi celles des prochaines routes."""
-        next_roads_probs = self.road_graph[road.id]  # récupération des prochaines routes et de leurs probas
+        Sinon, renvoie celles de la dernière voiture de la prochaine route de la première voiture de la route."""
+        if avg:  # si GET_LEADER_COORDS_METHOD_AVG est True
+            next_roads_probs = self.road_graph[road.id]  # récupération des prochaines routes et de leurs probas
 
-        if next_roads_probs is None:  # si pas de prochaine route
-            return None
-        elif isinstance(next_roads_probs, int):  # si un seul choix de prochaine route
-            next_roads_probs = {next_roads_probs: 1}
-
-        if s.GET_LEADER_COORDS_METHOD_AVG:  # si GET_LEADER_COORDS_METHOD_AVG est True
+            if next_roads_probs is None:  # si pas de prochaine route
+                return None
+            elif isinstance(next_roads_probs, int):  # si un seul choix de prochaine route
+                next_roads_probs = {next_roads_probs: 1}
 
             d, v = 0, 0  # initialisation de d et v pour la moyenne
 
@@ -286,25 +287,18 @@ class Simulation:
                         d += prob*(next_avg_leading_car_coords[0] + next_road.length)
                         v += prob*next_avg_leading_car_coords[1]
 
+            return (d, v) if d != 0 else None
+
         else:  # si GET_LEADER_COORDS_METHOD_AVG est False
 
-            d, v = float("inf"), 0  # initilisation de d et v pour le minimum en d
+            next_road = road.cars[0].next_road
 
-            for next_road_id in next_roads_probs:  # pour chaque prochaine route
-                next_road = get_by_id(next_road_id)
+            if next_road is None:
+                return None
+            elif next_road.cars:
+                last_car = next_road.cars[-1]
+                return last_car.d, last_car.v
+            else:
+                d, v = self.get_leader_coords(next_road, avg=True)
+                return d + next_road.length, v
 
-                if next_road.cars:  # si elle contient des voitures, on prend les coordonnées de la première
-                    next_car = next_road.cars[-1]
-                    next_d, next_v = next_car.d, next_car.v
-                    if next_d < d:
-                        d = next_d
-                        v = next_v
-                else:  # sinon, on cherche plus loin
-                    next_avg_leading_car_coords = self.get_leader_coords(next_road)
-                    if next_avg_leading_car_coords is not None:  # si toujours rien, on s'arrête
-                        next_d, next_v = next_avg_leading_car_coords
-                        if next_d < d:
-                            d = next_d
-                            v = next_v
-
-        return (d, v) if d not in (float("inf"), 0) else None

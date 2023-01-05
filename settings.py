@@ -2,6 +2,7 @@ from ressources import *
 
 # Simulation
 
+LOGS = True  # si on affiche les détails de la simulation et les erreurs quand on passe en pause, quand le programme est quitté ou se plante
 BG_COLOR = FOND_BLEU_M  # couleur de l'arrière plan de la fenêtre
 INFOS_BG_COLOR = FOND_BLEU_M_TEXTE  # couleur de l'arrière plan du texte
 FPS = 60  # Hz, images par secondes de la simulation
