@@ -1,8 +1,8 @@
 import json
 from typing import *
 import numpy as np
-import settings as s
 import webcolors
+import trafficsimulation.settings as s
 
 
 np.seterr("raise")  # change la gestion des erreurs de maths (division par zéro, racine de réel négatif...)

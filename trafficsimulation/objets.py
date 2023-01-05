@@ -1,5 +1,5 @@
-from maths_and_utils import *
-import settings as s
+from .maths_and_utils import *
+import trafficsimulation.settings as s
 
 
 class CarFactory:

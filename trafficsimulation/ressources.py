@@ -1,5 +1,5 @@
-FONT = "ressources/jbmono.ttf"
-ARROW = "ressources/arrow.png"
+FONT = "trafficsimulation/ressources/jbmono.ttf"
+ARROW = "trafficsimulation/ressources/arrow.png"
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)

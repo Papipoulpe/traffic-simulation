@@ -1,8 +1,7 @@
-from objets import *
-from drawing import *
-import settings as s
-import pygame
 import traceback
+from .objets import *
+from .drawing import *
+import trafficsimulation.settings as s
 
 
 class Simulation:
@@ -58,6 +57,7 @@ class Simulation:
                 for road in self.roads:
                     for car in road.cars:
                         self.show_car(car)  # affichage des voitures de la route
+                    self.show_traffic_light(road.traffic_light)
                 self.show_info(self.info_to_show)  # affiche les informations
                 pygame.display.flip()  # actualisation de la fenêtre
                 self.clock.tick(self.FPS)  # pause d'une durée dt
@@ -197,7 +197,7 @@ class Simulation:
 
     def show_traffic_light(self, traffic_light):
         """Affiche les feux de signalisations."""
-        if not traffic_light.static:
+        if traffic_light is not None and not traffic_light.static:
             color = {0: s.TL_RED, 1: s.TL_ORANGE, 2: s.TL_GREEN}[traffic_light.state]
             draw_polygon(self.surface, color, traffic_light.coins, self.off_set)
 
@@ -301,4 +301,3 @@ class Simulation:
             else:
                 d, v = self.get_leader_coords(next_road, avg=True)
                 return d + next_road.length, v
-

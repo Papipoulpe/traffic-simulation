@@ -1,4 +1,4 @@
-from ressources import *
+from .ressources import *
 
 # Simulation
 
