@@ -141,35 +141,71 @@ class Car:
         self.a = a  # acceleration
 
         self.delta_d_min = s.DELTA_D_MIN  # pour l'IDM
-        self.a_max = s.A_MAX
-        self.a_min = s.A_MIN
-        self.a_exp = s.A_EXP
-        self.t_react = s.T_REACT
+        self.a_max = s.A_MAX  # pour l'IDM
+        self.a_min = s.A_MIN  # pour l'IDM
+        self.a_exp = s.A_EXP  # pour l'IDM
+        self.t_react = s.T_REACT  # pour l'IDM
 
-        self.coins = ((0, 0), (0, 0), (0, 0), (0, 0))  # coordonnées des coins, pour affichage
+        self.corners = ((0, 0), (0, 0), (0, 0), (0, 0))  # coordonnées des coins du rectangle représentant la voiture, pour affichage
+        self.front_bumper_hitbox = ((0, 0), (0, 0), (0, 0), (0, 0))  # coordonnées des coins du rectangle à l'avant de la voiture, pour détecter les collisions
+        self.side_bumper_hurtbox = ((0, 0), (0, 0), (0, 0), (0, 0))  # coordonnées des coins du rectangle sur les côtés et l'arrière de la voiture, pour détecter les collisions
+
+        self.bumping_cars = []  # autres voitures avec lesquelles elle est en collision
 
     def __repr__(self):
-        return f"Car(id={self.id}, x={self.x}, y={self.y}, d={self.d}, v={self.v}, a={self.a}, next_road={self.next_road}, coins={rec_round(self.coins)}, color={closest_color(self.color)})"
+        return f"Car(id={self.id}, x={self.x}, y={self.y}, d={self.d}, v={self.v}, a={self.a}, next_road={self.next_road}, coins={rec_round(self.corners)}, bumping_cars={self.bumping_cars}, color={closest_color(self.color)})"
 
-    def update_mvt(self, dt, avg_leading_car_coords):
+    def update(self, dt, leader_coords):
         """
         Actualise les coordonnées du mouvement (position, vitesse, accéleration) de la voiture.
 
         :param dt: durée du mouvement
-        :param avg_leading_car_coords: distance et vitesse d'une éventuelle voiture devant
+        :param leader_coords: distance et vitesse d'une éventuelle voiture devant
         """
+        if self.bumping_cars:
+            n = len(self.bumping_cars)
+            d_avg = sum(car.d for car in self.bumping_cars)/n
+            v_avg = sum(car.v for car in self.bumping_cars)/n
+            leader_coords = d_avg, v_avg
 
-        idm(self, avg_leading_car_coords, dt)
+        idm(self, leader_coords, dt)
 
-    def update_coins(self):
-        """Actualise les coins de la voiture selon sa position."""
-        vdx, vdy = self.road.vd
-        vnx, vny = vect_norm(self.road.vd, self.width / 2)
-        c1 = self.x + vnx - self.length * vdx / 2, self.y + vny - self.length * vdy / 2
-        c2 = self.x - vnx - self.length * vdx / 2, self.y - vny - self.length * vdy / 2
-        c3 = self.x - vnx + self.length * vdx / 2, self.y - vny + self.length * vdy / 2
-        c4 = self.x + vnx + self.length * vdx / 2, self.y + vny + self.length * vdy / 2
-        self.coins = c1, c2, c3, c4
+    def update_corners(self):
+        """Actualise les coins de la voiture (d'affichage et de collision) selon sa position."""
+        vdx, vdy = self.road.vd  # on récupère le vecteur directeur de la route
+        vdx_l = vdx * self.length / 2  # on le norme pour la longueur de la voiture
+        vdy_l = vdy * self.length / 2
+        vdx_ddm = vdx * self.delta_d_min / 4  # on le norme pour la distance de sécurité
+        vdy_ddm = vdy * self.delta_d_min / 4
+        vnx_w, vny_w = vect_norm(self.road.vd, self.width / 2)  # vecteur normal de la route normé pour la largeur de la voiture
+        vnx_ddm, vny_ddm = vect_norm(self.road.vd, self.delta_d_min / 2)  # vn normé pour la distance de sécurité
+        
+        # coins d'affichage
+        c1 = self.x + vnx_w - vdx_l, self.y + vny_w - vdy_l
+        c2 = self.x - vnx_w - vdx_l, self.y - vny_w - vdy_l
+        c3 = self.x - vnx_w + vdx_l, self.y - vny_w + vdy_l
+        c4 = self.x + vnx_w + vdx_l, self.y + vny_w + vdy_l
+        self.corners = c1, c2, c3, c4
+
+        # points de collision de devant
+        c1 = self.x - vnx_w - 0 + vdx_l + 2*vdx_ddm, self.y - vny_w - 0 + vdy_l + 2*vdy_ddm
+        c2 = self.x + vnx_w + 0 + vdx_l + 2*vdx_ddm, self.y + vny_w + 0 + vdy_l + 2*vdy_ddm
+        c3 = self.x + vnx_w + vnx_ddm + vdx_l, self.y + vny_w + vny_ddm + vdy_l
+        c4 = self.x - vnx_w - vnx_ddm + vdx_l, self.y - vny_w - vny_ddm + vdy_l
+        self.front_bumper_hitbox = c1, c2, c3, c4
+
+        # coins de la zone de collision autour
+        c1 = self.x + vnx_w + vnx_ddm - vdx_l - vdx_ddm, self.y + vny_w + vny_ddm - vdy_l - vdy_ddm
+        c2 = self.x - vnx_w - vnx_ddm - vdx_l - vdx_ddm, self.y - vny_w - vny_ddm - vdy_l - vdy_ddm
+        c3 = self.x - vnx_w - vnx_ddm + vdx_l, self.y - vny_w - vny_ddm + vdy_l
+        c4 = self.x + vnx_w + vnx_ddm + vdx_l, self.y + vny_w + vny_ddm + vdy_l
+        self.side_bumper_hurtbox = c1, c2, c3, c4
+        
+    def is_bumping_with(self, other_car: "Car"):
+        """Renvoie si la voiture rentre en collision **sur** ``other_car``, c'est-à-dire si un des coins de
+        ``car.front_bumper_points`` est à l'intérieur de ``other_car.side_bumper_corners``."""
+        res = any(is_inside_rectangle(corner, other_car.side_bumper_hurtbox) for corner in self.front_bumper_hitbox)
+        return res
 
 
 class TrafficLight:
@@ -260,6 +296,9 @@ class Road:
     def __repr__(self):
         return f"Road(id={self.id}, start={self.start}, end={self.end}, color={closest_color(self.color)})"
 
+    def __eq__(self, other_car):
+        return self.id == other_car.id
+
     def dist_to_pos(self, d):
         """Renvoie les coordonnées d'un objet à une distance ``d`` du début le la route."""
         startx, starty = self.start
@@ -271,7 +310,7 @@ class Road:
         """Renvoie les coordonnées des flèches de la route."""
         if not self.with_arrows:
             return []
-        rarete = s.ARROW_RARETE  # inverse de la fréquence des flèches
+        rarete = s.ROAD_ARROW_PERIOD  # inverse de la fréquence des flèches
         num = round(self.length / rarete)  # nombre de flèches pour la route
         arrows = []
         for i in range(num):
@@ -299,13 +338,13 @@ class Road:
                 leading_car_coords = None
 
             # mise à jour des vecteurs du mouvement
-            car.update_mvt(dt, leading_car_coords)
+            car.update(dt, leading_car_coords)
 
             # mise à jour de la position
             car.x, car.y = self.dist_to_pos(car.d)
 
             # mise à jour des coins, pour l'affichage
-            car.update_coins()
+            car.update_corners()
 
             if car.d >= self.length:  # si la voiture sort de la route
                 car.d -= self.length  # on initialise le prochain d
@@ -319,7 +358,7 @@ class Road:
         car.road = self
         car.next_road = self.car_sorter.sorter()
         car.x, car.y = self.dist_to_pos(car.d)
-        car.update_coins()
+        car.update_corners()
         self.cars.append(car)
 
     def new_traffic_light(self, tl: TrafficLight):
@@ -362,7 +401,7 @@ class ArcRoad:
         self.n = n
 
         intersec = intersection_droites(start, vdstart, end, vdend)
-        self.points = courbe_bezier(start, intersec, end, n)
+        self.points = bezier_curve(start, intersec, end, n)
         self.sroads = []
         self.sroad_end_to_arcroad_end = {}
         for i in range(n):

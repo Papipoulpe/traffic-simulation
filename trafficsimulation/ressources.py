@@ -1,20 +1,24 @@
-FONT = "trafficsimulation/ressources/jbmono.ttf"
-ARROW = "trafficsimulation/ressources/arrow.png"
+FONT_PATH = "trafficsimulation/ressources/jbmono.ttf"
+ARROW_PATH = "trafficsimulation/ressources/arrow.png"
 
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
+NOIR = (0, 0, 0)
+BLANC = (255, 255, 255)
+ROUGE = (255, 0, 0)
+VERT = (0, 255, 0)
+BLEU = (0, 0, 255)
 
 FOND_BLEU = (240, 248, 255)
 FOND_BLEU_M = (227, 253, 242)
+FOND_BLEU_GRIS = (236, 239, 241)
 
 FOND_BLEU_TEXTE = (230, 238, 245)
 FOND_BLEU_M_TEXTE = (217, 243, 232)
+FOND_BLEU_GRIS_TEXTE = (176, 190, 197)
 
 ROUTE_BLEU = (193, 205, 205)
+ROUTE_BLEU_GRIS = (207, 216, 220)
 
 VOITURE_BLEUVERT = (143, 188, 143)
-VOITURE_FLORIAN = (0, 155, 155)
-VOITURE_FRANCOIS = (100, 125, 30)
 
 FEU_ROUGE = (255, 0, 0)
 FEU_ORANGE = (255, 129, 0)

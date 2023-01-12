@@ -7,7 +7,7 @@ import trafficsimulation.settings as s
 
 np.seterr("raise")  # change la gestion des erreurs de maths (division par zéro, racine de réel négatif...)
 
-ids = {}  # dict des identifiants
+ids = {}  # dictionnaire des identifiants d'objet
 
 Vecteur: TypeAlias = tuple[float, float]  # définiton du type Vecteur = (a, b)
 Couleur: TypeAlias = tuple[int, int, int]  # définiton du type Couleur = (r, g, b)
@@ -17,7 +17,7 @@ def empty_function(*_, **__): ...  # fonction qui à tout associe rien
 
 
 def new_id(obj, obj_id: Optional[int] = None) -> int:
-    """Créer ou ajoute un identifiant à un objet."""
+    """Créer un identifiant d'objet."""
     if obj_id is None:  # si aucun identifiant fourni, prendre celui après le max
         obj_id = max(ids.keys()) + 1
     ids[obj_id] = obj
@@ -45,10 +45,16 @@ def vect_dir(start: Vecteur, end: Vecteur) -> Vecteur:
     return a / n, b / n
 
 
-def norme(vect: Vecteur) -> float:
-    """Norme du vecteur."""
-    a, b = vect
-    return np.sqrt(a * a + b * b)
+def scalar_product(u: Vecteur, v: Vecteur) -> float:
+    """Renvoie le résultat du produit scalaire ``u•v``."""
+    x1, y1 = u
+    x2, y2 = v
+    return x1 * x2 + y1 * y2
+
+
+def norme(v: Vecteur) -> float:
+    """Renvoie la norme ``|v|``."""
+    return np.sqrt(scalar_product(v, v))
 
 
 def vect_norm(vecteur: Vecteur, nouv_norme: float = 1) -> Vecteur:
@@ -99,11 +105,11 @@ def update_taylor_protected(car, dt: float):
     car.d = car.d + max(0, car.v * dt + 1 / 2 * car.a * dt * dt)  # dev de taylor ordre 2
 
 
-def idm(car, avg_leading_car_coords: Optional[tuple[float, float]], dt: float):
+def idm(car, leader_coords: Optional[Vecteur], dt: float):
     """Intelligent Driver Model. Calcule l'accélération idéale de la voiture."""
 
-    if avg_leading_car_coords:  # si on a un leader
-        lead_d, lead_v = avg_leading_car_coords
+    if leader_coords:  # si on a un leader
+        lead_d, lead_v = leader_coords
         delta_d = lead_d - (car.d + car.length)
 
         if delta_d <= 0:  # si la voiture est en avance, la faire attendre et ralentir
@@ -111,12 +117,15 @@ def idm(car, avg_leading_car_coords: Optional[tuple[float, float]], dt: float):
             return
 
         delta_v = car.v - lead_v
-        dd_parfait = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * s.A_MIN_CONF * car.a_max))
+        dd_parfait = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(
+            2 * s.A_MIN_CONF * car.a_max))
         a_interaction = (dd_parfait / delta_d) ** 2
     else:
         a_interaction = 0
 
-    car.a = min(car.a_max * (1 - (car.v / car.road.v_max) ** car.a_exp - a_interaction), car.a_min)
+    a_free_road = 1 - (car.v / car.road.v_max) ** car.a_exp
+    a_idm = car.a_max*(a_free_road - a_interaction)
+    car.a = min(car.a_min, a_idm)
 
     update_taylor_protected(car, dt)
 
@@ -131,8 +140,8 @@ def intersection_droites(p1: Vecteur, vd1: Vecteur, p2: Vecteur, vd2: Vecteur) -
     return x1 + a1 * t, y1 + b1 * t
 
 
-def courbe_bezier(p1: Vecteur, p2: Vecteur, p3: Vecteur, n: int) -> list[Vecteur]:
-    """Renvoie n points de la courbe de Bézier définie par les points de contrôle p1, p2 et p3."""
+def bezier_curve(p1: Vecteur, p2: Vecteur, p3: Vecteur, n: int) -> list[Vecteur]:
+    """Renvoie ``n`` points de la courbe de Bézier définie par les points de contrôle ``p1``, ``p2`` et ``p3``."""
     points = []
     a1, a2, a3 = np.array(p1), np.array(p2), np.array(p3)
     for i in range(n + 1):
@@ -155,9 +164,21 @@ def closest_color(requested_color: Couleur) -> str:
 
 
 def get_color_name(requested_color: Couleur) -> str:
-    """Renvoie le nom de la couleur la plus proche."""
+    """Renvoie le nom anglais de la couleur la plus proche."""
     try:
         closest_name = webcolors.rgb_to_name(requested_color)
     except ValueError:
         closest_name = closest_color(requested_color)
     return closest_name
+
+
+def is_inside_rectangle(m: Vecteur, rectangle: Sequence[Vecteur]) -> bool:
+    """Renvoie si le point ``m`` est à l'interieur du rectangle."""
+    npy = np.array
+    a, b, c, d = rectangle
+    m, a, b, c, d = npy(m), npy(a), npy(b), npy(c), npy(d)
+    am = m - a
+    ab = b - a
+    ad = d - a
+    # M est dans ABCD ssi (0 < AM⋅AB < AB⋅AB) et (0 < AM⋅AD < AD⋅AD)
+    return 0 <= scalar_product(am, ab) <= scalar_product(ab, ab) and 0 <= scalar_product(am, ad) <= scalar_product(ad, ad)

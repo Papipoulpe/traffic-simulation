@@ -41,20 +41,20 @@ def draw_rect(surface: pygame.Surface, color: Couleur, up_left_corner: Vecteur, 
     draw_polygon(surface, color, ((x, y), (x + width, y), (x + width, y + heigth), (x, y + heigth)), off_set)
 
 
-def print_text(surface: pygame.Surface, color: Couleur, coords: Vecteur, text: str, font: pygame.font.Font, anti_aliasing: bool = True, off_set: Vecteur = (0, 0)):
+def print_text(surface: pygame.Surface, color: Couleur, up_left_corner: Vecteur, text: str, font: pygame.font.Font, anti_aliasing: bool = True, off_set: Vecteur = (0, 0)):
     """
     Affiche du texte.
 
     :param surface: surface sur laquelle afficher
     :param color: couleur du texte
-    :param coords: coordonnées supérieures gauches
+    :param up_left_corner: coordonnées du coin supérieur gauche
     :param text: texte à afficher
     :param font: police de caractère
     :param anti_aliasing: anti_aliasing, True par défaut
     :param off_set: décalage par rapport à l'origine
     """
     a, b = off_set
-    x, y = coords
+    x, y = up_left_corner
     rendered = font.render(text, anti_aliasing, color)
     surface.blit(rendered, (x + a, y + b))
 
