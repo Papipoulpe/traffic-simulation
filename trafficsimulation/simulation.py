@@ -1,5 +1,5 @@
 import traceback
-from .objets import *
+from .components import *
 from .drawing import *
 import trafficsimulation.settings as s
 
@@ -30,7 +30,7 @@ class Simulation:
 
         self.surface = pygame.display.set_mode(self.size)  # création de la fenêtre
         self.clock = pygame.time.Clock()  # création de l'horloge pygame
-        self.bg_color = s.BG_COLOR  # couleur d'arrière plan de la fenêtre
+        self.bg_color = s.BACKGROUND_COLOR  # couleur d'arrière plan de la fenêtre
         self.surface.fill(self.bg_color)  # coloriage de l'arrière plan
         self.FONT = pygame.font.Font(s.FONT_PATH, s.FONT_SIZE)  # police d'écriture des informations
         self.SMALL_FONT = pygame.font.Font(s.FONT_PATH, round(s.CAR_WIDTH * 0.8))  # pour les voitures
@@ -111,7 +111,7 @@ class Simulation:
     def show_info(self, info):
         """Affiche des informations en haut à gauche de la fenêtre et l'échelle si besoin."""
         text_width, text_height = self.FONT.size(info)
-        draw_rect(self.surface, s.INFOS_BG_COLOR, (0, 0), text_width + 30, text_height + 20)
+        draw_rect(self.surface, s.INFO_BACKGROUND_COLOR, (0, 0), text_width + 30, text_height + 20)
         print_text(self.surface, s.FONT_COLOR, (10, 10), info, self.FONT)
 
         if s.SHOW_SCALE:
@@ -124,15 +124,15 @@ class Simulation:
         x, y = 30, h - 40
         text = f"{n * s.SCALE}px = {n}m"
         tw, th = self.FONT.size(text)
-        draw_rect(self.surface, s.NOIR, (x, y), n*s.SCALE, 10)  # affiche la barre de n*SCALE pixels
+        draw_rect(self.surface, s.BLACK, (x, y), n * s.SCALE, 10)  # affiche la barre de n*SCALE pixels
         for i in range(1, n, 2):  # affiche les graduations
             draw_rect(self.surface, self.bg_color, (x + i*s.SCALE, y + 1), s.SCALE - 2/n, 8)
-        print_text(self.surface, s.NOIR, (x + (n*s.SCALE - tw)/2, y - th - 2), text, self.SMALL_FONT)  # affiche la description
+        print_text(self.surface, s.BLACK, (x + (n * s.SCALE - tw) / 2, y - th - 2), text, self.SMALL_FONT)  # affiche la description
 
     @property
     def info_to_show(self):
         """Renvoie les informations à afficher sur la fenêtre : horloge, nombre d'images, vitesse..."""
-        return f"t = {round(self.t, 2):<7} = {round(self.t//60):>02}m{round(self.t) % 60:02}s | vitesse = ×{self.speed if self.speed != int(self.speed) else int(self.speed):<4} | {'en pause' if self.paused else 'en cours'} | ESPACE : mettre en pause, FLÈCHE DROITE : ralentir, FLÈCHE GAUCHE : accélérer, ENTRER : recentrer"
+        return f"t = {round(self.t, 2):<7} = {round(self.t//60):>02}m{round(self.t) % 60:02}s | vitesse = ×{self.speed if self.speed != int(self.speed) else int(self.speed):<4} | {'en pause' if self.paused else 'en cours'} | ESPACE : mettre en pause, FLÈCHE DROITE/HAUT : accélérer, FLÈCHE GAUCHE/BAS : ralentir, ENTRER : recentrer"
 
     def manage_event(self, event):
         """Gère les conséquences en cas d'un certain évenement pygame (pause, changement de vitesse, déplacement...)."""
@@ -329,6 +329,9 @@ class Simulation:
                 return d + next_road.length, v
 
     def get_bumping_cars(self, car):
+        if not s.USE_BUMPER_ZONES:
+            return []
+
         bumping_cars = []
 
         for road in self.roads:

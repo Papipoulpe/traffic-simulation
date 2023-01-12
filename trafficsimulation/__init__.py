@@ -1,4 +1,10 @@
 from .simulation import Simulation
-from .objets import CarFactory, TrafficLight
+from .components import CarFactory, TrafficLight
 
-print("\nBienvenue sur Traffic Simulation !\n\nESPACE : mettre en pause, FLÈCHE DROITE : ralentir, FLÈCHE GAUCHE : accélérer, ENTRER : recentrer")
+greetings = """
+Bienvenue sur Traffic Simulation !
+
+ESPACE : mettre en pause, FLÈCHE DROITE/HAUT : accélérer, FLÈCHE GAUCHE/BAS : ralentir, ENTRER : recentrer
+"""
+
+print(greetings)

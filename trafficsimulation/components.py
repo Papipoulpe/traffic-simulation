@@ -164,7 +164,7 @@ class Car:
         """
         if self.bumping_cars:
             n = len(self.bumping_cars)
-            d_avg = sum(car.d for car in self.bumping_cars)/n
+            d_avg = sum(length((self.x, self.y), (car.x, car.y)) for car in self.bumping_cars)/n
             v_avg = sum(car.v for car in self.bumping_cars)/n
             leader_coords = d_avg, v_avg
 
@@ -238,7 +238,7 @@ class TrafficLight:
             self.state = 0
 
     @property
-    def fake_car(self):
+    def dummy_car(self):
         """Renvoie une fausse voiture, qui fera ralentir la première voiture de la route selon la couleur du feu."""
         if self.state == 0:  # si feu rouge
             fake_car = Car(0, 0, 0, 0, (0, 0, 0), None)
@@ -281,17 +281,13 @@ class Road:
             endx + vnx, endy + vny)  # coordonnées des coins, pour l'affichage
         self.angle = angle_of_vect(self.vd)  # angle de la route par rapport à l'axe des abscisses
 
-        if car_factory is None:
-            self.car_factory = CarFactory()
-        else:
-            self.car_factory = car_factory
-
         self.cars: list[Car] = []  # liste des voitures appartenant à la route
         self.v_max = s.V_MAX  # vitesse limite de la route
 
         self.car_sorter = CarSorter()
-
-        self.traffic_light: TrafficLight = self.new_traffic_light(traffic_light)
+        self.car_factory = self.init_car_factory(car_factory)
+        self.arrows_coords = self.init_arrows_coords()
+        self.traffic_light = self.init_traffic_light(traffic_light)
 
     def __repr__(self):
         return f"Road(id={self.id}, start={self.start}, end={self.end}, color={closest_color(self.color)})"
@@ -299,14 +295,7 @@ class Road:
     def __eq__(self, other_car):
         return self.id == other_car.id
 
-    def dist_to_pos(self, d):
-        """Renvoie les coordonnées d'un objet à une distance ``d`` du début le la route."""
-        startx, starty = self.start
-        vdx, vdy = self.vd
-        return startx + vdx * d, starty + vdy * d
-
-    @property
-    def arrows_coords(self):
+    def init_arrows_coords(self):
         """Renvoie les coordonnées des flèches de la route."""
         if not self.with_arrows:
             return []
@@ -317,6 +306,31 @@ class Road:
             x, y = self.dist_to_pos((i + 0.5) * rarete)  # "+ O.5" pour centrer les flèches sur la longueur
             arrows.append((x, y, self.angle))
         return arrows
+
+    @staticmethod
+    def init_car_factory(car_factory):
+        if car_factory is None:
+            return CarFactory()
+        else:
+            return car_factory
+
+    def init_traffic_light(self, traffic_light):
+        """Initialise le feu de signalisation de la route."""
+        if traffic_light is None:
+            return TrafficLight(state_init=2, static=True)
+        else:
+            traffic_light.road = self
+            vnx, vny = vect_norm(self.vd, self.width / 2)
+            x1, y1 = self.dist_to_pos(self.length)
+            x2, y2 = self.dist_to_pos(self.length - traffic_light.width)
+            traffic_light.coins = (x1 + vnx, y1 + vny), (x1 - vnx, y1 - vny), (x2 - vnx, y2 - vny), (x2 + vnx, y2 + vny)
+            return traffic_light
+
+    def dist_to_pos(self, d):
+        """Renvoie les coordonnées d'un objet à une distance ``d`` du début de la route."""
+        startx, starty = self.start
+        vdx, vdy = self.vd
+        return startx + vdx * d, starty + vdy * d
 
     def update_cars(self, dt, leader_coords):
         """
@@ -329,8 +343,8 @@ class Road:
             if index > 0:  # pour toutes les voitures sauf la première, donner la voiture devant
                 leading_car = self.cars[index - 1]
                 leading_car_coords = leading_car.d, leading_car.v
-            elif self.traffic_light.fake_car:  # si le feu est rouge, donner la fake_car du feu
-                leading_car = self.traffic_light.fake_car
+            elif self.traffic_light.dummy_car:  # si le feu est rouge, donner la fake_car du feu
+                leading_car = self.traffic_light.dummy_car
                 leading_car_coords = leading_car.d, leading_car.v
             elif leader_coords is not None:  # sinon pour la première voiture, donner la prochaine voiture
                 leading_car_coords = leader_coords[0] + self.length, leader_coords[1]
@@ -353,6 +367,7 @@ class Road:
                 self.cars.remove(car)  # on retire la voiture de la liste des voitures (pas d'impact sur la boucle avec enumerate)
 
     def new_car(self, car: Car):
+        """Ajoute une voiture à la route, qui conservera son ``car.d``."""
         if car is None:
             return
         car.road = self
@@ -360,16 +375,6 @@ class Road:
         car.x, car.y = self.dist_to_pos(car.d)
         car.update_corners()
         self.cars.append(car)
-
-    def new_traffic_light(self, tl: TrafficLight):
-        if tl is None:
-            return TrafficLight(state_init=2, static=True)
-        tl.road = self
-        vnx, vny = vect_norm(self.vd, self.width/2)
-        x1, y1 = self.dist_to_pos(self.length)
-        x2, y2 = self.dist_to_pos(self.length - tl.width)
-        tl.coins = (x1 + vnx, y1 + vny), (x1 - vnx, y1 - vny), (x2 - vnx, y2 - vny), (x2 + vnx, y2 + vny)
-        return tl
 
 
 class SRoad(Road):
