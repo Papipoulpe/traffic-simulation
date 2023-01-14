@@ -1,5 +1,4 @@
-from .maths_and_utils import *
-import trafficsimulation.settings as s
+from .math_and_util import *
 
 
 class CarFactory:
@@ -254,7 +253,7 @@ class TrafficLight:
 
 
 class Road:
-    def __init__(self, start, end, width, color, with_arrows, car_factory, traffic_light, obj_id):
+    def __init__(self, start, end, width, color, with_arrows, car_factory, traffic_light, sensors, obj_id):
         """
         Route droite.
 
@@ -288,6 +287,7 @@ class Road:
         self.car_factory = self.init_car_factory(car_factory)
         self.arrows_coords = self.init_arrows_coords()
         self.traffic_light = self.init_traffic_light(traffic_light)
+        self.sensors = self.init_sensors(sensors)
 
     def __repr__(self):
         return f"Road(id={self.id}, start={self.start}, end={self.end}, color={closest_color(self.color)})"
@@ -326,6 +326,18 @@ class Road:
             traffic_light.coins = (x1 + vnx, y1 + vny), (x1 - vnx, y1 - vny), (x2 - vnx, y2 - vny), (x2 + vnx, y2 + vny)
             return traffic_light
 
+    def init_sensors(self, sensors):
+        if isinstance(sensors, Sensor):
+            sensors = [sensors]
+        elif sensors is None:
+            sensors = []
+
+        for sensor in sensors:
+            sensor.road = self
+            sensor.d = self.length * sensor.perc_d / 100
+
+        return sensors
+
     def dist_to_pos(self, d):
         """Renvoie les coordonnées d'un objet à une distance ``d`` du début de la route."""
         startx, starty = self.start
@@ -337,7 +349,7 @@ class Road:
         Bouge les voitures de la route à leurs positions après dt.
 
         :param dt: durée du mouvement
-        :param leader_coords: distance et vitesse de la voiture leader
+        :param leader_coords: distance et vitesse de la voiture leader de la première voiture de la route
         """
         for index, car in enumerate(self.cars):
             if index > 0:  # pour toutes les voitures sauf la première, donner la voiture devant
@@ -366,6 +378,10 @@ class Road:
                     car.next_road.new_car(car)  # on l'ajoute à la prochaine route si elle existe
                 self.cars.remove(car)  # on retire la voiture de la liste des voitures (pas d'impact sur la boucle avec enumerate)
 
+    def update_sensors(self, t):
+        for sensor in self.sensors:
+            sensor.watch_road(t)
+
     def new_car(self, car: Car):
         """Ajoute une voiture à la route, qui conservera son ``car.d``."""
         if car is None:
@@ -380,7 +396,7 @@ class Road:
 class SRoad(Road):
     def __init__(self, start, end, width, color, obj_id):
         """Sous-route droite composant ArcRoad, dérivant de Road."""
-        super().__init__(start, end, width, color, False, None, None, obj_id)
+        super().__init__(start, end, width, color, False, None, None, None, obj_id)
 
 
 class ArcRoad:
@@ -405,8 +421,15 @@ class ArcRoad:
         self.length = 0
         self.n = n
 
+        self.car_factory = self.init_car_factory(car_factory)
+        self.traffic_light = None
+        self.sensors, self.update_sensors = [], empty_function
+
         intersec = intersection_droites(start, vdstart, end, vdend)
         self.points = bezier_curve(start, intersec, end, n)
+        sroad_length = length(self.points[0], self.points[1])
+        self.length = sroad_length*n
+
         self.sroads = []
         self.sroad_end_to_arcroad_end = {}
         for i in range(n):
@@ -415,21 +438,20 @@ class ArcRoad:
             sroad = SRoad(rstart, rend, width, color, -(n*self.id+i))
             sroad.v_max *= s.ARCROAD_V_MAX_COEFF
             self.sroads.append(sroad)
-            self.length += sroad.length
 
         for index, sroad in enumerate(self.sroads):
             if index < n - 1:
                 sroad.car_sorter = CarSorter(method={self.sroads[index + 1].id: 1})
 
-        if car_factory is None:
-            self.car_factory = CarFactory()
-        else:
-            self.car_factory = car_factory
-
-        self.traffic_light = None
-
     def __repr__(self):
         return f"ArcRoad(id={self.id}, start={self.start}, end={self.end}, color={closest_color(self.color)}, length={self.length}, sroads={self.sroads})"
+
+    @staticmethod
+    def init_car_factory(car_factory):
+        if car_factory is None:
+            return CarFactory()
+        else:
+            return car_factory
 
     @property
     def cars(self):
@@ -459,3 +481,79 @@ class ArcRoad:
         if car is None:
             return
         self.sroads[0].new_car(car)
+
+
+class Sensor:
+    def __init__(self, position: float = 1, attributes_to_monitor: Union[Optional[str], Sequence[Optional[str]]] = ("v", "a"), obj_id=None):
+        """
+        Capteur qui récupère des données de la simulation.
+
+        :param position: pourcentage de la route où sera placé le capteur
+        :param attributes_to_monitor: les attributs des voitures à surveiller, en chaînes de caractères (``v``, ``a``, ``length``, ``width``, ``color``...)
+        """
+        self.id = new_id(self, obj_id)
+        self.atm = self.init_atm(attributes_to_monitor)
+        self.perc_d = position
+        self.corners = ((0, 0), (0, 0), (0, 0), (0, 0))
+
+        self.data = []
+        self.already_seen_cars_id = []
+
+        self.road = None
+        self._d = 0
+
+    def __repr__(self):
+        return f"Sensor(id={self.id}, perc_d={self.perc_d}, atm={self.atm})"
+
+    @staticmethod
+    def init_atm(atm):
+        if isinstance(atm, str):
+            return [atm]
+        elif atm is None:
+            return []
+        else:
+            return list(atm)
+
+    @property
+    def d(self):
+        return self._d
+
+    @d.setter
+    def d(self, d):
+        self._d = d
+        vnx_w, vny_w = vect_norm(self.road.vd, self.road.width / 2)
+        vdx, vdy = self.road.vd
+        vdx_l = vdx * s.SENSOR_WIDTH / 2
+        vdy_l = vdy * s.SENSOR_WIDTH / 2
+        x, y = self.road.dist_to_pos(self._d)
+        c1 = x + vnx_w - vdx_l, y + vny_w - vdy_l
+        c2 = x - vnx_w - vdx_l, y - vny_w - vdy_l
+        c3 = x - vnx_w + vdx_l, y - vny_w + vdy_l
+        c4 = x + vnx_w + vdx_l, y + vny_w + vdy_l
+        self.corners = c1, c2, c3, c4
+
+    @property
+    def df(self):
+        return data_frame(data=self.data, columns=["t", "car_id"] + self.atm)
+
+    def watch_car(self, car, t):
+        data_row = [t, car.id]
+        for attr in self.atm:
+            val = car.__getattribute__(attr)
+            if attr in ["v", "a", "width", "length"]:
+                val /= s.SCALE
+            data_row.append(val)
+        self.data.append(data_row)
+        self.already_seen_cars_id.append(car.id)
+
+    def watch_road(self, t):
+        for car in self.road.cars:
+            if car.id not in self.already_seen_cars_id and car.d >= self.d:
+                self.watch_car(car, t)
+
+    @property
+    def results(self):
+        return str(pd.concat([self.df, self.df.describe()]))
+
+    def export(self, file_path, sheet_name):
+        pd.concat([self.df, self.df.describe()]).to_excel(file_path, sheet_name)

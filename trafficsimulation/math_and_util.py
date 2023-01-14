@@ -1,9 +1,11 @@
 import json
 from typing import *
-import numpy as np
-import webcolors
-import trafficsimulation.settings as s
 
+import numpy as np
+import pandas as pd
+import webcolors
+
+import trafficsimulation.settings as s
 
 np.seterr("raise")  # change la gestion des erreurs de maths (division par zéro, racine de réel négatif...)
 
@@ -182,3 +184,7 @@ def is_inside_rectangle(m: Vecteur, rectangle: Sequence[Vecteur]) -> bool:
     ad = d - a
     # M est dans ABCD ssi (0 < AM⋅AB < AB⋅AB) et (0 < AM⋅AD < AD⋅AD)
     return 0 <= scalar_product(am, ab) <= scalar_product(ab, ab) and 0 <= scalar_product(am, ad) <= scalar_product(ad, ad)
+
+
+def data_frame(columns, data=None):
+    return pd.DataFrame(data=data, columns=columns)

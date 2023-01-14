@@ -28,7 +28,7 @@ def draw_polygon(surface: pygame.Surface, color: Couleur, points: Sequence[Vecte
 
 def draw_rect(surface: pygame.Surface, color: Couleur, up_left_corner: Vecteur, width: float, heigth: float, off_set: Vecteur = (0, 0)):
     """
-    Dessine un rectange.
+    Dessine un rectangle, sans rotation.
 
     :param surface: surface sur laquelle dessiner
     :param color: couleur du rectangle

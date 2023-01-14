@@ -1,5 +1,5 @@
 from .simulation import Simulation
-from .components import CarFactory, TrafficLight
+from .components import CarFactory, TrafficLight, Sensor
 
 greetings = """
 Bienvenue sur Traffic Simulation !

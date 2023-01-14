@@ -1,7 +1,7 @@
 import traceback
+
 from .components import *
 from .drawing import *
-import trafficsimulation.settings as s
 
 
 class Simulation:
@@ -14,6 +14,7 @@ class Simulation:
         :param height: hauteur de la fenêtre, en pixels
         """
         self.id = new_id(self, 0)
+        self.title = win_title
         self.size = width, height  # taille de la fenêtre
         self.t = 0.0  # suivi du temps
         self.FPS = s.FPS  # images par seconde
@@ -57,6 +58,8 @@ class Simulation:
                 for road in self.roads:
                     for car in road.cars:
                         self.show_car(car)  # affichage des voitures de la route
+                    for sensor in road.sensors:
+                        self.show_sensor(sensor)
                     self.show_traffic_light(road.traffic_light)
                 self.show_info(self.info_to_show)  # affiche les informations
                 pygame.display.flip()  # actualisation de la fenêtre
@@ -69,12 +72,18 @@ class Simulation:
                     self.show_car(car)
                     car.bumping_cars = self.get_bumping_cars(car)
 
+                # affiche les capteurs
+                for sensor in road.sensors:
+                    self.show_sensor(sensor)
+
                 if road.traffic_light is not None:
-                    road.traffic_light.update(t=self.t)  # actualisation de l'éventuel feu de la route
                     self.show_traffic_light(road.traffic_light)  # affichage du feu
 
-                # actualisation des coordonnées des voitures de la route
+                # actualisation des coordonnées des voitures de la route, des capteur et du feu
                 road.update_cars(dt=self.speed_ajusted_dt, leader_coords=self.get_leader_coords(road))
+
+                # actualise les capteurs
+                road.update_sensors(self.t)
 
                 # éventuelle création d'une nouvelle voiture au début de la route
                 args_crea = {"t": self.t}
@@ -89,24 +98,36 @@ class Simulation:
 
         self.print_simulation_info()  # afficher les informations quand on quitte
 
+        if s.SENSOR_PRINT_RES_AT_END or s.SENSOR_EXPORT_RES_AT_END:
+            for road in self.roads:
+                for sensor in road.sensors:
+                    if s.SENSOR_PRINT_RES_AT_END:
+                        self.print_sensor_results(sensor)
+                    if s.SENSOR_EXPORT_RES_AT_END:
+                        self.export_sensor_results(sensor)
+
     def start(self):
-        """Ouvre une fenêtre et lance la simulation, affiche l'état de la simulation en cas d'erreur."""
+        """Ouvre une fenêtre et lance la simulation, protégé en cas d'erreur."""
         try:
             self.start_loop()
         except Exception as exeption:
-            if s.SHOW_LOGS:
+            if s.SHOW_DETAILED_LOGS:
                 self.print_simulation_info()
-                print(f"\n*** Erreur : {exeption} ***\n\n{traceback.format_exc()}")
+            if s.SHOW_ERRORS:
+                print(f"\n{s.TXT_RED}*** Erreur : {exeption} ***\n\n{traceback.format_exc()}{s.TXT_RESET}")
 
     def print_simulation_info(self):
         """Affiche l'ensemble des objects et leurs principaux attributs dans la sortie standard."""
-        if s.SHOW_LOGS:
-            print(f"\n--- Simulation Infos ---\n\n{self.size = }\n{self.t = }\n{self.FPS = }\n{self.dt = }\n{self.speed = }\n{self.speed_ajusted_dt = }\n{self.paused = }\n{self.over = }\n{self.dragging = }\n{self.off_set = }\n{self.road_graph = }\n")
+        if s.SHOW_DETAILED_LOGS:
+            print(f"{s.TXT_BOLD}\n--- Simulation Infos ---{s.TXT_RESET}\n\n{self.size = }\n{self.t = }\n{self.FPS = }\n{self.dt = }\n{self.speed = }\n{self.speed_ajusted_dt = }\n{self.paused = }\n{self.over = }\n{self.dragging = }\n{self.off_set = }\n{self.road_graph = }\n")
             for road in self.roads:
                 print(f"\n{road} :\n    TrafficLight : {road.traffic_light}\n    Cars :")
                 for car in road.cars:
                     print(f"        {car}")
-                print(f"    CarFactory : {road.car_factory}\n    CarSorter : {road.car_sorter}")
+                print("    Sensors :")
+                for sensor in road.sensors:
+                    print(f"        {sensor}")
+                print(f"    CarFactory : {road.car_factory}\n    CarSorter : {road.car_sorter}\n")
 
     def show_info(self, info):
         """Affiche des informations en haut à gauche de la fenêtre et l'échelle si besoin."""
@@ -148,6 +169,13 @@ class Simulation:
                 self.paused = not self.paused
                 if self.paused:  # si on passe de en cours à en pause, afficher les infos
                     self.print_simulation_info()
+                    if s.SENSOR_PRINT_RES_AT_PAUSE or s.SENSOR_EXPORT_RES_AT_PAUSE:
+                        for road in self.roads:
+                            for sensor in road.sensors:
+                                if s.SENSOR_PRINT_RES_AT_PAUSE:
+                                    self.print_sensor_results(sensor)
+                                if s.SENSOR_EXPORT_RES_AT_PAUSE:
+                                    self.export_sensor_results(sensor)
             elif event.key in (pygame.K_LEFT, pygame.K_DOWN) and self.speed >= max(0.5, s.MIN_SPEED * 2):
                 # si l'utilisateur appuie sur la flèche gauche ou bas, ralentir jusqu'à 0.25
                 self.speed = round(self.speed / 2, 2)
@@ -228,6 +256,19 @@ class Simulation:
             color = {0: s.TL_RED, 1: s.TL_ORANGE, 2: s.TL_GREEN}[traffic_light.state]
             draw_polygon(self.surface, color, traffic_light.coins, self.off_set)
 
+    def show_sensor(self, sensor):
+        draw_polygon(self.surface, s.SENSOR_COLOR, sensor.corners, self.off_set)
+
+    def print_sensor_results(self, sensor):
+        if sensor.results.strip():
+            text = f"{s.TXT_BOLD}At t={round(self.t, 2)}s, {sensor} on Road(id={sensor.road.id}) {s.TXT_RESET}:\n{sensor.results}\n"
+            print(text)
+
+    def export_sensor_results(self, sensor):
+        file_name = f"{self.title}_sensor{sensor.id}.xlsx"
+        sheet_name = f"Capteur {sensor.id} de la simulation {self.title} de durée {round(self.t, 2)}s"
+        sensor.export(file_path=s.SENSOR_EXPORTS_DIRECTORY + file_name, sheet_name=sheet_name)
+
     def create_road(self, **kw):
         """Créer une route."""
         start, end, vdstart, vdend, car_factory, color, w, obj_id = kw.get("start", (0, 0)), kw.get("end", (0, 0)), kw.get("vdstart"), kw.get("vdend"), kw.get("car_factory"), kw.get("color", s.ROAD_COLOR), kw.get("width", s.ROAD_WIDTH), kw.get("id")
@@ -240,8 +281,8 @@ class Simulation:
             end = rend.start
             vdend = rend.vd
         if kw["type"] == "road":  # si on crée une route droite
-            traffic_light, wa = kw.get("traffic_light"), kw.get("with_arrows", True)
-            road = Road(start, end, width=w, color=color, with_arrows=wa, car_factory=car_factory, traffic_light=traffic_light, obj_id=obj_id)
+            traffic_light, wa, sensors = kw.get("traffic_light"), kw.get("with_arrows", True), kw.get("sensors")
+            road = Road(start, end, width=w, color=color, with_arrows=wa, car_factory=car_factory, traffic_light=traffic_light, sensors=sensors, obj_id=obj_id)
         else:  # si on crée une route courbée
             n = kw.get("n", s.ARCROAD_NUM_OF_SROAD)
             road = ArcRoad(start, end, vdstart, vdend, n, width=w, color=color, car_factory=car_factory, obj_id=obj_id)

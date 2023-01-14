@@ -2,7 +2,8 @@ from .ressources import *
 
 # Simulation
 
-SHOW_LOGS = False  # si on affiche les détails de la simulation et les erreurs quand on passe en pause, quand le programme est quitté ou se plante
+SHOW_DETAILED_LOGS = True  # si on affiche les détails de la simulation quand on passe en pause, quand le programme est quitté ou se plante
+SHOW_ERRORS = True  # si on affiche les erruers quand le programme se plante
 BACKGROUND_COLOR = BLUE2_BG  # couleur de l'arrière plan de la fenêtre
 INFO_BACKGROUND_COLOR = BLUE2_TXT_BG  # couleur de l'arrière plan du texte
 FPS = 60  # Hz, images par secondes de la simulation
@@ -69,11 +70,21 @@ TL_ORANGE = ORANGE_TL  # couleur du feu orange
 TL_GREEN = GREEN_TL  # couleur du feu vert
 TL_ORANGE_SLOW_DOWN_COEFF = 0.5  # coefficient de ralentissement du feu orange, un coefficient plus grand ralentit plus
 
+# Capteurs
+
+SENSOR_EXPORTS_DIRECTORY = "exemples/results/"
+SENSOR_PRINT_RES_AT_PAUSE = True  # si les capteurs affichent leurs résulats à chaque mise en pause
+SENSOR_EXPORT_RES_AT_PAUSE = False  # les les capteurs exportent leurs résulats à chaque mise en pause
+SENSOR_PRINT_RES_AT_END = True  # si les capteurs affichent leurs résulats à la fin de la simulation
+SENSOR_EXPORT_RES_AT_END = True  # si les capteurs exportent leurs résulats à la fin de la simulation
+SENSOR_COLOR = SENSOR_PURPLE  # couleur du trait représentant un capteur
+SENSOR_WIDTH = 3  # largeur du trait représentant un capteur
+
 # Mise à l'échelle et finitions
 
 ROAD_WIDTH, CAR_A, CAR_WIDTH, CAR_LENGTH, CAR_RAND_WIDTH_MAX, CAR_RAND_WIDTH_MIN, CAR_RAND_LENGTH_MAX, CAR_RAND_LENGTH_MIN, DELTA_D_MIN, V_MAX, A_MAX, A_MIN = ROAD_WIDTH * SCALE, CAR_A * SCALE, CAR_WIDTH * SCALE, CAR_LENGTH * SCALE, CAR_RAND_WIDTH_MAX * SCALE, CAR_RAND_WIDTH_MIN * SCALE, CAR_RAND_LENGTH_MAX * SCALE, CAR_RAND_LENGTH_MIN * SCALE, DELTA_D_MIN * SCALE, V_MAX * SCALE, A_MAX * SCALE, A_MIN * SCALE
 
-if CAR_V:
+if CAR_V is not None:
     CAR_V *= SCALE
 else:
     CAR_V = V_MAX

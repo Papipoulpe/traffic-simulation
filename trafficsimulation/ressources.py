@@ -1,6 +1,12 @@
+from colorama import Fore, Style
+
+
 FONT_PATH = "trafficsimulation/ressources/jbmono.ttf"
 ARROW_PATH = "trafficsimulation/ressources/arrow.png"
-SETTINGS_PATH = ".settings"
+
+TXT_RED = Fore.RED
+TXT_BOLD = Style.BRIGHT
+TXT_RESET = Style.RESET_ALL
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -21,6 +27,8 @@ BLUE_GRAY_ROAD = (207, 216, 220)
 
 BLUE_GREEN_CAR = (143, 188, 143)
 
-RED_TL = (255, 0, 0)
-ORANGE_TL = (255, 129, 0)
-GREEN_TL = (0, 255, 0)
+RED_TL = (221, 44, 0)
+ORANGE_TL = (255, 145, 0)
+GREEN_TL = (100, 221, 23)
+
+SENSOR_PURPLE = (124, 77, 255)

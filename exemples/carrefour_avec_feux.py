@@ -1,9 +1,9 @@
-from trafficsimulation import Simulation, CarFactory, TrafficLight
+from trafficsimulation import Simulation, CarFactory, TrafficLight, Sensor
 
 
 sim = Simulation("Carrefour avec feux", 1440, 820)
 
-road_list = [{"id": 1, "type": "road", "start": (-60, 440), "end": (650, 440),  # routes de gauche
+road_list = [{"id": 1, "type": "road", "start": (-60, 440), "end": (650, 440), "sensors": Sensor(50),  # routes de gauche
               "car_factory": CarFactory(["rand_color"], [1, 4.5]), "traffic_light": TrafficLight(0)},
              {"id": 2, "type": "road", "start": (650, 400), "end": (-60, 400)},
 
