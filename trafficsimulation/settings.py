@@ -37,6 +37,7 @@ CAR_V = None  # m/s, vitesse par défaut des voitures (50 km/h = 13.9 m/s, 30 km
 CAR_WIDTH = 1.8  # m, largeur par défaut des voitures
 CAR_LENGTH = 3  # m, longueur par défaut des voitures
 CAR_COLOR = BLUE_GREEN_CAR  # couleur par défaut des voitures
+CAR_SPEED_CODED_COLOR = True  # si la couleur des voitures représente leurs vitesses (de rouge = lent à bleu = rapide)
 CAR_SHOW_BUMPER_BOXES = False  # si on affiche des zones de collision des voitures
 CAR_SHOW_ARROW = False  # si on affiche la direction de chaque voiture sur son toit
 CAR_SHOW_ID = False  # si on affiche l'id de chaque voiture sur son toit

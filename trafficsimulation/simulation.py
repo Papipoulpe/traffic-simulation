@@ -215,7 +215,12 @@ class Simulation:
             draw_polygon(self.surface, side_bumper_color, car.side_bumper_hurtbox)
             draw_polygon(self.surface, front_bumper_color, car.front_bumper_hitbox)
 
-        draw_polygon(self.surface, car.color, car.corners, self.off_set)  # affiche le rectangle qui représente la voiture
+        if s.CAR_SPEED_CODED_COLOR:  # si la couleur de la voiture dépend de sa vitesse
+            car_color = blue_red_gradient(car.v/s.V_MAX)
+        else:
+            car_color = car.color
+
+        draw_polygon(self.surface, car_color, car.corners, self.off_set)  # affiche le rectangle qui représente la voiture
 
         if s.CAR_SHOW_ARROW:  # si on affiche la direction de la voiture
             rotated_arrow = pygame.transform.rotate(self.CAR_ARROW, car.road.angle)

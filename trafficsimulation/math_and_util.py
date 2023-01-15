@@ -31,19 +31,19 @@ def get_by_id(obj_id: int) -> Any:
     return ids[obj_id]
 
 
-def length(point1: Vecteur, point2: Vecteur) -> float:
-    """Longueur point1-point2."""
-    x1, y1 = point1
-    x2, y2 = point2
+def length(p1: Vecteur, p2: Vecteur) -> float:
+    """Renvoie la longueur du segment ``[p1p2]``."""
+    x1, y1 = p1
+    x2, y2 = p2
     return np.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2))
 
 
-def vect_dir(start: Vecteur, end: Vecteur) -> Vecteur:
-    """Renvoyer le vecteur directeur normé d'une droite."""
-    x1, y1 = start
-    x2, y2 = end
+def direction_vector(p1: Vecteur, p2: Vecteur) -> Vecteur:
+    """Renvoie le vecteur directeur normé de la droite ``(p1p2)``."""
+    x1, y1 = p1
+    x2, y2 = p2
     a, b = x2 - x1, y2 - y1
-    n = norme((a, b))
+    n = norm((a, b))
     return a / n, b / n
 
 
@@ -54,21 +54,21 @@ def scalar_product(u: Vecteur, v: Vecteur) -> float:
     return x1 * x2 + y1 * y2
 
 
-def norme(v: Vecteur) -> float:
-    """Renvoie la norme ``|v|``."""
+def norm(v: Vecteur) -> float:
+    """Renvoie la norme ``||v||``."""
     return np.sqrt(scalar_product(v, v))
 
 
-def vect_norm(vecteur: Vecteur, nouv_norme: float = 1) -> Vecteur:
-    """Vecteur normal et normé à un autre vecteur."""
-    a, b = vecteur
-    coeff = nouv_norme / norme(vecteur)
+def normal_vector(v: Vecteur, nouv_norme: float = 1) -> Vecteur:
+    """Vecteur normal au vecteur ``v``, éventuellement renormé."""
+    a, b = v
+    coeff = nouv_norme / norm(v)
     return -b * coeff, a * coeff
 
 
-def angle_of_vect(vect: Vecteur) -> float:
-    """Angle du vecteur, en degrés."""
-    a, b = vect
+def angle_of_vect(v: Vecteur) -> float:
+    """Angle du vecteur ``v`` avec l'axe des abscisses, en degrés."""
+    a, b = v
     return -float(np.angle([a + 1j * b], deg=True))
 
 
@@ -86,12 +86,7 @@ def rec_round(obj: Union[Iterable, float], prec: Optional[int] = None) -> Union[
 
 
 def parse(string: str) -> dict:
-    """
-    String to dict
-
-    :param string: string to parse
-    :return: dict
-    """
+    """Chaîne de caractères -> dictionnaire."""
     return json.loads(string.replace("'", '"'))
 
 
@@ -109,7 +104,6 @@ def update_taylor_protected(car, dt: float):
 
 def idm(car, leader_coords: Optional[Vecteur], dt: float):
     """Intelligent Driver Model. Calcule l'accélération idéale de la voiture."""
-
     if leader_coords:  # si on a un leader
         lead_d, lead_v = leader_coords
         delta_d = lead_d - (car.d + car.length)
@@ -154,7 +148,7 @@ def bezier_curve(p1: Vecteur, p2: Vecteur, p3: Vecteur, n: int) -> list[Vecteur]
 
 
 def closest_color(requested_color: Couleur) -> str:
-    """Renvoie le nom de la couleur correspondante."""
+    """Renvoie le nom anglais de la couleur correspondante."""
     min_colours = {}
     for key, name in webcolors.CSS3_HEX_TO_NAMES.items():
         r_c, g_c, b_c = webcolors.hex_to_rgb(key)
@@ -186,5 +180,10 @@ def is_inside_rectangle(m: Vecteur, rectangle: Sequence[Vecteur]) -> bool:
     return 0 <= scalar_product(am, ab) <= scalar_product(ab, ab) and 0 <= scalar_product(am, ad) <= scalar_product(ad, ad)
 
 
-def data_frame(columns, data=None):
+def data_frame(columns: list[str], data: Any = None) -> pd.DataFrame:
+    """Renvoie une table de données."""
     return pd.DataFrame(data=data, columns=columns)
+
+
+def blue_red_gradient(shade: float):
+    return s.R0GB_GRADIENT[min(round(shade * 79), 79)]

@@ -176,8 +176,8 @@ class Car:
         vdy_l = vdy * self.length / 2
         vdx_ddm = vdx * self.delta_d_min / 4  # on le norme pour la distance de sécurité
         vdy_ddm = vdy * self.delta_d_min / 4
-        vnx_w, vny_w = vect_norm(self.road.vd, self.width / 2)  # vecteur normal de la route normé pour la largeur de la voiture
-        vnx_ddm, vny_ddm = vect_norm(self.road.vd, self.delta_d_min / 2)  # vn normé pour la distance de sécurité
+        vnx_w, vny_w = normal_vector(self.road.vd, self.width / 2)  # vecteur normal de la route normé pour la largeur de la voiture
+        vnx_ddm, vny_ddm = normal_vector(self.road.vd, self.delta_d_min / 2)  # vn normé pour la distance de sécurité
         
         # coins d'affichage
         c1 = self.x + vnx_w - vdx_l, self.y + vny_w - vdy_l
@@ -274,8 +274,8 @@ class Road:
 
         (startx, starty), (endx, endy) = self.start, self.end
         self.length = length(start, end)
-        self.vd = vect_dir(self.start, self.end)  # vecteur directeur de la route, normé
-        vnx, vny = vect_norm(self.vd, self.width / 2)  # vecteur normal pour les coord des coins
+        self.vd = direction_vector(self.start, self.end)  # vecteur directeur de la route, normé
+        vnx, vny = normal_vector(self.vd, self.width / 2)  # vecteur normal pour les coord des coins
         self.coins = (startx + vnx, starty + vny), (startx - vnx, starty - vny), (endx - vnx, endy - vny), (
             endx + vnx, endy + vny)  # coordonnées des coins, pour l'affichage
         self.angle = angle_of_vect(self.vd)  # angle de la route par rapport à l'axe des abscisses
@@ -320,7 +320,7 @@ class Road:
             return TrafficLight(state_init=2, static=True)
         else:
             traffic_light.road = self
-            vnx, vny = vect_norm(self.vd, self.width / 2)
+            vnx, vny = normal_vector(self.vd, self.width / 2)
             x1, y1 = self.dist_to_pos(self.length)
             x2, y2 = self.dist_to_pos(self.length - traffic_light.width)
             traffic_light.coins = (x1 + vnx, y1 + vny), (x1 - vnx, y1 - vny), (x2 - vnx, y2 - vny), (x2 + vnx, y2 + vny)
@@ -521,7 +521,7 @@ class Sensor:
     @d.setter
     def d(self, d):
         self._d = d
-        vnx_w, vny_w = vect_norm(self.road.vd, self.road.width / 2)
+        vnx_w, vny_w = normal_vector(self.road.vd, self.road.width / 2)
         vdx, vdy = self.road.vd
         vdx_l = vdx * s.SENSOR_WIDTH / 2
         vdy_l = vdy * s.SENSOR_WIDTH / 2
