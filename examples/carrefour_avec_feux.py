@@ -1,4 +1,4 @@
-from trafficsimulation import Simulation, CarFactory, TrafficLight, Sensor
+from traffsimpy import Simulation, CarFactory, TrafficLight, Sensor
 
 
 sim = Simulation("Carrefour avec feux", 1440, 820)

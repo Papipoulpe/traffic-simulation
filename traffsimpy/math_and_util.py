@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import webcolors
 
-import trafficsimulation.settings as s
+import traffsimpy.settings as s
 
 np.seterr("raise")  # change la gestion des erreurs de maths (division par zéro, racine de réel négatif...)
 
@@ -186,4 +186,4 @@ def data_frame(columns: list[str], data: Any = None) -> pd.DataFrame:
 
 
 def blue_red_gradient(shade: float):
-    return s.R0GB_GRADIENT[min(round(shade * 79), 79)]
+    return s.ROGB_GRADIENT[min(round(shade * 79), 79)]

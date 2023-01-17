@@ -1,4 +1,4 @@
-from trafficsimulation import Simulation, CarFactory, Sensor
+from traffsimpy import Simulation, CarFactory, Sensor
 
 
 sim = Simulation("Carrefour", 1440, 820)
@@ -45,4 +45,4 @@ sim.set_road_graph(road_graph)
 
 sim.start(30)
 
-sim.plot_sensors_results()
+sim.export_sensors_results()
