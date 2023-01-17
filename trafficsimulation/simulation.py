@@ -1,4 +1,6 @@
 import traceback
+from time import time
+from matplotlib import pyplot as plt
 
 from .components import *
 from .drawing import *
@@ -44,7 +46,7 @@ class Simulation:
         self.dragging = False  # si l'utilisateur est en train de bouger la simulation
         self.mouse_last = (0, 0)  # dernière coordonnées de la souris
 
-    def start_loop(self):
+    def start_loop(self, duration):
         """Ouvre une fenêtre et lance la simulation."""
         while not self.over:  # tant que la simulation n'est pas terminée
             for event in pygame.event.get():  # on regarde les dernières actions de l'utilisateur
@@ -95,21 +97,17 @@ class Simulation:
             self.show_info(self.info_to_show)  # affiche les informations
             pygame.display.flip()  # actualisation de la fenêtre
             self.clock.tick(self.FPS)  # pause d'une durée dt
+            self.over = self.t >= duration
 
         self.print_simulation_info()  # afficher les informations quand on quitte
 
-        if s.SENSOR_PRINT_RES_AT_END or s.SENSOR_EXPORT_RES_AT_END:
-            for road in self.roads:
-                for sensor in road.sensors:
-                    if s.SENSOR_PRINT_RES_AT_END:
-                        self.print_sensor_results(sensor)
-                    if s.SENSOR_EXPORT_RES_AT_END:
-                        self.export_sensor_results(sensor)
-
-    def start(self):
+    def start(self, duration=float("inf")):
         """Ouvre une fenêtre et lance la simulation, protégé en cas d'erreur."""
         try:
-            self.start_loop()
+            starting_time = time()
+            self.start_loop(duration)
+            real_duration = time() - starting_time
+            print(f"Simulation terminée au bout de {real_duration}s, soit une vitesse de {round(duration/real_duration, 2)}.")
         except Exception as exeption:
             if s.SHOW_DETAILED_LOGS:
                 self.print_simulation_info()
@@ -273,6 +271,31 @@ class Simulation:
         file_name = f"{self.title}_sensor{sensor.id}.xlsx"
         sheet_name = f"Capteur {sensor.id} de la simulation {self.title} de durée {round(self.t, 2)}s"
         sensor.export(file_path=s.SENSOR_EXPORTS_DIRECTORY + file_name, sheet_name=sheet_name)
+
+    def export_sensors_results(self, *sensors_id):
+        if not sensors_id:
+            for road in self.roads:
+                for sensor in road.sensors:
+                    self.export_sensor_results(sensor)
+        else:
+            for sensor_id in sensors_id:
+                sensor = get_by_id(sensor_id)
+                self.export_sensor_results(sensor)
+
+    def plot_sensors_results(self, *sensors_id):
+        if not sensors_id:
+            for road in self.roads:
+                for sensor in road.sensors:
+                    sensor.plot()
+        else:
+            for sensor_id in sensors_id:
+                if isinstance(sensor_id, int):
+                    get_by_id(sensor_id).plot()
+                else:
+                    s_id, x = sensor_id
+                    get_by_id(s_id).plot(x)
+
+        plt.show()
 
     def create_road(self, **kw):
         """Créer une route."""

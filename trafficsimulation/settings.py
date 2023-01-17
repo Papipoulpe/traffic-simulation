@@ -2,7 +2,7 @@ from .ressources import *
 
 # Simulation
 
-SHOW_DETAILED_LOGS = True  # si on affiche les détails de la simulation quand on passe en pause, quand le programme est quitté ou se plante
+SHOW_DETAILED_LOGS = False  # si on affiche les détails de la simulation quand on passe en pause, quand le programme est quitté ou se plante
 SHOW_ERRORS = True  # si on affiche les erruers quand le programme se plante
 BACKGROUND_COLOR = BLUE2_BG  # couleur de l'arrière plan de la fenêtre
 INFO_BACKGROUND_COLOR = BLUE2_TXT_BG  # couleur de l'arrière plan du texte
@@ -38,7 +38,7 @@ CAR_WIDTH = 1.8  # m, largeur par défaut des voitures
 CAR_LENGTH = 3  # m, longueur par défaut des voitures
 CAR_COLOR = BLUE_GREEN_CAR  # couleur par défaut des voitures
 CAR_SPEED_CODED_COLOR = True  # si la couleur des voitures représente leurs vitesses (de rouge = lent à bleu = rapide)
-CAR_SHOW_BUMPER_BOXES = False  # si on affiche des zones de collision des voitures
+CAR_SHOW_BUMPER_BOXES = True  # si on affiche des zones de collision des voitures
 CAR_SHOW_ARROW = False  # si on affiche la direction de chaque voiture sur son toit
 CAR_SHOW_ID = False  # si on affiche l'id de chaque voiture sur son toit
 CAR_SHOW_SPEED_MS = False  # si on affiche la vitesse de chaque voiture sur son toit en m/s
@@ -76,8 +76,6 @@ TL_ORANGE_SLOW_DOWN_COEFF = 0.5  # coefficient de ralentissement du feu orange, 
 SENSOR_EXPORTS_DIRECTORY = "exemples/results/"
 SENSOR_PRINT_RES_AT_PAUSE = True  # si les capteurs affichent leurs résulats à chaque mise en pause
 SENSOR_EXPORT_RES_AT_PAUSE = False  # les les capteurs exportent leurs résulats à chaque mise en pause
-SENSOR_PRINT_RES_AT_END = True  # si les capteurs affichent leurs résulats à la fin de la simulation
-SENSOR_EXPORT_RES_AT_END = True  # si les capteurs exportent leurs résulats à la fin de la simulation
 SENSOR_COLOR = SENSOR_PURPLE  # couleur du trait représentant un capteur
 SENSOR_WIDTH = 3  # largeur du trait représentant un capteur
 

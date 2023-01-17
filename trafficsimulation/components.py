@@ -334,7 +334,7 @@ class Road:
 
         for sensor in sensors:
             sensor.road = self
-            sensor.d = self.length * sensor.perc_d / 100
+            sensor.d = self.length * sensor.position / 100
 
         return sensors
 
@@ -493,7 +493,7 @@ class Sensor:
         """
         self.id = new_id(self, obj_id)
         self.atm = self.init_atm(attributes_to_monitor)
-        self.perc_d = position
+        self.position = position
         self.corners = ((0, 0), (0, 0), (0, 0), (0, 0))
 
         self.data = []
@@ -503,7 +503,7 @@ class Sensor:
         self._d = 0
 
     def __repr__(self):
-        return f"Sensor(id={self.id}, perc_d={self.perc_d}, atm={self.atm})"
+        return f"Sensor(id={self.id}, position={self.position}, atm={self.atm})"
 
     @staticmethod
     def init_atm(atm):
@@ -557,3 +557,7 @@ class Sensor:
 
     def export(self, file_path, sheet_name):
         pd.concat([self.df, self.df.describe()]).to_excel(file_path, sheet_name)
+
+    def plot(self, x="t"):
+        df = self.df
+        df.loc[:, df.columns != "car_id"].plot(x=x)
