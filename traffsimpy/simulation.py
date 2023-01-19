@@ -1,22 +1,25 @@
 import traceback
-from time import time
+from time import time, strftime
+
+import pygame.event
 from matplotlib import pyplot as plt
 
 from .components import *
 from .drawing import *
+from .ressources import *
 
 
 class Simulation:
-    def __init__(self, win_title="Traffic Simulation", width=1440, height=820):
+    def __init__(self, win_title: str = "Traffic Simulation", width: int = 1440, height: int = 820):
         """
-        Simulation du traffic.
+        Simulation du trafic.
 
         :param win_title: titre de la fenêtre
-        :param width: targeur de la fenêtre, en pixels
+        :param width: largeur de la fenêtre, en pixels
         :param height: hauteur de la fenêtre, en pixels
         """
         self.id = new_id(self, 0)
-        self.title = win_title
+        self.title = win_title  # titre de la fenêtre
         self.size = width, height  # taille de la fenêtre
         self.t = 0.0  # suivi du temps
         self.FPS = s.FPS  # images par seconde
@@ -27,6 +30,7 @@ class Simulation:
 
         self.roads = []  # liste des routes
         self.road_graph = {}  # graphe des routes
+        self.bumping_zone = ((0, 0), INF)  # zone où get_bumping_cars est utilisé
 
         pygame.init()  # initialisation de pygame
         pygame.display.set_caption(win_title)  # modification du titre de la fenêtre
@@ -46,7 +50,7 @@ class Simulation:
         self.dragging = False  # si l'utilisateur est en train de bouger la simulation
         self.mouse_last = (0, 0)  # dernière coordonnées de la souris
 
-    def start_loop(self, duration):
+    def start_loop(self, duration: float):
         """Ouvre une fenêtre et lance la simulation."""
         while not self.over:  # tant que la simulation n'est pas terminée
             for event in pygame.event.get():  # on regarde les dernières actions de l'utilisateur
@@ -54,6 +58,7 @@ class Simulation:
 
             self.surface.fill(self.bg_color)  # efface tout
 
+            self.show_bumping_zone()  # affiche la zone où les collisionns sont détectées
             self.show_roads(self.roads)  # affiche les routes
 
             if self.paused:  # si en pause
@@ -101,23 +106,23 @@ class Simulation:
 
         self.print_simulation_info()  # afficher les informations quand on quitte
 
-    def start(self, duration=float("inf")):
+    def start(self, duration: float = INF):
         """Ouvre une fenêtre et lance la simulation, protégé en cas d'erreur."""
         try:
             starting_time = time()
             self.start_loop(duration)
             real_duration = time() - starting_time
-            print(f"Simulation terminée au bout de {real_duration}s, soit une vitesse de {round(duration/real_duration, 2)}.")
+            print(f"Simulation {TXT_BOLD + self.title + TXT_RESET} terminée au bout de {real_duration}s, soit une vitesse de {round(duration/real_duration, 2)}.")
         except Exception as exeption:
             if s.SHOW_DETAILED_LOGS:
                 self.print_simulation_info()
             if s.SHOW_ERRORS:
-                print(f"\n{s.TXT_RED}*** Erreur : {exeption} ***\n\n{traceback.format_exc()}{s.TXT_RESET}")
+                print(f"\n{TXT_RED}*** Erreur : {exeption} ***\n\n{traceback.format_exc()}{TXT_RESET}")
 
     def print_simulation_info(self):
         """Affiche l'ensemble des objects et leurs principaux attributs dans la sortie standard."""
         if s.SHOW_DETAILED_LOGS:
-            print(f"{s.TXT_BOLD}\n--- Simulation Infos ---{s.TXT_RESET}\n\n{self.size = }\n{self.t = }\n{self.FPS = }\n{self.dt = }\n{self.speed = }\n{self.speed_ajusted_dt = }\n{self.paused = }\n{self.over = }\n{self.dragging = }\n{self.off_set = }\n{self.road_graph = }\n")
+            print(f"{TXT_BOLD}\n--- Simulation Infos ---{TXT_RESET}\n\n{self.size = }\n{self.t = }\n{self.FPS = }\n{self.dt = }\n{self.speed = }\n{self.speed_ajusted_dt = }\n{self.paused = }\n{self.over = }\n{self.dragging = }\n{self.off_set = }\n{self.road_graph = }\n")
             for road in self.roads:
                 print(f"\n{road} :\n    TrafficLight : {road.traffic_light}\n    Cars :")
                 for car in road.cars:
@@ -127,7 +132,7 @@ class Simulation:
                     print(f"        {sensor}")
                 print(f"    CarFactory : {road.car_factory}\n    CarSorter : {road.car_sorter}\n")
 
-    def show_info(self, info):
+    def show_info(self, info: str):
         """Affiche des informations en haut à gauche de la fenêtre et l'échelle si besoin."""
         text_width, text_height = self.FONT.size(info)
         draw_rect(self.surface, s.INFO_BACKGROUND_COLOR, (0, 0), text_width + 30, text_height + 20)
@@ -143,10 +148,10 @@ class Simulation:
         x, y = 30, h - 40
         text = f"{n * s.SCALE}px = {n}m"
         tw, th = self.FONT.size(text)
-        draw_rect(self.surface, s.BLACK, (x, y), n * s.SCALE, 10)  # affiche la barre de n*SCALE pixels
+        draw_rect(self.surface, BLACK, (x, y), n * s.SCALE, 10)  # affiche la barre de n*SCALE pixels
         for i in range(1, n, 2):  # affiche les graduations
             draw_rect(self.surface, self.bg_color, (x + i*s.SCALE, y + 1), s.SCALE - 2/n, 8)
-        print_text(self.surface, s.BLACK, (x + (n * s.SCALE - tw) / 2, y - th - 2), text, self.SMALL_FONT)  # affiche la description
+        print_text(self.surface, BLACK, (x + (n * s.SCALE - tw) / 2, y - th - 2), text, self.SMALL_FONT)  # affiche la description
 
     @property
     def info_to_show(self):
@@ -167,13 +172,10 @@ class Simulation:
                 self.paused = not self.paused
                 if self.paused:  # si on passe de en cours à en pause, afficher les infos
                     self.print_simulation_info()
-                    if s.SENSOR_PRINT_RES_AT_PAUSE or s.SENSOR_EXPORT_RES_AT_PAUSE:
-                        for road in self.roads:
-                            for sensor in road.sensors:
-                                if s.SENSOR_PRINT_RES_AT_PAUSE:
-                                    self.print_sensor_results(sensor)
-                                if s.SENSOR_EXPORT_RES_AT_PAUSE:
-                                    self.export_sensor_results(sensor)
+                    if s.SENSOR_PRINT_RES_AT_PAUSE:
+                        self.print_sensors_results()
+                    if s.SENSOR_EXPORT_RES_AT_PAUSE:
+                        self.export_sensors_results()
             elif event.key in (pygame.K_LEFT, pygame.K_DOWN) and self.speed >= max(0.5, s.MIN_SPEED * 2):
                 # si l'utilisateur appuie sur la flèche gauche ou bas, ralentir jusqu'à 0.25
                 self.speed = round(self.speed / 2, 2)
@@ -239,7 +241,7 @@ class Simulation:
             y = car.y - text_height / 2
             print_text(self.surface, s.FONT_COLOR, (x, y), text, self.SMALL_FONT, off_set=self.off_set)
 
-    def show_roads(self, road_list):
+    def show_roads(self, road_list: Sequence[Union[Road, ArcRoad]]):
         """Affiche des routes."""
         for road in road_list:
             if isinstance(road, Road):
@@ -253,34 +255,44 @@ class Simulation:
             elif isinstance(road, ArcRoad):
                 self.show_roads(road.sroads)
 
-    def show_traffic_light(self, traffic_light):
+    def show_traffic_light(self, traffic_light: TrafficLight):
         """Affiche les feux de signalisations."""
         if traffic_light is not None and not traffic_light.static:
             color = {0: s.TL_RED, 1: s.TL_ORANGE, 2: s.TL_GREEN}[traffic_light.state]
             draw_polygon(self.surface, color, traffic_light.coins, self.off_set)
 
-    def show_sensor(self, sensor):
+    def show_sensor(self, sensor: Sensor):
         draw_polygon(self.surface, s.SENSOR_COLOR, sensor.corners, self.off_set)
 
-    def print_sensor_results(self, sensor):
+    def print_sensor_results(self, sensor: Sensor):
         if sensor.results.strip():
-            text = f"{s.TXT_BOLD}At t={round(self.t, 2)}s, {sensor} on Road(id={sensor.road.id}) {s.TXT_RESET}:\n{sensor.results}\n"
+            text = f"{TXT_BOLD}At t={round(self.t, 2)}s, {sensor} on Road(id={sensor.road.id}) {TXT_RESET}:\n{sensor.results}\n"
             print(text)
 
-    def export_sensor_results(self, sensor):
-        file_name = f"{self.title}_sensor{sensor.id}.xlsx"
-        sheet_name = f"Capteur {sensor.id} de la simulation {self.title} de durée {round(self.t, 2)}s"
-        sensor.export(file_path=s.SENSOR_EXPORTS_DIRECTORY + file_name, sheet_name=sheet_name)
-
-    def export_sensors_results(self, *sensors_id):
+    def print_sensors_results(self, *sensors_id):
         if not sensors_id:
             for road in self.roads:
                 for sensor in road.sensors:
-                    self.export_sensor_results(sensor)
+                    self.print_sensor_results(sensor)
         else:
             for sensor_id in sensors_id:
                 sensor = get_by_id(sensor_id)
-                self.export_sensor_results(sensor)
+                self.print_sensor_results(sensor)
+
+    def export_sensor_results(self, sensor: Sensor, describe: bool):
+        file_name = f"{self.title}_capteur{sensor.id}_{strftime('%H%M%S_%d%m%y')}.xlsx"
+        sheet_name = f"{self.title} ({round(self.t, 2)}s) capteur {sensor.id}"
+        sensor.export(file_path=s.SENSOR_EXPORTS_DIRECTORY + file_name, sheet_name=sheet_name, describe=describe)
+
+    def export_sensors_results(self, *sensors_id, describe=True):
+        if not sensors_id:
+            for road in self.roads:
+                for sensor in road.sensors:
+                    self.export_sensor_results(sensor, describe)
+        else:
+            for sensor_id in sensors_id:
+                sensor = get_by_id(sensor_id)
+                self.export_sensor_results(sensor, describe)
 
     def plot_sensors_results(self, *sensors_id):
         if not sensors_id:
@@ -352,7 +364,7 @@ class Simulation:
 
             road.car_sorter = car_sorter
 
-    def get_leader_coords(self, road: Road, avg=s.GET_LEADER_COORDS_METHOD_AVG):
+    def get_leader_coords(self, road: Road, avg: bool = s.GET_LEADER_COORDS_METHOD_AVG):
         """Renvoie la distance et la vitesse d'un éventuel leader de la première voiture de la route.
 
         Si GET_LEADER_COORDS_METHOD_AVG est True, renvoie la moyenne des distances, depuis la fin de la route, et des vitesses des dernières voitures des prochaines routes, pondérée par la probabilité que la première voiture aille sur ces routes.
@@ -397,8 +409,8 @@ class Simulation:
                 d, v = self.get_leader_coords(next_road, avg=True)
                 return d + next_road.length, v
 
-    def get_bumping_cars(self, car):
-        if not s.USE_BUMPER_ZONES:
+    def get_bumping_cars(self, car: Car):
+        if not s.USE_BUMPING_BOXES or not is_inside_circle((car.x, car.y), self.bumping_zone):
             return []
 
         bumping_cars = []
@@ -406,7 +418,20 @@ class Simulation:
         for road in self.roads:
             if road != car.road:
                 for other_car in road.cars:
-                    if car != other_car and car.is_bumping_with(other_car) and car not in other_car.bumping_cars:
+                    if car != other_car \
+                            and car.is_bumping_with(other_car) \
+                            and car not in other_car.bumping_cars \
+                            and not is_inside_circle((other_car.x, other_car.y), self.bumping_zone):
                         bumping_cars.append(other_car)
 
         return bumping_cars
+
+    def set_bumping_zone(self, center: Vecteur, radius: float):
+        self.bumping_zone = (center, radius)
+
+    def show_bumping_zone(self):
+        center, radius = self.bumping_zone
+        if s.SHOW_BUMPING_ZONES and radius < INF:
+            da = lambda color: int(color * 0.9)
+            r, g, b = self.bg_color
+            draw_circle(self.surface, (da(r), da(g), da(b)), center, radius, self.off_set)

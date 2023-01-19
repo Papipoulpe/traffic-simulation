@@ -91,15 +91,15 @@ def parse(string: str) -> dict:
 
 
 def update_taylor(car, dt: float):
-    """Calcule les vecteurs du mouvement avec de simples séries de Taylor"""
+    """Calcule les vecteurs du mouvement avec des séries de Taylor"""
     car.v = car.v + car.a * dt  # dev de taylor ordre 1
     car.d = car.d + car.v * dt + 1 / 2 * car.a * dt * dt  # dev de taylor ordre 2
 
 
 def update_taylor_protected(car, dt: float):
-    """Calcule les vecteurs du mouvement avec de simples séries de Taylor, en évitant v < 0"""
+    """Calcule les vecteurs du mouvement avec des séries de Taylor, en évitant v < 0"""
     car.v = max(car.v + car.a * dt, 0)  # dev de taylor ordre 1, protégé
-    car.d = car.d + max(0, car.v * dt + 1 / 2 * car.a * dt * dt)  # dev de taylor ordre 2
+    car.d = car.d + max(0, car.v * dt + 1 / 2 * car.a * dt * dt)  # dev de taylor ordre 2, protégé
 
 
 def idm(car, leader_coords: Optional[Vecteur], dt: float):
@@ -168,8 +168,8 @@ def get_color_name(requested_color: Couleur) -> str:
     return closest_name
 
 
-def is_inside_rectangle(m: Vecteur, rectangle: Sequence[Vecteur]) -> bool:
-    """Renvoie si le point ``m`` est à l'interieur du rectangle."""
+def is_inside_rectangle(m: Vecteur, rectangle: tuple[Vecteur, Vecteur, Vecteur, Vecteur]) -> bool:
+    """Renvoie si le point ``m`` est à l'intérieur du rectangle, défini par ses quatres sommets."""
     npy = np.array
     a, b, c, d = rectangle
     m, a, b, c, d = npy(m), npy(a), npy(b), npy(c), npy(d)
@@ -180,10 +180,18 @@ def is_inside_rectangle(m: Vecteur, rectangle: Sequence[Vecteur]) -> bool:
     return 0 <= scalar_product(am, ab) <= scalar_product(ab, ab) and 0 <= scalar_product(am, ad) <= scalar_product(ad, ad)
 
 
+def is_inside_circle(m: Vecteur, circle: tuple[Vecteur, float]):
+    """Renvoie si le point ``m`` est à l'intérieur du cercle, défini par son centre et son rayon."""
+    x, y = m
+    center, radius = circle
+    cx, cy = center
+    return (x - cx)*(x - cx) + (y - cy)*(y - cy) <= radius
+
+
 def data_frame(columns: list[str], data: Any = None) -> pd.DataFrame:
     """Renvoie une table de données."""
     return pd.DataFrame(data=data, columns=columns)
 
 
 def blue_red_gradient(shade: float):
-    return s.ROGB_GRADIENT[min(round(shade * 79), 79)]
+    return s.ROGB_GRADIENT[max(min(round(shade * (len(s.ROGB_GRADIENT) - 1)), len(s.ROGB_GRADIENT) - 1), 0)]

@@ -13,7 +13,8 @@ MIN_SPEED = 0.25  # vitesse minimum possible, minoré à 0.25
 SCALE = 10  # pixels/m, échelle de la simulation
 SHOW_SCALE = True
 GET_LEADER_COORDS_METHOD_AVG = True  # False = voiture la plus proche sur les prochaines routes, True = moyenne pondérée par les probas d'aller sur les prochaines routes
-USE_BUMPER_ZONES = True  # si la simulation utlise les hitbox et hurtbox des voitures pour éviter les collisions
+USE_BUMPING_BOXES = True  # si la simulation utlise les hitbox et hurtbox des voitures pour éviter les collisions
+SHOW_BUMPING_ZONES = True  # si on affiche les zones où les collisions sont détectées
 
 # Ressources
 
@@ -73,7 +74,7 @@ TL_ORANGE_SLOW_DOWN_COEFF = 0.5  # coefficient de ralentissement du feu orange, 
 
 # Capteurs
 
-SENSOR_EXPORTS_DIRECTORY = "exemples/results/"
+SENSOR_EXPORTS_DIRECTORY = "exemples/resulats_capteurs/"
 SENSOR_PRINT_RES_AT_PAUSE = True  # si les capteurs affichent leurs résulats à chaque mise en pause
 SENSOR_EXPORT_RES_AT_PAUSE = False  # les les capteurs exportent leurs résulats à chaque mise en pause
 SENSOR_COLOR = SENSOR_PURPLE  # couleur du trait représentant un capteur

@@ -555,8 +555,11 @@ class Sensor:
     def results(self):
         return str(pd.concat([self.df, self.df.describe()]))
 
-    def export(self, file_path, sheet_name):
-        pd.concat([self.df, self.df.describe()]).to_excel(file_path, sheet_name)
+    def export(self, file_path, sheet_name, describe):
+        if describe:
+            pd.concat([self.df, self.df.describe()]).to_excel(file_path, sheet_name)
+        else:
+            self.df.to_excel(file_path, sheet_name)
 
     def plot(self, x="t"):
         df = self.df

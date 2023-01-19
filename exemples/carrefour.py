@@ -42,6 +42,7 @@ road_graph = {1: {14: 0.3, 16: 0.4, 18: 0.3}, 14: 4, 16: 6, 18: 8, 2: None,
 
 sim.create_roads(road_list)
 sim.set_road_graph(road_graph)
+sim.set_bumping_zone((720, 420), 80)
 
 sim.start(30)
 
