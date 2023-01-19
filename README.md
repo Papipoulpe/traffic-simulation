@@ -1,2 +1,3 @@
-# traffic-simulation
-Modélisation du trafic routier en python, pour comparer l'efficacité de différentes intersections
+# TraffSimPy
+
+Module Python de modélisation du trafic routier, pour comparer l'efficacité de différentes intersections.

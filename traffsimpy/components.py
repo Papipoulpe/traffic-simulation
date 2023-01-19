@@ -35,22 +35,22 @@ class CarFactory:
             return self.crea_func(**args_crea)  # on renvoie la voiture créée par la fonction de création
 
     @staticmethod
-    def generic_creafunc(func_name):
+    def generic_creafunc(arg):
         """Génère une fonction de création."""
-        if isinstance(func_name, str):
-            func_name = [func_name]
+        if isinstance(arg, str):
+            arg = [arg]
 
         attrs = {"v": s.CAR_V, "a": s.CAR_A, "color": s.CAR_COLOR, "width": s.CAR_WIDTH, "le": s.CAR_LENGTH, "obj_id": None}
 
         def crea_func(*_, **__):
-            if "rand_color" in func_name:
+            if "rand_color" in arg:
                 attrs["color"] = [np.random.randint(s.CAR_RAND_COLOR_MIN, s.CAR_RAND_COLOR_MAX) for _ in range(3)]
-            if "rand_length" in func_name:
+            if "rand_length" in arg:
                 attrs["le"] = np.random.randint(s.CAR_RAND_LENGTH_MIN, s.CAR_RAND_LENGTH_MAX)
-            if "rand_width" in func_name:
+            if "rand_width" in arg:
                 attrs["width"] = np.random.randint(s.CAR_RAND_WIDTH_MIN, s.CAR_RAND_WIDTH_MAX)
             try:
-                attrs_dic = parse(func_name[0])
+                attrs_dic = parse(arg[0])
             except ValueError:
                 attrs_dic = {}
             for key in attrs_dic:
@@ -59,14 +59,14 @@ class CarFactory:
 
         return crea_func
 
-    def generic_factfunc(self, func_name):
+    def generic_factfunc(self, arg):
         """Génère une fonction de fréquence de création."""
-        if isinstance(func_name, (int, float)) or func_name[0] == func_name[1]:
+        if isinstance(arg, (int, float)) or arg[0] == arg[1]:
             # si func_name est de type a ou [a, a], renvoie True toutes les a secondes
-            if isinstance(func_name, (list, tuple)):
-                a = func_name[0]
+            if isinstance(arg, (list, tuple)):
+                a = arg[0]
             else:
-                a = func_name
+                a = arg
 
             def fact_func(t, last_car):
                 place_dispo = last_car is None or last_car.d > last_car.length + s.DELTA_D_MIN  # s'il y a de la place disponible ou non
@@ -77,7 +77,7 @@ class CarFactory:
             # sinon, de type [a, b], attend aléatoirement entre a et b secondes
             def fact_func(t, last_car):
                 if t >= self.next_t:
-                    delay = np.random.uniform(func_name[0], func_name[1])
+                    delay = np.random.uniform(arg[0], arg[1])
                     self.next_t = t + delay
                     place_dispo = last_car is None or last_car.d > last_car.length + s.DELTA_D_MIN  # s'il y a de la place disponible ou non
                     return place_dispo
@@ -555,8 +555,11 @@ class Sensor:
     def results(self):
         return str(pd.concat([self.df, self.df.describe()]))
 
-    def export(self, file_path, sheet_name):
-        pd.concat([self.df, self.df.describe()]).to_excel(file_path, sheet_name)
+    def export(self, file_path, sheet_name, describe):
+        if describe:
+            pd.concat([self.df, self.df.describe()]).to_excel(file_path, sheet_name)
+        else:
+            self.df.to_excel(file_path, sheet_name)
 
     def plot(self, x="t"):
         df = self.df
