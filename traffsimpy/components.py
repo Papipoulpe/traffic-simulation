@@ -1,6 +1,98 @@
 from .math_and_util import *
 
 
+class Car:
+    def __init__(self, v, a, le, width, color, obj_id):
+        """
+        Voiture.
+
+        :param v: vitesse
+        :param a: acceleration
+        :param le: longueur
+        :param width: largeur
+        :param color: couleur
+        :param obj_id: éventuel identifiant
+        """
+        self.id = new_id(self, obj_id)
+        self.color = color
+        self.length, self.width = le, width
+        self.road = None
+        self.next_road = None
+
+        self.d = 0  # distance du derrière depuis le début de la route
+        self.x, self.y = 0, 0  # position du mileu du derrière dans la fenêtre
+        self.v = v  # vitesse
+        self.a = a  # acceleration
+
+        self.delta_d_min = s.DELTA_D_MIN  # pour l'IDM
+        self.a_max = s.A_MAX  # pour l'IDM
+        self.a_min = s.A_MIN  # pour l'IDM
+        self.a_exp = s.A_EXP  # pour l'IDM
+        self.t_react = s.T_REACT  # pour l'IDM
+
+        self.corners = ((0, 0), (0, 0), (0, 0), (0, 0))  # coordonnées des coins du rectangle représentant la voiture, pour affichage
+        self.front_bumper_hitbox = ((0, 0), (0, 0), (0, 0), (0, 0))  # coordonnées des coins du rectangle à l'avant de la voiture, pour détecter les collisions
+        self.side_bumper_hurtbox = ((0, 0), (0, 0), (0, 0), (0, 0))  # coordonnées des coins du rectangle sur les côtés et l'arrière de la voiture, pour détecter les collisions
+
+        self.bumping_cars = []  # autres voitures avec lesquelles elle est en collision
+
+    def __repr__(self):
+        return f"Car(id={self.id}, x={self.x}, y={self.y}, d={self.d}, v={self.v}, a={self.a}, next_road={self.next_road}, coins={rec_round(self.corners)}, bumping_cars={self.bumping_cars}, color={closest_color(self.color)})"
+
+    def update(self, dt, leader_coords):
+        """
+        Actualise les coordonnées du mouvement (position, vitesse, accéleration) de la voiture.
+
+        :param dt: durée du mouvement
+        :param leader_coords: distance et vitesse d'une éventuelle voiture devant
+        """
+        if self.bumping_cars:
+            n = len(self.bumping_cars)
+            d_avg = sum(length((self.x, self.y), (car.x, car.y)) for car in self.bumping_cars) / n
+            v_avg = sum(car.v for car in self.bumping_cars) / n
+            leader_coords = d_avg, v_avg
+
+        idm(self, leader_coords, dt)
+
+    def update_corners(self):
+        """Actualise les coins de la voiture (d'affichage et de collision) selon sa position."""
+        vdx, vdy = self.road.vd  # on récupère le vecteur directeur de la route
+        vdx_l = vdx * self.length / 2  # on le norme pour la longueur de la voiture
+        vdy_l = vdy * self.length / 2
+        vdx_ddm = vdx * self.delta_d_min / 4  # on le norme pour la distance de sécurité
+        vdy_ddm = vdy * self.delta_d_min / 4
+        vnx_w, vny_w = normal_vector(self.road.vd,
+                                     self.width / 2)  # vecteur normal de la route normé pour la largeur de la voiture
+        vnx_ddm, vny_ddm = normal_vector(self.road.vd, self.delta_d_min / 2)  # vn normé pour la distance de sécurité
+
+        # coins d'affichage
+        c1 = self.x + vnx_w - vdx_l, self.y + vny_w - vdy_l
+        c2 = self.x - vnx_w - vdx_l, self.y - vny_w - vdy_l
+        c3 = self.x - vnx_w + vdx_l, self.y - vny_w + vdy_l
+        c4 = self.x + vnx_w + vdx_l, self.y + vny_w + vdy_l
+        self.corners = c1, c2, c3, c4
+
+        # points de collision de devant
+        c1 = self.x - vnx_w - 0 + vdx_l + 2 * vdx_ddm, self.y - vny_w - 0 + vdy_l + 2 * vdy_ddm
+        c2 = self.x + vnx_w + 0 + vdx_l + 2 * vdx_ddm, self.y + vny_w + 0 + vdy_l + 2 * vdy_ddm
+        c3 = self.x + vnx_w + vnx_ddm + vdx_l, self.y + vny_w + vny_ddm + vdy_l
+        c4 = self.x - vnx_w - vnx_ddm + vdx_l, self.y - vny_w - vny_ddm + vdy_l
+        self.front_bumper_hitbox = c1, c2, c3, c4
+
+        # coins de la zone de collision autour
+        c1 = self.x + vnx_w + vnx_ddm - vdx_l - vdx_ddm, self.y + vny_w + vny_ddm - vdy_l - vdy_ddm
+        c2 = self.x - vnx_w - vnx_ddm - vdx_l - vdx_ddm, self.y - vny_w - vny_ddm - vdy_l - vdy_ddm
+        c3 = self.x - vnx_w - vnx_ddm + vdx_l, self.y - vny_w - vny_ddm + vdy_l
+        c4 = self.x + vnx_w + vnx_ddm + vdx_l, self.y + vny_w + vny_ddm + vdy_l
+        self.side_bumper_hurtbox = c1, c2, c3, c4
+
+    def is_bumping_with(self, other_car: "Car"):
+        """Renvoie si la voiture rentre en collision **sur** ``other_car``, c'est-à-dire si un des coins de
+        ``car.front_bumper_points`` est à l'intérieur de ``other_car.side_bumper_corners``."""
+        res = any(is_inside_rectangle(corner, other_car.side_bumper_hurtbox) for corner in self.front_bumper_hitbox)
+        return res
+
+
 class CarFactory:
     def __init__(self, crea_func=None, fact_func=None, obj_id=None):
         """
@@ -116,97 +208,6 @@ class CarSorter:
         return self.sort_func()
 
 
-class Car:
-    def __init__(self, v, a, le, width, color, obj_id):
-        """
-        Voiture.
-
-        :param v: vitesse
-        :param a: acceleration
-        :param le: longueur
-        :param width: largeur
-        :param color: couleur
-        :param obj_id: éventuel identifiant
-        """
-        self.id = new_id(self, obj_id)
-        self.color = color
-        self.length, self.width = le, width
-        self.road = None
-        self.next_road = None
-
-        self.d = 0  # distance du derrière depuis le début de la route
-        self.x, self.y = 0, 0  # position du mileu du derrière dans la fenêtre
-        self.v = v  # vitesse
-        self.a = a  # acceleration
-
-        self.delta_d_min = s.DELTA_D_MIN  # pour l'IDM
-        self.a_max = s.A_MAX  # pour l'IDM
-        self.a_min = s.A_MIN  # pour l'IDM
-        self.a_exp = s.A_EXP  # pour l'IDM
-        self.t_react = s.T_REACT  # pour l'IDM
-
-        self.corners = ((0, 0), (0, 0), (0, 0), (0, 0))  # coordonnées des coins du rectangle représentant la voiture, pour affichage
-        self.front_bumper_hitbox = ((0, 0), (0, 0), (0, 0), (0, 0))  # coordonnées des coins du rectangle à l'avant de la voiture, pour détecter les collisions
-        self.side_bumper_hurtbox = ((0, 0), (0, 0), (0, 0), (0, 0))  # coordonnées des coins du rectangle sur les côtés et l'arrière de la voiture, pour détecter les collisions
-
-        self.bumping_cars = []  # autres voitures avec lesquelles elle est en collision
-
-    def __repr__(self):
-        return f"Car(id={self.id}, x={self.x}, y={self.y}, d={self.d}, v={self.v}, a={self.a}, next_road={self.next_road}, coins={rec_round(self.corners)}, bumping_cars={self.bumping_cars}, color={closest_color(self.color)})"
-
-    def update(self, dt, leader_coords):
-        """
-        Actualise les coordonnées du mouvement (position, vitesse, accéleration) de la voiture.
-
-        :param dt: durée du mouvement
-        :param leader_coords: distance et vitesse d'une éventuelle voiture devant
-        """
-        if self.bumping_cars:
-            n = len(self.bumping_cars)
-            d_avg = sum(length((self.x, self.y), (car.x, car.y)) for car in self.bumping_cars)/n
-            v_avg = sum(car.v for car in self.bumping_cars)/n
-            leader_coords = d_avg, v_avg
-
-        idm(self, leader_coords, dt)
-
-    def update_corners(self):
-        """Actualise les coins de la voiture (d'affichage et de collision) selon sa position."""
-        vdx, vdy = self.road.vd  # on récupère le vecteur directeur de la route
-        vdx_l = vdx * self.length / 2  # on le norme pour la longueur de la voiture
-        vdy_l = vdy * self.length / 2
-        vdx_ddm = vdx * self.delta_d_min / 4  # on le norme pour la distance de sécurité
-        vdy_ddm = vdy * self.delta_d_min / 4
-        vnx_w, vny_w = normal_vector(self.road.vd, self.width / 2)  # vecteur normal de la route normé pour la largeur de la voiture
-        vnx_ddm, vny_ddm = normal_vector(self.road.vd, self.delta_d_min / 2)  # vn normé pour la distance de sécurité
-        
-        # coins d'affichage
-        c1 = self.x + vnx_w - vdx_l, self.y + vny_w - vdy_l
-        c2 = self.x - vnx_w - vdx_l, self.y - vny_w - vdy_l
-        c3 = self.x - vnx_w + vdx_l, self.y - vny_w + vdy_l
-        c4 = self.x + vnx_w + vdx_l, self.y + vny_w + vdy_l
-        self.corners = c1, c2, c3, c4
-
-        # points de collision de devant
-        c1 = self.x - vnx_w - 0 + vdx_l + 2*vdx_ddm, self.y - vny_w - 0 + vdy_l + 2*vdy_ddm
-        c2 = self.x + vnx_w + 0 + vdx_l + 2*vdx_ddm, self.y + vny_w + 0 + vdy_l + 2*vdy_ddm
-        c3 = self.x + vnx_w + vnx_ddm + vdx_l, self.y + vny_w + vny_ddm + vdy_l
-        c4 = self.x - vnx_w - vnx_ddm + vdx_l, self.y - vny_w - vny_ddm + vdy_l
-        self.front_bumper_hitbox = c1, c2, c3, c4
-
-        # coins de la zone de collision autour
-        c1 = self.x + vnx_w + vnx_ddm - vdx_l - vdx_ddm, self.y + vny_w + vny_ddm - vdy_l - vdy_ddm
-        c2 = self.x - vnx_w - vnx_ddm - vdx_l - vdx_ddm, self.y - vny_w - vny_ddm - vdy_l - vdy_ddm
-        c3 = self.x - vnx_w - vnx_ddm + vdx_l, self.y - vny_w - vny_ddm + vdy_l
-        c4 = self.x + vnx_w + vnx_ddm + vdx_l, self.y + vny_w + vny_ddm + vdy_l
-        self.side_bumper_hurtbox = c1, c2, c3, c4
-        
-    def is_bumping_with(self, other_car: "Car"):
-        """Renvoie si la voiture rentre en collision **sur** ``other_car``, c'est-à-dire si un des coins de
-        ``car.front_bumper_points`` est à l'intérieur de ``other_car.side_bumper_corners``."""
-        res = any(is_inside_rectangle(corner, other_car.side_bumper_hurtbox) for corner in self.front_bumper_hitbox)
-        return res
-
-
 class TrafficLight:
     def __init__(self, state_init: int, static=False, obj_id: int = None):
         """Feux de signalisation."""
@@ -250,6 +251,89 @@ class TrafficLight:
         else:  # si feu vert
             fake_car = None
         return fake_car
+
+
+class Sensor:
+    def __init__(self, position: float = 1, attributes_to_monitor: Union[Optional[str], Sequence[Optional[str]]] = ("v", "a"), obj_id=None):
+        """
+        Capteur qui récupère des données de la simulation.
+
+        :param position: pourcentage de la route où sera placé le capteur
+        :param attributes_to_monitor: les attributs des voitures à surveiller, en chaînes de caractères (``v``, ``a``, ``length``, ``width``, ``color``...)
+        """
+        self.id = new_id(self, obj_id)
+        self.atm = self.init_atm(attributes_to_monitor)
+        self.position = position
+        self.corners = ((0, 0), (0, 0), (0, 0), (0, 0))
+
+        self.data = []
+        self.already_seen_cars_id = []
+
+        self.road = None
+        self._d = 0
+
+    def __repr__(self):
+        return f"Sensor(id={self.id}, position={self.position}, atm={self.atm})"
+
+    @staticmethod
+    def init_atm(atm):
+        if isinstance(atm, str):
+            return [atm]
+        elif atm is None:
+            return []
+        else:
+            return list(atm)
+
+    @property
+    def d(self):
+        return self._d
+
+    @d.setter
+    def d(self, d):
+        self._d = d
+        vnx_w, vny_w = normal_vector(self.road.vd, self.road.width / 2)
+        vdx, vdy = self.road.vd
+        vdx_l = vdx * s.SENSOR_WIDTH / 2
+        vdy_l = vdy * s.SENSOR_WIDTH / 2
+        x, y = self.road.dist_to_pos(self._d)
+        c1 = x + vnx_w - vdx_l, y + vny_w - vdy_l
+        c2 = x - vnx_w - vdx_l, y - vny_w - vdy_l
+        c3 = x - vnx_w + vdx_l, y - vny_w + vdy_l
+        c4 = x + vnx_w + vdx_l, y + vny_w + vdy_l
+        self.corners = c1, c2, c3, c4
+
+    @property
+    def df(self):
+        return data_frame(data=self.data, columns=["t", "car_id"] + self.atm)
+
+    def watch_car(self, car, t):
+        data_row = [t, car.id]
+        for attr in self.atm:
+            val = car.__getattribute__(attr)
+            if attr in ["v", "a", "width", "length"]:
+                val /= s.SCALE
+            data_row.append(val)
+        self.data.append(data_row)
+        self.already_seen_cars_id.append(car.id)
+
+    def watch_road(self, t):
+        for car in self.road.cars:
+            if car.id not in self.already_seen_cars_id and car.d >= self.d:
+                self.watch_car(car, t)
+
+    @property
+    def results(self):
+        return str(pd.concat([self.df, self.df.describe()]))
+
+    def export(self, file_path, sheet_name, describe):
+        if describe:
+            pd.concat([self.df, self.df.describe()]).to_excel(file_path, sheet_name)
+        else:
+            self.df.to_excel(file_path, sheet_name)
+
+    def plot(self, x="t"):
+        df = self.df
+        df.loc[:, df.columns != "car_id"].plot(x=x)
 
 
 class Road:
@@ -481,86 +565,3 @@ class ArcRoad:
         if car is None:
             return
         self.sroads[0].new_car(car)
-
-
-class Sensor:
-    def __init__(self, position: float = 1, attributes_to_monitor: Union[Optional[str], Sequence[Optional[str]]] = ("v", "a"), obj_id=None):
-        """
-        Capteur qui récupère des données de la simulation.
-
-        :param position: pourcentage de la route où sera placé le capteur
-        :param attributes_to_monitor: les attributs des voitures à surveiller, en chaînes de caractères (``v``, ``a``, ``length``, ``width``, ``color``...)
-        """
-        self.id = new_id(self, obj_id)
-        self.atm = self.init_atm(attributes_to_monitor)
-        self.position = position
-        self.corners = ((0, 0), (0, 0), (0, 0), (0, 0))
-
-        self.data = []
-        self.already_seen_cars_id = []
-
-        self.road = None
-        self._d = 0
-
-    def __repr__(self):
-        return f"Sensor(id={self.id}, position={self.position}, atm={self.atm})"
-
-    @staticmethod
-    def init_atm(atm):
-        if isinstance(atm, str):
-            return [atm]
-        elif atm is None:
-            return []
-        else:
-            return list(atm)
-
-    @property
-    def d(self):
-        return self._d
-
-    @d.setter
-    def d(self, d):
-        self._d = d
-        vnx_w, vny_w = normal_vector(self.road.vd, self.road.width / 2)
-        vdx, vdy = self.road.vd
-        vdx_l = vdx * s.SENSOR_WIDTH / 2
-        vdy_l = vdy * s.SENSOR_WIDTH / 2
-        x, y = self.road.dist_to_pos(self._d)
-        c1 = x + vnx_w - vdx_l, y + vny_w - vdy_l
-        c2 = x - vnx_w - vdx_l, y - vny_w - vdy_l
-        c3 = x - vnx_w + vdx_l, y - vny_w + vdy_l
-        c4 = x + vnx_w + vdx_l, y + vny_w + vdy_l
-        self.corners = c1, c2, c3, c4
-
-    @property
-    def df(self):
-        return data_frame(data=self.data, columns=["t", "car_id"] + self.atm)
-
-    def watch_car(self, car, t):
-        data_row = [t, car.id]
-        for attr in self.atm:
-            val = car.__getattribute__(attr)
-            if attr in ["v", "a", "width", "length"]:
-                val /= s.SCALE
-            data_row.append(val)
-        self.data.append(data_row)
-        self.already_seen_cars_id.append(car.id)
-
-    def watch_road(self, t):
-        for car in self.road.cars:
-            if car.id not in self.already_seen_cars_id and car.d >= self.d:
-                self.watch_car(car, t)
-
-    @property
-    def results(self):
-        return str(pd.concat([self.df, self.df.describe()]))
-
-    def export(self, file_path, sheet_name, describe):
-        if describe:
-            pd.concat([self.df, self.df.describe()]).to_excel(file_path, sheet_name)
-        else:
-            self.df.to_excel(file_path, sheet_name)
-
-    def plot(self, x="t"):
-        df = self.df
-        df.loc[:, df.columns != "car_id"].plot(x=x)

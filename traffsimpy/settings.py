@@ -1,20 +1,23 @@
 from .ressources import *
 
-# Simulation
+# Affichage
 
 SHOW_DETAILED_LOGS = False  # si on affiche les détails de la simulation quand on passe en pause, quand le programme est quitté ou se plante
 SHOW_ERRORS = True  # si on affiche les erruers quand le programme se plante
-BACKGROUND_COLOR = BLUE2_BG  # couleur de l'arrière plan de la fenêtre
-INFO_BACKGROUND_COLOR = BLUE2_TXT_BG  # couleur de l'arrière plan du texte
+BACKGROUND_COLOR = BLUE_BG  # couleur de l'arrière plan de la fenêtre
+INFO_BACKGROUND_COLOR = BLUE_TXT_BG  # couleur de l'arrière plan du texte
+SHOW_SCALE = True  # si on affiche l'échelle des distances
+SHOW_BUMPING_ZONES = True  # si on affiche les zones où les collisions sont détectées
+
+# Simulation
+
 FPS = 60  # Hz, images par secondes de la simulation
 SPEED = 1  # vitesse de la simulation
-MAX_SPEED = 8  # vitesse maximum possible, une plus grande vitesse implique des résulats plus approximatifs
+MAX_SPEED = 4  # vitesse maximum possible, peu d'effets au delà de 4
 MIN_SPEED = 0.25  # vitesse minimum possible, minoré à 0.25
 SCALE = 10  # pixels/m, échelle de la simulation
-SHOW_SCALE = True
 GET_LEADER_COORDS_METHOD_AVG = True  # False = voiture la plus proche sur les prochaines routes, True = moyenne pondérée par les probas d'aller sur les prochaines routes
 USE_BUMPING_BOXES = True  # si la simulation utlise les hitbox et hurtbox des voitures pour éviter les collisions
-SHOW_BUMPING_ZONES = True  # si on affiche les zones où les collisions sont détectées
 
 # Ressources
 
@@ -75,7 +78,7 @@ TL_ORANGE_SLOW_DOWN_COEFF = 0.5  # coefficient de ralentissement du feu orange, 
 # Capteurs
 
 SENSOR_EXPORTS_DIRECTORY = "exemples/resultats_capteurs/"
-SENSOR_PRINT_RES_AT_PAUSE = True  # si les capteurs affichent leurs résulats à chaque mise en pause
+SENSOR_PRINT_RES_AT_PAUSE = False  # si les capteurs affichent leurs résulats à chaque mise en pause
 SENSOR_EXPORT_RES_AT_PAUSE = False  # les les capteurs exportent leurs résulats à chaque mise en pause
 SENSOR_COLOR = SENSOR_PURPLE  # couleur du trait représentant un capteur
 SENSOR_WIDTH = 3  # largeur du trait représentant un capteur

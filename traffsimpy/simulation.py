@@ -24,8 +24,8 @@ class Simulation:
         self.t = 0.0  # suivi du temps
         self.FPS = s.FPS  # images par seconde
         self.dt = 1/self.FPS  # pas de temps
-        self.speed_ajusted_dt = self.dt * s.SPEED  # pas de temps ajusté pour la vitesse de la simulation
-        self.speed = float(s.SPEED)  # vitesse de la simulation
+        self.speed_ajusted_fps = self.FPS / s.SPEED  # pas de temps ajusté pour la vitesse de la simulation
+        self.speed = s.SPEED  # vitesse de la simulation
         self.over = self.paused = False  # si la simulation est finie ou en pause
 
         self.roads = []  # liste des routes
@@ -87,7 +87,7 @@ class Simulation:
                     self.show_traffic_light(road.traffic_light)  # affichage du feu
 
                 # actualisation des coordonnées des voitures de la route, des capteur et du feu
-                road.update_cars(dt=self.speed_ajusted_dt, leader_coords=self.get_leader_coords(road))
+                road.update_cars(dt=self.dt, leader_coords=self.get_leader_coords(road))
 
                 # actualise les capteurs
                 road.update_sensors(self.t)
@@ -98,13 +98,11 @@ class Simulation:
                 new_car = road.car_factory.factory(args_crea=args_crea, args_fact=args_fact)
                 road.new_car(new_car)
 
-            self.t += self.speed_ajusted_dt  # actualisation du suivi du temps
+            self.t += self.dt  # actualisation du suivi du temps
             self.show_info(self.info_to_show)  # affiche les informations
             pygame.display.flip()  # actualisation de la fenêtre
-            self.clock.tick(self.FPS)  # pause d'une durée dt
-            self.over = self.t >= duration
-
-        self.print_simulation_info()  # afficher les informations quand on quitte
+            self.clock.tick(self.speed_ajusted_fps)  # pause d'une durée dt
+            self.over = (self.t >= duration) or self.over  # arrêt si le temps est écoulé ou si l'utilisateur quitte
 
     def start(self, duration: float = INF):
         """Ouvre une fenêtre et lance la simulation, protégé en cas d'erreur."""
@@ -113,16 +111,15 @@ class Simulation:
             self.start_loop(duration)
             real_duration = time() - starting_time
             print(f"Simulation {TXT_BOLD + self.title + TXT_RESET} terminée au bout de {real_duration}s, soit une vitesse de {round(duration/real_duration, 2)}.")
-        except Exception as exeption:
-            if s.SHOW_DETAILED_LOGS:
-                self.print_simulation_info()
-            if s.SHOW_ERRORS:
-                print(f"\n{TXT_RED}*** Erreur : {exeption} ***\n\n{traceback.format_exc()}{TXT_RESET}")
+        except Exception as exception:
+            self.print_errors(exception)
+        finally:
+            self.print_simulation_info()
 
     def print_simulation_info(self):
         """Affiche l'ensemble des objects et leurs principaux attributs dans la sortie standard."""
         if s.SHOW_DETAILED_LOGS:
-            print(f"{TXT_BOLD}\n--- Simulation Infos ---{TXT_RESET}\n\n{self.size = }\n{self.t = }\n{self.FPS = }\n{self.dt = }\n{self.speed = }\n{self.speed_ajusted_dt = }\n{self.paused = }\n{self.over = }\n{self.dragging = }\n{self.off_set = }\n{self.road_graph = }\n")
+            print(f"{TXT_BOLD}\n--- Simulation Infos ---{TXT_RESET}\n\n{self.size = }\n{self.t = }\n{self.FPS = }\n{self.dt = }\n{self.speed = }\n{self.speed_ajusted_fps = }\n{self.paused = }\n{self.over = }\n{self.dragging = }\n{self.off_set = }\n{self.road_graph = }\n")
             for road in self.roads:
                 print(f"\n{road} :\n    TrafficLight : {road.traffic_light}\n    Cars :")
                 for car in road.cars:
@@ -131,6 +128,12 @@ class Simulation:
                 for sensor in road.sensors:
                     print(f"        {sensor}")
                 print(f"    CarFactory : {road.car_factory}\n    CarSorter : {road.car_sorter}\n")
+
+    @staticmethod
+    def print_errors(exception):
+        """Affiche la dernière erreur dans la sortie standard."""
+        if s.SHOW_ERRORS:
+            print(f"\n{TXT_RED}*** Erreur : {exception} ***\n\n{traceback.format_exc()}{TXT_RESET}")
 
     def show_info(self, info: str):
         """Affiche des informations en haut à gauche de la fenêtre et l'échelle si besoin."""
@@ -179,11 +182,11 @@ class Simulation:
             elif event.key in (pygame.K_LEFT, pygame.K_DOWN) and self.speed >= max(0.5, s.MIN_SPEED * 2):
                 # si l'utilisateur appuie sur la flèche gauche ou bas, ralentir jusqu'à 0.25
                 self.speed = round(self.speed / 2, 2)
-                self.speed_ajusted_dt = round(self.speed_ajusted_dt / 2, 2)
+                self.speed_ajusted_fps = round(self.speed_ajusted_fps / 2, 2)
             elif event.key in (pygame.K_RIGHT, pygame.K_UP) and 2 * self.speed <= s.MAX_SPEED:
                 # si l'utilisateur appuie sur la flèche droite ou haut, accélérer jusqu'à 32
                 self.speed = round(self.speed * 2, 2)
-                self.speed_ajusted_dt = round(self.speed_ajusted_dt * 2, 2)
+                self.speed_ajusted_fps = round(self.speed_ajusted_fps * 2, 2)
             elif event.key == pygame.K_RETURN:
                 # si l'utilisateur appuie sur entrer, recentrer la fenêtre
                 self.off_set = (0, 0)

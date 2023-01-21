@@ -44,6 +44,4 @@ sim.create_roads(road_list)
 sim.set_road_graph(road_graph)
 sim.set_bumping_zone((720, 420), 80)
 
-sim.start(30)
-
-sim.export_sensors_results()
+sim.start()
