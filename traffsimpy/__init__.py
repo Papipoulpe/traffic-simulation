@@ -1,5 +1,9 @@
+import os
+
 from .simulation import Simulation
 from .components import CarFactory, TrafficLight, Sensor
+
+os.chdir(os.path.dirname(__file__))
 
 greetings = """
 Bienvenue sur Traffic Simulation !

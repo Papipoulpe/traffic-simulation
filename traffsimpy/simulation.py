@@ -10,17 +10,17 @@ from .ressources import *
 
 
 class Simulation:
-    def __init__(self, win_title: str = "Traffic Simulation", width: int = 1440, height: int = 820):
+    def __init__(self, title: str = "Traffic Simulation", width: int = 1440, height: int = 820):
         """
         Simulation du trafic.
 
-        :param win_title: titre de la fenêtre
+        :param title: titre de la fenêtre
         :param width: largeur de la fenêtre, en pixels
         :param height: hauteur de la fenêtre, en pixels
         """
         self.id = new_id(self, 0)
-        self.title = win_title  # titre de la fenêtre
-        self.size = width, height  # taille de la fenêtre
+        self.title = title  # titre de la fenêtre
+        self.size = npa((width, height))  # taille de la fenêtre
         self.t = 0.0  # suivi du temps
         self.FPS = s.FPS  # images par seconde
         self.dt = 1/self.FPS  # pas de temps
@@ -30,10 +30,10 @@ class Simulation:
 
         self.roads = []  # liste des routes
         self.road_graph = {}  # graphe des routes
-        self.bumping_zone = ((0, 0), INF)  # zone où get_bumping_cars est utilisé
+        self.bumping_zone = (npz(2), INF)  # zone où get_bumping_cars est utilisé
 
         pygame.init()  # initialisation de pygame
-        pygame.display.set_caption(win_title)  # modification du titre de la fenêtre
+        pygame.display.set_caption(title)  # modification du titre de la fenêtre
 
         self.surface = pygame.display.set_mode(self.size)  # création de la fenêtre
         self.clock = pygame.time.Clock()  # création de l'horloge pygame
@@ -46,9 +46,19 @@ class Simulation:
         self.ROAD_ARROW = pygame.transform.smoothscale(arrow, (s.ROAD_WIDTH*0.7, s.ROAD_WIDTH*0.7))  # ajustement de la taille des flèches pour les routes
         self.CAR_ARROW = pygame.transform.smoothscale(arrow, (s.CAR_WIDTH*0.8, s.CAR_WIDTH*0.8))  # pour les voitures
 
-        self.off_set = (0, 0)  # décalage par rapport à l'origine, pour bouger la simulation
+        self.off_set = npz(2)  # décalage par rapport à l'origine, pour bouger la simulation
         self.dragging = False  # si l'utilisateur est en train de bouger la simulation
-        self.mouse_last = (0, 0)  # dernière coordonnées de la souris
+        self.mouse_last = npz(2)  # dernière coordonnées de la souris
+
+    def rc_to_sc(self, coordinates: Vecteur | tuple[float, float]):
+        """Convertie des coordonnées naturelles (abscisses vers la droite, ordonnées vers le haut) en coordonnées
+        de la simulation (abscisses vers la droite, ordonnées vers le bas)."""
+        if isinstance(coordinates, (tuple, list)):
+            x, y = coordinates
+            _, h = self.size
+            return x, h - y
+        else:
+            return coordinates
 
     def start_loop(self, duration: float):
         """Ouvre une fenêtre et lance la simulation."""
@@ -83,8 +93,7 @@ class Simulation:
                 for sensor in road.sensors:
                     self.show_sensor(sensor)
 
-                if road.traffic_light is not None:
-                    self.show_traffic_light(road.traffic_light)  # affichage du feu
+                self.show_traffic_light(road.traffic_light)  # affichage du feu
 
                 # actualisation des coordonnées des voitures de la route, des capteur et du feu
                 road.update_cars(dt=self.dt, leader_coords=self.get_leader_coords(road))
@@ -110,7 +119,8 @@ class Simulation:
             starting_time = time()
             self.start_loop(duration)
             real_duration = time() - starting_time
-            print(f"Simulation {TXT_BOLD + self.title + TXT_RESET} terminée au bout de {real_duration}s, soit une vitesse de {round(duration/real_duration, 2)}.")
+            simulation_speed = round(duration/real_duration, 2)
+            print(f"Simulation {tbold(self.title)} terminée au bout de {real_duration}s{(', soit une vitesse de ' + str(simulation_speed)) if simulation_speed < INF else ''}.")
         except Exception as exception:
             self.print_errors(exception)
         finally:
@@ -119,7 +129,7 @@ class Simulation:
     def print_simulation_info(self):
         """Affiche l'ensemble des objects et leurs principaux attributs dans la sortie standard."""
         if s.SHOW_DETAILED_LOGS:
-            print(f"{TXT_BOLD}\n--- Simulation Infos ---{TXT_RESET}\n\n{self.size = }\n{self.t = }\n{self.FPS = }\n{self.dt = }\n{self.speed = }\n{self.speed_ajusted_fps = }\n{self.paused = }\n{self.over = }\n{self.dragging = }\n{self.off_set = }\n{self.road_graph = }\n")
+            print(f"\n{tbold('--- Simulation Infos ---')}\n\n{self.size = }\n{self.t = }\n{self.FPS = }\n{self.dt = }\n{self.speed = }\n{self.speed_ajusted_fps = }\n{self.paused = }\n{self.over = }\n{self.dragging = }\n{self.off_set = }\n{self.road_graph = }\n")
             for road in self.roads:
                 print(f"\n{road} :\n    TrafficLight : {road.traffic_light}\n    Cars :")
                 for car in road.cars:
@@ -133,13 +143,13 @@ class Simulation:
     def print_errors(exception):
         """Affiche la dernière erreur dans la sortie standard."""
         if s.SHOW_ERRORS:
-            print(f"\n{TXT_RED}*** Erreur : {exception} ***\n\n{traceback.format_exc()}{TXT_RESET}")
+            print(tred(f"\n*** Erreur : {exception} ***\n\n{traceback.format_exc()}"))
 
     def show_info(self, info: str):
         """Affiche des informations en haut à gauche de la fenêtre et l'échelle si besoin."""
         text_width, text_height = self.FONT.size(info)
-        draw_rect(self.surface, s.INFO_BACKGROUND_COLOR, (0, 0), text_width + 30, text_height + 20)
-        print_text(self.surface, s.FONT_COLOR, (10, 10), info, self.FONT)
+        draw_rect(self.surface, s.INFO_BACKGROUND_COLOR, npz(2), text_width + 30, text_height + 20)
+        draw_text(self.surface, s.FONT_COLOR, npa((10, 10)), info, self.FONT)
 
         if s.SHOW_SCALE:
             self.show_scale()
@@ -151,10 +161,10 @@ class Simulation:
         x, y = 30, h - 40
         text = f"{n * s.SCALE}px = {n}m"
         tw, th = self.FONT.size(text)
-        draw_rect(self.surface, BLACK, (x, y), n * s.SCALE, 10)  # affiche la barre de n*SCALE pixels
+        draw_rect(self.surface, BLACK, npa((x, y)), n * s.SCALE, 10)  # affiche la barre de n*SCALE pixels
         for i in range(1, n, 2):  # affiche les graduations
-            draw_rect(self.surface, self.bg_color, (x + i*s.SCALE, y + 1), s.SCALE - 2/n, 8)
-        print_text(self.surface, BLACK, (x + (n * s.SCALE - tw) / 2, y - th - 2), text, self.SMALL_FONT)  # affiche la description
+            draw_rect(self.surface, self.bg_color, npa((x + i*s.SCALE, y + 1)), s.SCALE - 2/n, 8)
+        draw_text(self.surface, BLACK, npa((x + (n * s.SCALE - tw) / 2, y - th - 2)), text, self.SMALL_FONT)  # affiche la description
 
     @property
     def info_to_show(self):
@@ -193,16 +203,12 @@ class Simulation:
 
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             # si l'utilisateur clique
-            x, y = pygame.mouse.get_pos()
-            x0, y0 = self.off_set
-            self.mouse_last = (x - x0, y - y0)
+            self.mouse_last = npa(pygame.mouse.get_pos()) - self.off_set
             self.dragging = True
 
         elif event.type == pygame.MOUSEMOTION and self.dragging:
             # bouge la simulation
-            x1, y1 = self.mouse_last
-            x2, y2 = pygame.mouse.get_pos()
-            self.off_set = (x2 - x1, y2 - y1)
+            self.off_set = npa(pygame.mouse.get_pos()) - self.mouse_last
 
         elif event.type == pygame.MOUSEBUTTONUP:
             # si l'utilisateur ne clique plus
@@ -215,8 +221,8 @@ class Simulation:
             brighten = lambda color: min(int(color * 1.3), 255)
             side_bumper_color = (brighten(r*1.2), brighten(g), brighten(b))  # même couleur plus claire et plus rouge
             front_bumper_color = (brighten(r), brighten(g*1.2), brighten(b))  # même couleur plus claire et plus verte
-            draw_polygon(self.surface, side_bumper_color, car.side_bumper_hurtbox)
-            draw_polygon(self.surface, front_bumper_color, car.front_bumper_hitbox)
+            draw_polygon(self.surface, side_bumper_color, car.side_bumper_hurtbox, self.off_set)
+            draw_polygon(self.surface, front_bumper_color, car.front_bumper_hitbox, self.off_set)
 
         if s.CAR_SPEED_CODED_COLOR:  # si la couleur de la voiture dépend de sa vitesse
             car_color = blue_red_gradient(car.v/s.V_MAX)
@@ -233,18 +239,18 @@ class Simulation:
             coeff = 3.6 if s.CAR_SHOW_SPEED_KMH else 1
             text = str(round(coeff * car.v / s.SCALE))
             text_width, text_height = self.SMALL_FONT.size(text)
-            x = car.x - text_width / 2
-            y = car.y - text_height / 2
-            print_text(self.surface, s.FONT_COLOR, (x, y), text, self.SMALL_FONT, off_set=self.off_set)
+            x = car.pos[0] - text_width / 2
+            y = car.pos[1] - text_height / 2
+            draw_text(self.surface, s.FONT_COLOR, npa((x, y)), text, self.SMALL_FONT, off_set=self.off_set)
 
         elif s.CAR_SHOW_ID:  # si on affiche l'id de la voiture
             text = str(car.id)
             text_width, text_height = self.SMALL_FONT.size(text)
-            x = car.x - text_width / 2
-            y = car.y - text_height / 2
-            print_text(self.surface, s.FONT_COLOR, (x, y), text, self.SMALL_FONT, off_set=self.off_set)
+            x = car.pos[0] - text_width / 2
+            y = car.pos[1] - text_height / 2
+            draw_text(self.surface, s.FONT_COLOR, npa((x, y)), text, self.SMALL_FONT, off_set=self.off_set)
 
-    def show_roads(self, road_list: Sequence[Union[Road, ArcRoad]]):
+    def show_roads(self, road_list: Sequence[Road | ArcRoad]):
         """Affiche des routes."""
         for road in road_list:
             if isinstance(road, Road):
@@ -254,7 +260,7 @@ class Simulation:
 
                 for arrow_coord in road.arrows_coords:
                     x, y, _ = arrow_coord
-                    draw_image(self.surface, rotated_arrow, (x, y), self.off_set)
+                    draw_image(self.surface, rotated_arrow, npa((x, y)), self.off_set)
             elif isinstance(road, ArcRoad):
                 self.show_roads(road.sroads)
 
@@ -269,7 +275,7 @@ class Simulation:
 
     def print_sensor_results(self, sensor: Sensor):
         if sensor.results.strip():
-            text = f"{TXT_BOLD}At t={round(self.t, 2)}s, {sensor} on Road(id={sensor.road.id}) {TXT_RESET}:\n{sensor.results}\n"
+            text = tbold(f"At t={round(self.t, 2)}s, {sensor} on Road(id={sensor.road.id}) :\n") + sensor.results + "\n"
             print(text)
 
     def print_sensors_results(self, *sensors_id):
@@ -314,7 +320,9 @@ class Simulation:
 
     def create_road(self, **kw):
         """Créer une route."""
-        start, end, vdstart, vdend, car_factory, color, w, obj_id = kw.get("start", (0, 0)), kw.get("end", (0, 0)), kw.get("vdstart"), kw.get("vdend"), kw.get("car_factory"), kw.get("color", s.ROAD_COLOR), kw.get("width", s.ROAD_WIDTH), kw.get("id")
+        start, end, vdstart, vdend, v_max, car_factory, color, w, obj_id = kw.get("start", (0, 0)), kw.get("end", (0, 0)), kw.get("vdstart"), kw.get("vdend"), kw.get("v_max", s.V_MAX), kw.get("car_factory"), kw.get("color", s.ROAD_COLOR), kw.get("width", s.ROAD_WIDTH), kw.get("id")
+        start, end, vdstart, vdend = self.rc_to_sc(start), self.rc_to_sc(end), self.rc_to_sc(vdstart), self.rc_to_sc(vdend)
+        v_max *= s.SCALE  # mise à l'échelle de v_max
         if isinstance(start, int):  # si l'argument start est un id de route
             rstart = get_by_id(start)
             start = rstart.end
@@ -325,25 +333,26 @@ class Simulation:
             vdend = rend.vd
         if kw["type"] == "road":  # si on crée une route droite
             traffic_light, wa, sensors = kw.get("traffic_light"), kw.get("with_arrows", True), kw.get("sensors")
-            road = Road(start, end, width=w, color=color, with_arrows=wa, car_factory=car_factory, traffic_light=traffic_light, sensors=sensors, obj_id=obj_id)
+            road = Road(start=start, end=end, width=w, color=color, v_max=v_max, with_arrows=wa, car_factory=car_factory, traffic_light=traffic_light, sensors=sensors, obj_id=obj_id)
         else:  # si on crée une route courbée
             n = kw.get("n", s.ARCROAD_NUM_OF_SROAD)
-            road = ArcRoad(start, end, vdstart, vdend, n, width=w, color=color, car_factory=car_factory, obj_id=obj_id)
+            road = ArcRoad(start=start, end=end, vdstart=vdstart, vdend=vdend, n=n, v_max=v_max, width=w, color=color, car_factory=car_factory, obj_id=obj_id)
         self.roads.append(road)
+        self.road_graph[road.id] = None
         return road
 
     def create_roads(self, road_list: list[dict]):
         """Créer des routes, renvoie la liste des routes.
 
         Les éléments de ``road_list`` sont des dictionnaires de la forme :\n
-        - pour une route droite, ``{"id": int, "type": "road", "start": (float, float) | int, "end": (float, float) | int, "v_max": float (optionnel), "car_factory": CarFactory (optionnel), "traffic_light": TrafficLight (optionnel), "with_arrows": bool (optionnel)}``
-        - pour une route courbée, ``{"id": int, "type": "arcroad", "start": (float, float) | int, "vdstart": (float, float), "end": (float, float) | int, "vdend": (float, float), "v_max": float (optionnel), "n": int (optionnel), "car_factory": CarFactory (optionnel)}``
+        - pour une route droite, ``{"id": int (optionnel), "type": "road", "start": (float, float) | int, "end": (float, float) | int, "v_max": float (optionnel), "car_factory": CarFactory (optionnel), "traffic_light": TrafficLight (optionnel), "with_arrows": bool (optionnel)}``
+        - pour une route courbée, ``{"id": int (optionnel), "type": "arcroad", "start": (float, float) | int, "vdstart": (float, float), "end": (float, float) | int, "vdend": (float, float), "v_max": float (optionnel), "n": int (optionnel), "car_factory": CarFactory (optionnel)}``
 
         avec :\n
-        - ``id`` l'identifiant de la route
-        - ``start`` les coordonnées en pourcentages de la fenêtre du début de la route, ou l'identifiant d'une route dont la fin servira de début
-        - ``end`` les coordonnées en pourcentages de la fenêtre de la fin de la route, ou l'identifiant d'une route dont le début servira de fin
-        - ``v_max`` l'éventuelle limite de vitesse de la route, par défaut ``V_MAX`` pour road et ``V_MAX*ARCROAD_V_MAX_COEFF``
+        - ``id`` l'éventuel l'identifiant de la route
+        - ``start`` les coordonnées du début de la route (éventuellement négatives), ou l'identifiant d'une route déjà définie dont la fin servira de début
+        - ``end`` les coordonnées de la fin de la route (éventuellement négatives), ou l'identifiant d'une route déjà définie dont le début servira de fin
+        - ``v_max`` l'éventuelle limite de vitesse (en m/s) de la route, par défaut ``V_MAX``
         - ``car_factory`` l'éventuel CarFactory
         - ``vdstart`` pour arcroad, si ``start`` est un couple de coordonnées, vecteur directeur du début
         - ``vdend`` pour arcroad, si ``end`` est un couple de coordonnées, vecteur directeur de la fin
@@ -413,7 +422,7 @@ class Simulation:
                 return d + next_road.length, v
 
     def get_bumping_cars(self, car: Car):
-        if not s.USE_BUMPING_BOXES or not is_inside_circle((car.x, car.y), self.bumping_zone):
+        if not s.USE_BUMPING_BOXES or not is_inside_circle(car.pos, self.bumping_zone):
             return []
 
         bumping_cars = []
@@ -424,17 +433,29 @@ class Simulation:
                     if car != other_car \
                             and car.is_bumping_with(other_car) \
                             and car not in other_car.bumping_cars \
-                            and not is_inside_circle((other_car.x, other_car.y), self.bumping_zone):
+                            and not is_inside_circle(other_car.pos, self.bumping_zone):
                         bumping_cars.append(other_car)
 
         return bumping_cars
 
-    def set_bumping_zone(self, center: Vecteur, radius: float):
-        self.bumping_zone = (center, radius)
+    def set_bumping_zone(self, center: tuple[float, float] = None, radius: float = INF):
+        """
+        Définie la zone circulaire où la simulation utilise les hitbox et hurtbox des voitures pour éviter les collisions.
+        La détection de collision sera automatiquement activée, même si ``USE_BUMPING_BOXES = False``.
+
+        :param center: centre du disque décrivant la zone, centre de la fenêtre par défaut
+        :param radius: rayon du disque décrivant la zone, +inf par défaut
+        """
+        s.USE_BUMPING_BOXES = True
+
+        if center is None:
+            center = self.size/2
+
+        self.bumping_zone = (npa(self.rc_to_sc(center)), radius)
 
     def show_bumping_zone(self):
         center, radius = self.bumping_zone
         if s.SHOW_BUMPING_ZONES and radius < INF:
-            da = lambda color: int(color * 0.9)
+            da = lambda color: int(color * 0.93)
             r, g, b = self.bg_color
             draw_circle(self.surface, (da(r), da(g), da(b)), center, radius, self.off_set)

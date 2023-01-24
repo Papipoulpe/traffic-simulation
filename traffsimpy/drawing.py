@@ -1,27 +1,24 @@
 import pygame
 from pygame import gfxdraw as gfx
-from typing import *
 
-Vecteur: TypeAlias = tuple[int, int]  # définiton du type Vecteur = (a, b)
-Couleur: TypeAlias = tuple[int, int, int]  # définiton du type Couleur = (r, g, b)
+from .math_and_util import *
 
 
-def draw_polygon(surface: pygame.Surface, color: Couleur, points: Sequence[Vecteur], off_set: Vecteur = (0, 0)):
+def draw_polygon(surface: pygame.Surface, color: Couleur, points: tuple[Vecteur, ...], off_set: Vecteur = npz(2)):
     """
-    Dessine un polygone rempli.
+    Dessine un polygône rempli.
 
     :param surface: surface sur laquelle dessiner
     :param color: couleur du polygone
     :param points: coordonnées des points
     :param off_set: décalage par rapport à l'origine
     """
-    a, b = off_set
-    points_with_off_set = [(x + a, y + b) for (x, y) in points]
+    points_with_off_set = [p + off_set for p in points]
     gfx.filled_polygon(surface, points_with_off_set, color)
     gfx.aapolygon(surface, points_with_off_set, color)
 
 
-def draw_rect(surface: pygame.Surface, color: Couleur, up_left_corner: Vecteur, width: float, heigth: float, off_set: Vecteur = (0, 0)):
+def draw_rect(surface: pygame.Surface, color: Couleur, up_left_corner: Vecteur, width: float, heigth: float, off_set: Vecteur = npz(2)):
     """
     Dessine un rectangle rempli, sans rotation.
 
@@ -32,27 +29,27 @@ def draw_rect(surface: pygame.Surface, color: Couleur, up_left_corner: Vecteur, 
     :param heigth: hauteur
     :param off_set: décalage par rapport à l'origine
     """
-    x, y = up_left_corner
-    draw_polygon(surface, color, ((x, y), (x + width, y), (x + width, y + heigth), (x, y + heigth)), off_set)
+    w, wh, h = npa(((width, 0), (width, heigth), (0, heigth)))
+    points = (up_left_corner, up_left_corner + w, up_left_corner + wh, up_left_corner + h)
+    draw_polygon(surface, color, points, off_set)
 
 
-def draw_circle(surface: pygame.Surface, color: Couleur, center: Vecteur, radius: int, off_set: Vecteur = (0, 0)):
+def draw_circle(surface: pygame.Surface, color: Couleur, center: Vecteur, radius: int, off_set: Vecteur = npz(2)):
     """
-    Dessine un cercle rempli.
+    Dessine un disque.
 
-    :param surface: surface surlaquelle dessinert
+    :param surface: surface surlaquelle dessiner
     :param color: couleur du cercle
     :param center: coordonnées du centre
     :param radius: rayon
     :param off_set: décalage par rapport à l'origine
     """
-    a, b = off_set
-    x, y = center
-    gfx.filled_circle(surface, x + a, y + b, radius, color)
-    gfx.aacircle(surface, x + a, y + b, radius, color)
+    x, y = center + off_set
+    gfx.filled_circle(surface, round(x), round(y), radius, color)
+    gfx.aacircle(surface, round(x), round(y), radius, color)
 
 
-def print_text(surface: pygame.Surface, color: Couleur, up_left_corner: Vecteur, text: str, font: pygame.font.Font, anti_aliasing: bool = True, off_set: Vecteur = (0, 0)):
+def draw_text(surface: pygame.Surface, color: Couleur, up_left_corner: Vecteur, text: str, font: pygame.font.Font, anti_aliasing: bool = True, off_set: Vecteur = npz(2)):
     """
     Affiche du texte.
 
@@ -70,7 +67,7 @@ def print_text(surface: pygame.Surface, color: Couleur, up_left_corner: Vecteur,
     surface.blit(rendered, (x + a, y + b))
 
 
-def draw_image(surface: pygame.Surface, image, coords: Vecteur, off_set: Vecteur = (0, 0)):
+def draw_image(surface: pygame.Surface, image, coords: Vecteur, off_set: Vecteur = npz(2)):
     """
     Affiche une image.
 

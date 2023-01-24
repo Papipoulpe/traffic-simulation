@@ -1,23 +1,24 @@
 from traffsimpy import Simulation, CarFactory, Sensor
 
+w, h = 1440, 840
 
-sim = Simulation("Carrefour", 1440, 820)
+sim = Simulation("Carrefour", w, h)
 
-road_list = [{"id": 1, "type": "road", "start": (-60, 440), "end": (650, 440),  # routes de gauche
+road_list = [{"id": 1, "type": "road", "start": (-60, 400), "end": (650, 400),  # routes de gauche
               "car_factory": CarFactory(["rand_color"], [5, 7.5]), "sensors": Sensor(10)},
-             {"id": 2, "type": "road", "start": (650, 400), "end": (-60, 400)},
+             {"id": 2, "type": "road", "start": (650, 440), "end": (-60, 440)},
 
-             {"id": 3, "type": "road", "start": (1500, 400), "end": (790, 400),  # routes de droite
+             {"id": 3, "type": "road", "start": (1500, 440), "end": (790, 440),  # routes de droite
               "car_factory": CarFactory(["rand_color"], [5, 7.5])},
-             {"id": 4, "type": "road", "start": (790, 440), "end": (1500, 440)},
+             {"id": 4, "type": "road", "start": (790, 400), "end": (1500, 400)},
 
-             {"id": 5, "type": "road", "start": (700, -60), "end": (700, 350),  # routes du haut
+             {"id": 5, "type": "road", "start": (740, -60), "end": (740, 350),  # routes du haut
               "car_factory": CarFactory(["rand_color"], [5, 7.5])},
-             {"id": 6, "type": "road", "start": (740, 350), "end": (740, -60)},
+             {"id": 6, "type": "road", "start": (700, 350), "end": (700, -60)},
 
-             {"id": 7, "type": "road", "start": (740, 900), "end": (740, 490),  # routes du bas
+             {"id": 7, "type": "road", "start": (700, 900), "end": (700, 490),  # routes du bas
               "car_factory": CarFactory(["rand_color"], [5, 7.5])},
-             {"id": 8, "type": "road", "start": (700, 490), "end": (700, 900)},
+             {"id": 8, "type": "road", "start": (740, 490), "end": (740, 900)},
 
              {"id": 14, "type": "road", "start": 1, "end": 4, "with_arrows": False},  # routes du carrefour
              {"id": 16, "type": "arcroad", "start": 1, "end": 6},
@@ -42,6 +43,6 @@ road_graph = {1: {14: 0.3, 16: 0.4, 18: 0.3}, 14: 4, 16: 6, 18: 8, 2: None,
 
 sim.create_roads(road_list)
 sim.set_road_graph(road_graph)
-sim.set_bumping_zone((720, 420), 80)
+sim.set_bumping_zone(radius=80)
 
 sim.start()

@@ -3,8 +3,8 @@ from colorama import Fore, Style
 
 INF = float("+inf")
 
-FONT_PATH = "traffsimpy/ressources/jbmono.ttf"
-ARROW_PATH = "traffsimpy/ressources/arrow.png"
+DEF_FONT_PATH = "ressources/jbmono.ttf"
+DEF_ARROW_PATH = "ressources/arrow.png"
 
 TXT_RED = Fore.RED
 TXT_BOLD = Style.BRIGHT

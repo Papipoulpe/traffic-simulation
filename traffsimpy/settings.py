@@ -21,10 +21,10 @@ USE_BUMPING_BOXES = True  # si la simulation utlise les hitbox et hurtbox des vo
 
 # Ressources
 
-FONT_PATH: str  # chemin à la police de caractère du texte, déjà défini dans ressources.py
+FONT_PATH = DEF_FONT_PATH  # chemin à la police de caractère du texte, déjà défini dans ressources.py
 FONT_SIZE = 15  # pixels, taille du texte
 FONT_COLOR = BLACK  # couleur du texte
-ARROW_PATH: str  # chemin à l'image de flèche, déjà défini dans ressources.py
+ARROW_PATH = DEF_ARROW_PATH  # chemin à l'image de flèche, déjà défini dans ressources.py
 
 # Routes
 
@@ -42,7 +42,7 @@ CAR_WIDTH = 1.8  # m, largeur par défaut des voitures
 CAR_LENGTH = 3  # m, longueur par défaut des voitures
 CAR_COLOR = BLUE_GREEN_CAR  # couleur par défaut des voitures
 CAR_SPEED_CODED_COLOR = True  # si la couleur des voitures représente leurs vitesses (de rouge = lent à bleu = rapide)
-CAR_SHOW_BUMPING_BOXES = False  # si on affiche des zones de collision des voitures
+CAR_SHOW_BUMPING_BOXES = True  # si on affiche des zones de collision des voitures
 CAR_SHOW_ARROW = False  # si on affiche la direction de chaque voiture sur son toit
 CAR_SHOW_ID = False  # si on affiche l'id de chaque voiture sur son toit
 CAR_SHOW_SPEED_MS = False  # si on affiche la vitesse de chaque voiture sur son toit en m/s
@@ -85,9 +85,9 @@ SENSOR_WIDTH = 3  # largeur du trait représentant un capteur
 
 # Mise à l'échelle et finitions
 
-ROAD_WIDTH, CAR_A, CAR_WIDTH, CAR_LENGTH, CAR_RAND_WIDTH_MAX, CAR_RAND_WIDTH_MIN, CAR_RAND_LENGTH_MAX, CAR_RAND_LENGTH_MIN, DELTA_D_MIN, V_MAX, A_MAX, A_MIN = ROAD_WIDTH * SCALE, CAR_A * SCALE, CAR_WIDTH * SCALE, CAR_LENGTH * SCALE, CAR_RAND_WIDTH_MAX * SCALE, CAR_RAND_WIDTH_MIN * SCALE, CAR_RAND_LENGTH_MAX * SCALE, CAR_RAND_LENGTH_MIN * SCALE, DELTA_D_MIN * SCALE, V_MAX * SCALE, A_MAX * SCALE, A_MIN * SCALE
+ROAD_WIDTH, CAR_A, CAR_WIDTH, CAR_LENGTH, CAR_RAND_WIDTH_MAX, CAR_RAND_WIDTH_MIN, CAR_RAND_LENGTH_MAX, CAR_RAND_LENGTH_MIN, DELTA_D_MIN, A_MAX, A_MIN = ROAD_WIDTH * SCALE, CAR_A * SCALE, CAR_WIDTH * SCALE, CAR_LENGTH * SCALE, CAR_RAND_WIDTH_MAX * SCALE, CAR_RAND_WIDTH_MIN * SCALE, CAR_RAND_LENGTH_MAX * SCALE, CAR_RAND_LENGTH_MIN * SCALE, DELTA_D_MIN * SCALE, A_MAX * SCALE, A_MIN * SCALE
 
 if CAR_V is not None:
     CAR_V *= SCALE
 else:
-    CAR_V = V_MAX
+    CAR_V = V_MAX*SCALE

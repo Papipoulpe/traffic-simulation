@@ -1,17 +1,19 @@
 import json
 from typing import *
+from numpy.typing import NDArray
 
 import numpy as np
 import pandas as pd
 import webcolors
 
 import traffsimpy.settings as s
+from .ressources import *
 
 np.seterr("raise")  # change la gestion des erreurs de maths (division par zéro, racine de réel négatif...)
 
 ids = {}  # dictionnaire des identifiants d'objet
 
-Vecteur: TypeAlias = tuple[float, float]  # définiton du type Vecteur = (a, b)
+Vecteur: TypeAlias = NDArray[np.float64]  # définiton du type Vecteur = (a, b)
 Couleur: TypeAlias = tuple[int, int, int]  # définiton du type Couleur = (r, g, b)
 
 
@@ -31,58 +33,58 @@ def get_by_id(obj_id: int) -> Any:
     return ids[obj_id]
 
 
-def length(p1: Vecteur, p2: Vecteur) -> float:
+npa = np.array
+npz = np.zeros
+
+
+def dot(u: Vecteur, v: Vecteur):
+    """Renvoie le résultat du produit scalaire ``u•v``."""
+    return np.dot(u, v)
+
+
+def norm(v: Vecteur):
+    """Renvoie la norme ``||v||``."""
+    return np.sqrt(dot(v, v))
+
+
+def normed(v: Vecteur, new_norm: float = 1) -> Vecteur:
+    """Renvoie ``new_norm * v / ||v||``."""
+    return new_norm * v / norm(v)
+
+
+def length(p1: Vecteur, p2: Vecteur):
     """Renvoie la longueur du segment ``[p1p2]``."""
-    x1, y1 = p1
-    x2, y2 = p2
-    return np.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2))
+    return norm(p2 - p1)
 
 
 def direction_vector(p1: Vecteur, p2: Vecteur) -> Vecteur:
     """Renvoie le vecteur directeur normé de la droite ``(p1p2)``."""
-    x1, y1 = p1
-    x2, y2 = p2
-    a, b = x2 - x1, y2 - y1
-    n = norm((a, b))
-    return a / n, b / n
+    return normed(p2 - p1)
 
 
-def scalar_product(u: Vecteur, v: Vecteur) -> float:
-    """Renvoie le résultat du produit scalaire ``u•v``."""
-    x1, y1 = u
-    x2, y2 = v
-    return x1 * x2 + y1 * y2
-
-
-def norm(v: Vecteur) -> float:
-    """Renvoie la norme ``||v||``."""
-    return np.sqrt(scalar_product(v, v))
-
-
-def normal_vector(v: Vecteur, nouv_norme: float = 1) -> Vecteur:
+def normal_vector(v: Vecteur, new_norm: float = 1) -> Vecteur:
     """Vecteur normal au vecteur ``v``, éventuellement renormé."""
     a, b = v
-    coeff = nouv_norme / norm(v)
-    return -b * coeff, a * coeff
+    return normed(npa((-b, a)), new_norm)
 
 
-def angle_of_vect(v: Vecteur) -> float:
+def angle_of_vect(v: Vecteur):
     """Angle du vecteur ``v`` avec l'axe des abscisses, en degrés."""
-    a, b = v
-    return -float(np.angle([a + 1j * b], deg=True))
+    u = npa((1, 1j))
+    return np.angle(dot(u, v), deg=True)
 
 
-def rec_round(obj: Union[Iterable, float], prec: Optional[int] = None) -> Union[Iterable, float]:
+def rec_round(obj: Iterable | float, prec: Optional[int] = None) -> Iterable | float:
     """Arrondi récursif."""
-    if isinstance(obj, list) or isinstance(obj, tuple):
+    if isinstance(obj, float):
+        return round(obj, prec)
+    else:
         res = []
         for e in obj:
             res.append(rec_round(e, prec))
         if isinstance(obj, tuple):
             res = tuple(res)
         return res
-    else:
-        return round(obj, prec)
 
 
 def parse(string: str) -> dict:
@@ -113,14 +115,14 @@ def idm(car, leader_coords: Optional[Vecteur], dt: float):
             return
 
         delta_v = car.v - lead_v
-        dd_parfait = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(
-            2 * s.A_MIN_CONF * car.a_max))
+
+        dd_parfait = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * s.A_MIN_CONF * car.a_max))
         a_interaction = (dd_parfait / delta_d) ** 2
     else:
         a_interaction = 0
 
     a_free_road = 1 - (car.v / car.road.v_max) ** car.a_exp
-    a_idm = car.a_max*(a_free_road - a_interaction)
+    a_idm = car.a_max * (a_free_road - a_interaction)
     car.a = min(car.a_min, a_idm)
 
     update_taylor_protected(car, dt)
@@ -133,17 +135,16 @@ def intersection_droites(p1: Vecteur, vd1: Vecteur, p2: Vecteur, vd2: Vecteur) -
     a1, b1 = vd1
     a2, b2 = vd2
     t = (a2 * (y2 - y1) - b2 * (x2 - x1)) / (a2 * b1 - b2 * a1)
-    return x1 + a1 * t, y1 + b1 * t
+    return p1 + vd1 * t
 
 
 def bezier_curve(p1: Vecteur, p2: Vecteur, p3: Vecteur, n: int) -> list[Vecteur]:
     """Renvoie ``n`` points de la courbe de Bézier définie par les points de contrôle ``p1``, ``p2`` et ``p3``."""
     points = []
-    a1, a2, a3 = np.array(p1), np.array(p2), np.array(p3)
     for i in range(n + 1):
         t = i / n
-        a = (1 - t) * (1 - t) * a1 + 2 * (1 - t) * t * a2 + t * t * a3
-        points.append(a.tolist())
+        point = (1 - t) * (1 - t) * p1 + 2 * (1 - t) * t * p2 + t * t * p3
+        points.append(point)
     return points
 
 
@@ -168,16 +169,14 @@ def get_color_name(requested_color: Couleur) -> str:
     return closest_name
 
 
-def is_inside_rectangle(m: Vecteur, rectangle: tuple[Vecteur, Vecteur, Vecteur, Vecteur]) -> bool:
+def is_inside_rectangle(m: Vecteur, rectangle: np.ndarray) -> bool:
     """Renvoie si le point ``m`` est à l'intérieur du rectangle, défini par ses quatres sommets."""
-    npy = np.array
     a, b, c, d = rectangle
-    m, a, b, c, d = npy(m), npy(a), npy(b), npy(c), npy(d)
     am = m - a
     ab = b - a
     ad = d - a
     # M est dans ABCD ssi (0 < AM⋅AB < AB⋅AB) et (0 < AM⋅AD < AD⋅AD)
-    return 0 <= scalar_product(am, ab) <= scalar_product(ab, ab) and 0 <= scalar_product(am, ad) <= scalar_product(ad, ad)
+    return 0 <= dot(am, ab) <= dot(ab, ab) and 0 <= dot(am, ad) <= dot(ad, ad)
 
 
 def is_inside_circle(m: Vecteur, circle: tuple[Vecteur, float]):
@@ -185,7 +184,7 @@ def is_inside_circle(m: Vecteur, circle: tuple[Vecteur, float]):
     x, y = m
     center, radius = circle
     cx, cy = center
-    return (x - cx)*(x - cx) + (y - cy)*(y - cy) <= radius
+    return (x - cx) * (x - cx) + (y - cy) * (y - cy) <= radius
 
 
 def data_frame(columns: list[str], data: Any = None) -> pd.DataFrame:
@@ -195,3 +194,13 @@ def data_frame(columns: list[str], data: Any = None) -> pd.DataFrame:
 
 def blue_red_gradient(shade: float):
     return s.ROGB_GRADIENT[max(min(round(shade * (len(s.ROGB_GRADIENT) - 1)), len(s.ROGB_GRADIENT) - 1), 0)]
+
+
+def tbold(text):
+    """Renvoie le texte formatté en gras pour la sortie standard."""
+    return TXT_BOLD + str(text) + TXT_RESET
+
+
+def tred(text):
+    """Renvoie le texte formatté en rouge pour la sortie standard."""
+    return TXT_RED + str(text) + TXT_RESET
