@@ -1,8 +1,6 @@
 from traffsimpy import Simulation, CarFactory, Sensor
 
-w, h = 1440, 840
-
-sim = Simulation("Carrefour", w, h)
+sim = Simulation("Carrefour", 1440, 840)
 
 road_list = [{"id": 1, "type": "road", "start": (-60, 400), "end": (650, 400),  # routes de gauche
               "car_factory": CarFactory(["rand_color"], [5, 7.5]), "sensors": Sensor(10)},
@@ -43,6 +41,6 @@ road_graph = {1: {14: 0.3, 16: 0.4, 18: 0.3}, 14: 4, 16: 6, 18: 8, 2: None,
 
 sim.create_roads(road_list)
 sim.set_road_graph(road_graph)
-sim.set_bumping_zone(radius=80)
+sim.set_bumping_zone()
 
 sim.start()

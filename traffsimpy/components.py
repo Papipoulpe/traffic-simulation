@@ -88,15 +88,16 @@ class Car:
         """
         if self.bumping_cars:
             n = len(self.bumping_cars)
-            d_avg = sum(length(self.pos, car.pos) for car in self.bumping_cars) / n
-            v_avg = sum(car.v for car in self.bumping_cars) / n
-            leader_coords = d_avg, v_avg
+            d_avg = sum(length(self.pos, other_car.pos) for other_car in self.bumping_cars) / n
+            v_avg = sum(other_car.v for other_car in self.bumping_cars) / n
+            d, v = leader_coords
+            leader_coords = (d_avg + d)/2, (v_avg + v)/2
 
         idm(self, leader_coords, dt)
 
     def is_bumping_with(self, other_car: "Car"):
-        """Renvoie si la voiture rentre en collision **sur** ``other_car``, c'est-à-dire si un des coins de
-        ``car.front_bumper_points`` est à l'intérieur de ``other_car.side_bumper_corners``."""
+        """Renvoie si la voiture **percute** ``other_car``, c'est-à-dire si un des coins de
+        ``car.front_bumper_hitbox`` est à l'intérieur de ``other_car.side_bumper_hurtbox``."""
         return any(is_inside_rectangle(corner, other_car.side_bumper_hurtbox) for corner in self.front_bumper_hitbox)
 
 

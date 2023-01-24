@@ -87,7 +87,7 @@ class Simulation:
                 # affichage des voitures de la route
                 for car in road.cars:
                     self.show_car(car)
-                    car.bumping_cars = self.get_bumping_cars(car)
+                    self.set_bumping_cars(car)
 
                 # affiche les capteurs
                 for sensor in road.sensors:
@@ -225,7 +225,7 @@ class Simulation:
             draw_polygon(self.surface, front_bumper_color, car.front_bumper_hitbox, self.off_set)
 
         if s.CAR_SPEED_CODED_COLOR:  # si la couleur de la voiture dépend de sa vitesse
-            car_color = blue_red_gradient(car.v/s.V_MAX)
+            car_color = blue_red_gradient(car.v/(s.V_MAX*s.SCALE))
         else:
             car_color = car.color
 
@@ -421,22 +421,24 @@ class Simulation:
                 d, v = self.get_leader_coords(next_road, avg=True)
                 return d + next_road.length, v
 
-    def get_bumping_cars(self, car: Car):
+    def set_bumping_cars(self, car: Car):
+        """Met à jour les voitures avec lequelles ``car`` rentre en collision."""
         if not s.USE_BUMPING_BOXES or not is_inside_circle(car.pos, self.bumping_zone):
-            return []
+            car.bumping_cars = []
 
-        bumping_cars = []
+        else:
+            bumping_cars = []
 
-        for road in self.roads:
-            if road != car.road:
-                for other_car in road.cars:
-                    if car != other_car \
-                            and car.is_bumping_with(other_car) \
-                            and car not in other_car.bumping_cars \
-                            and not is_inside_circle(other_car.pos, self.bumping_zone):
-                        bumping_cars.append(other_car)
+            for road in self.roads:
+                if road != car.road:
+                    for other_car in road.cars:
+                        is_bumping = car.is_bumping_with(other_car)
+                        is_bumping_first = car not in other_car.bumping_cars
+                        other_is_in_bumping_zone = is_inside_circle(other_car.pos, self.bumping_zone)
+                        if is_bumping and is_bumping_first and other_is_in_bumping_zone:
+                            bumping_cars.append(other_car)
 
-        return bumping_cars
+            car.bumping_cars = bumping_cars
 
     def set_bumping_zone(self, center: tuple[float, float] = None, radius: float = INF):
         """
