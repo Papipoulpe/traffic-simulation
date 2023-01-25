@@ -231,6 +231,10 @@ class Simulation:
             draw_polygon(self.surface, side_bumper_color, car.side_bumper_hurtbox, self.off_set)
             draw_polygon(self.surface, front_bumper_color, car.front_bumper_hitbox, self.off_set)
 
+        if s.CAR_SHOW_LEADER_LINKS:
+            for leader, _, _ in car.leaders:
+                draw_line(self.surface, car.color, car.pos, leader.pos, self.off_set)
+
         if s.CAR_SPEED_CODED_COLOR:  # si la couleur de la voiture dépend de sa vitesse
             car_color = blue_red_gradient(car.v/(s.V_MAX*s.SCALE))
         else:
@@ -242,20 +246,22 @@ class Simulation:
             rotated_arrow = pygame.transform.rotate(self.CAR_ARROW, car.road.angle)
             draw_image(self.surface, rotated_arrow, car.road.dist_to_pos(car.d), self.off_set)
 
-        elif s.CAR_SHOW_SPEED_MS or s.CAR_SHOW_SPEED_KMH:  # si on affiche la vitesse de la voiture
-            coeff = 3.6 if s.CAR_SHOW_SPEED_KMH else 1
-            text = str(round(coeff * car.v / s.SCALE))
-            text_width, text_height = self.SMALL_FONT.size(text)
-            x = car.pos[0] - text_width / 2
-            y = car.pos[1] - text_height / 2
-            draw_text(self.surface, s.FONT_COLOR, npa((x, y)), text, self.SMALL_FONT, off_set=self.off_set)
+        roof_text = ""
 
-        elif s.CAR_SHOW_ID:  # si on affiche l'id de la voiture
+        if s.CAR_SHOW_SPEED_MS:  # si on affiche la vitesse de la voiture en m/s
+            text = str(round(car.v / s.SCALE))
+            roof_text += text
+        if s.CAR_SHOW_SPEED_KMH:  # si on affiche la vitesse en km/h
+            text = str(round(3.6 * car.v / s.SCALE))
+            roof_text += ("|" if roof_text else "") + text
+        if s.CAR_SHOW_ID:  # si on affiche l'id de la voiture
             text = str(car.id)
-            text_width, text_height = self.SMALL_FONT.size(text)
+            roof_text += ("|" if roof_text else "") + text
+        if roof_text:
+            text_width, text_height = self.SMALL_FONT.size(roof_text)
             x = car.pos[0] - text_width / 2
             y = car.pos[1] - text_height / 2
-            draw_text(self.surface, s.FONT_COLOR, npa((x, y)), text, self.SMALL_FONT, off_set=self.off_set)
+            draw_text(self.surface, s.FONT_COLOR, npa((x, y)), roof_text, self.SMALL_FONT, off_set=self.off_set)
 
     def show_roads(self, road_list: Sequence[Road | ArcRoad]):
         """Affiche des routes."""
@@ -374,14 +380,18 @@ class Simulation:
 
         :param graph: graphe des routes, de type ``{road_id1: road_id2, road_id3: {road_id1: proba1, road_id4: propa4}}``"""
         self.road_graph = graph
+
         for road in self.roads:
             next_roads = graph[road.id]
             if isinstance(next_roads, int):
-                car_sorter = CarSorter(method={next_roads: 1})
+                road.car_sorter = CarSorter(method={next_roads: 1})
             else:
-                car_sorter = CarSorter(method=next_roads)
+                road.car_sorter = CarSorter(method=next_roads)
 
-            road.car_sorter = car_sorter
+            if isinstance(road, ArcRoad):
+                for i in range(road.n - 1):
+                    self.road_graph[-(road.n*road.id+i)] = -(road.n*road.id+i+1)
+                self.road_graph[-(road.n * (road.id + 1) - 1)] = self.road_graph[road.id]
 
     def get_leaders(self, road: Road, avg: bool):
         """
@@ -416,6 +426,9 @@ class Simulation:
 
         else:  # si GET_LEADER_COORDS_METHOD_AVG est False
 
+            if not road.cars:
+                return None
+
             next_road = road.cars[0].next_road
 
             if next_road is None:  # dans le rare cas où la première voiture n'a pas encore de prochaine route
@@ -425,7 +438,7 @@ class Simulation:
                 return [(next_car, next_car.d, s.CAR_LEADERS_COEFF_NEXT_ROAD_CAR)]
             else:  # si elle en a une mais qui ne contient pas de voiture
                 next_leaders = self.get_leaders(next_road, avg=True)
-                return [(next_car, next_road.d + d, next_prob) for next_car, d, next_prob in next_leaders]
+                return [(next_car, next_road.length + d, next_prob) for next_car, d, next_prob in next_leaders]
 
     def get_bumping_cars(self, car: Car):
         """Renvoie les voitures avec lequelles ``car`` rentre en collision."""

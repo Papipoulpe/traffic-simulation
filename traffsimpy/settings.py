@@ -15,7 +15,7 @@ FPS = 60  # Hz, images par secondes de la simulation
 SPEED = 1  # vitesse de la simulation
 MAX_SPEED = 4  # vitesse maximum possible, peu d'effets au delà de 4 pour un processeur classique
 SCALE = 10  # pixels/m, échelle de la simulation
-GET_LEADERS_METHOD_AVG = True  # méthode pour determiner le leader de la première voiture d'une route. True = dernières voitures des prochaines routes, coefficientées par la probabilité que la voiture aille sur ces routes. False = dernière voiture de la prochaine route de la voiture.
+GET_LEADERS_METHOD_AVG = False  # méthode pour determiner le leader de la première voiture d'une route. True = dernières voitures des prochaines routes, coefficientées par la probabilité que la voiture aille sur ces routes. False = dernière voiture de la prochaine route de la voiture.
 USE_BUMPING_BOXES = True  # si la simulation utlise les hitbox et hurtbox des voitures pour éviter les collisions
 
 # Ressources
@@ -41,13 +41,14 @@ CAR_V = None  # m/s, vitesse par défaut des voitures (50 km/h = 13.9 m/s, 30 km
 CAR_WIDTH = 1.8  # m, largeur par défaut des voitures
 CAR_LENGTH = 3  # m, longueur par défaut des voitures
 CAR_COLOR = BLUE_GREEN_CAR  # couleur par défaut des voitures
-CAR_SPEED_CODED_COLOR = True  # si la couleur des voitures représente leurs vitesses (de rouge = lent à bleu = rapide)
+CAR_SPEED_CODED_COLOR = False  # si la couleur des voitures représente leurs vitesses (de rouge = lent à bleu = rapide)
 
-CAR_SHOW_BUMPING_BOXES = False  # si on affiche les zones de collision (hitbox, hurtbox) des voitures
+CAR_SHOW_BUMPING_BOXES = True  # si on affiche les zones de collision (hitbox, hurtbox) des voitures
+CAR_SHOW_LEADER_LINKS = True  # si on affiche les liens entre la voitures et ses leaders
 CAR_SHOW_ARROW = False  # si on affiche la direction de chaque voiture sur son toit
-CAR_SHOW_ID = True  # si on affiche l'id de chaque voiture sur son toit
+CAR_SHOW_ID = False  # si on affiche l'id de chaque voiture sur son toit
 CAR_SHOW_SPEED_MS = False  # si on affiche la vitesse de chaque voiture sur son toit en m/s
-CAR_SHOW_SPEED_KMH = False  # si on affiche la vitesse de chaque voiture sur son toit en km/h
+CAR_SHOW_SPEED_KMH = True  # si on affiche la vitesse de chaque voiture sur son toit en km/h
 
 CAR_LEADERS_COEFF_BUMPING_CARS = 10  # coefficient d'importances des voitures en collisions dans le calcul du leader
 CAR_LEADERS_COEFF_IN_FRONT_CAR = 5  # coefficient d'importances de la voiture de devant dans le calcul du leader

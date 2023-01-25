@@ -30,7 +30,7 @@ def draw_line(surface: pygame.Surface, color: Couleur, start: Vecteur, end: Vect
     """
     x1, y1 = start + off_set
     x2, y2 = end + off_set
-    gfx.line(surface, x1, y1, x2, y2, color)
+    gfx.line(surface, int(x1), int(y1), int(x2), int(y2), color)
 
 
 def draw_rect(surface: pygame.Surface, color: Couleur, up_left_corner: Vecteur, width: float, heigth: float, off_set: Vecteur = npz(2)):
