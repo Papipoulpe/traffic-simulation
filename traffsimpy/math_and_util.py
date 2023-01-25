@@ -115,7 +115,8 @@ def idm(car, leader_coords: Optional[Vecteur], dt: float):
 
         delta_v = car.v - lead_v
 
-        dd_parfait = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * s.A_MIN_CONF * car.a_max))
+        dd_parfait = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(
+            2 * s.A_MIN_CONF * car.a_max))
         a_interaction = (dd_parfait / delta_d) ** 2
     else:
         a_interaction = 0

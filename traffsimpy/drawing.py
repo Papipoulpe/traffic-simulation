@@ -33,7 +33,8 @@ def draw_line(surface: pygame.Surface, color: Couleur, start: Vecteur, end: Vect
     gfx.line(surface, int(x1), int(y1), int(x2), int(y2), color)
 
 
-def draw_rect(surface: pygame.Surface, color: Couleur, up_left_corner: Vecteur, width: float, heigth: float, off_set: Vecteur = npz(2)):
+def draw_rect(surface: pygame.Surface, color: Couleur, up_left_corner: Vecteur, width: float, heigth: float,
+              off_set: Vecteur = npz(2)):
     """
     Dessine un rectangle rempli, sans rotation.
 
@@ -64,7 +65,8 @@ def draw_circle(surface: pygame.Surface, color: Couleur, center: Vecteur, radius
     gfx.aacircle(surface, round(x), round(y), radius, color)
 
 
-def draw_text(surface: pygame.Surface, color: Couleur, up_left_corner: Vecteur, text: str, font: pygame.font.Font, anti_aliasing: bool = True, off_set: Vecteur = npz(2)):
+def draw_text(surface: pygame.Surface, color: Couleur, up_left_corner: Vecteur, text: str, font: pygame.font.Font,
+              anti_aliasing: bool = True, off_set: Vecteur = npz(2)):
     """
     Affiche du texte.
 

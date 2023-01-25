@@ -2,8 +2,8 @@ from .ressources import *
 
 # Affichage
 
-SHOW_DETAILED_LOGS = True  # si on affiche les détails de la simulation quand on passe en pause ou quand le programme s'arrête
-SHOW_ERRORS = True  # si on affiche les erreurs quand le programme se plante
+PRINT_DETAILED_LOGS = True  # si on affiche les détails de la simulation quand l'utilisateur met en pause ou quand le programme s'arrête
+PRINT_ERRORS = True  # si on affiche les erreurs quand le programme se plante
 BACKGROUND_COLOR = BLUE_BG  # couleur de l'arrière plan de la fenêtre
 INFO_BACKGROUND_COLOR = BLUE_TXT_BG  # couleur de l'arrière plan du texte
 SHOW_SCALE = True  # si on affiche l'échelle des distances
@@ -86,7 +86,7 @@ TL_ORANGE_SLOW_DOWN_COEFF = 0.5  # coefficient de ralentissement du feu orange, 
 
 SENSOR_EXPORTS_DIRECTORY = "exemples/resultats_capteurs/"
 SENSOR_PRINT_RES_AT_PAUSE = False  # si les capteurs affichent leurs résulats à chaque mise en pause
-SENSOR_EXPORT_RES_AT_PAUSE = False  # les les capteurs exportent leurs résulats à chaque mise en pause
+SENSOR_EXPORT_RES_AT_PAUSE = False  # si les capteurs exportent leurs résulats à chaque mise en pause
 SENSOR_COLOR = SENSOR_PURPLE  # couleur du trait représentant un capteur
 SENSOR_WIDTH = 3  # largeur du trait représentant un capteur
 
@@ -97,4 +97,4 @@ ROAD_WIDTH, CAR_A, CAR_WIDTH, CAR_LENGTH, CAR_RAND_WIDTH_MAX, CAR_RAND_WIDTH_MIN
 if CAR_V is not None:
     CAR_V *= SCALE
 else:
-    CAR_V = V_MAX*SCALE
+    CAR_V = V_MAX * SCALE

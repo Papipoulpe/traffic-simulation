@@ -32,8 +32,10 @@ class Car:
         self.t_react = s.T_REACT  # pour l'IDM
 
         self.corners = npz((4, 2))  # coordonnées des coins du rectangle représentant la voiture, pour affichage
-        self.front_bumper_hitbox = npz((4, 2))  # coordonnées des coins du rectangle à l'avant de la voiture, pour détecter les collisions
-        self.side_bumper_hurtbox = npz((4, 2))  # coordonnées des coins du rectangle sur les côtés et l'arrière de la voiture, pour détecter les collisions
+        self.front_bumper_hitbox = npz(
+            (4, 2))  # coordonnées des coins du rectangle à l'avant de la voiture, pour détecter les collisions
+        self.side_bumper_hurtbox = npz((4,
+                                        2))  # coordonnées des coins du rectangle sur les côtés et l'arrière de la voiture, pour détecter les collisions
 
         self.leaders = []  # leaders de la voitures
 
@@ -63,7 +65,8 @@ class Car:
         vd = self.road.vd  # on récupère le vecteur directeur de la route
         vd_l = vd * self.length / 2  # on le norme pour la longueur de la voiture
         vd_ddm = vd * self.delta_d_min / 2  # on le norme pour la distance de sécurité
-        vd_ddmp = vd * (self.delta_d_min + self.v + self.t_react) / 2  # on le norme pour la distance de sécurité et la vitesse
+        vd_ddmp = vd * (
+                    self.delta_d_min + self.v + self.t_react) / 2  # on le norme pour la distance de sécurité et la vitesse
         vn_w = normal_vector(
             self.road.vd,
             self.width / 2)  # vecteur normal de la route normé pour la largeur de la voiture
@@ -120,7 +123,7 @@ class Car:
             leader_coords += npa([d, other_car.v]) * importance
             total_imp += importance
 
-        return leader_coords/total_imp
+        return leader_coords / total_imp
 
 
 class CarFactory:
@@ -153,7 +156,8 @@ class CarFactory:
         :param args_crea: arguments de la fonction de création
         :param args_fact: arguments de la fonction de fréquence de création
         """
-        if self.fact_func and self.fact_func(**args_fact):  # si une fonction de fréquence est définie et qu'elle autorise la création
+        if self.fact_func and self.fact_func(
+                **args_fact):  # si une fonction de fréquence est définie et qu'elle autorise la création
             return self.crea_func(**args_crea)  # on renvoie la voiture créée par la fonction de création
 
     @staticmethod
@@ -162,7 +166,8 @@ class CarFactory:
         if isinstance(arg, str):
             arg = [arg]
 
-        attrs = {"v": s.CAR_V, "a": s.CAR_A, "color": s.CAR_COLOR, "width": s.CAR_WIDTH, "le": s.CAR_LENGTH, "obj_id": None}
+        attrs = {"v":      s.CAR_V, "a": s.CAR_A, "color": s.CAR_COLOR, "width": s.CAR_WIDTH, "le": s.CAR_LENGTH,
+                 "obj_id": None}
 
         def crea_func(*_, **__):
             if arg is None:
@@ -197,6 +202,7 @@ class CarFactory:
                 space_available = last_car is None or last_car.d > last_car.length + s.DELTA_D_MIN  # s'il y a de la place disponible ou non
                 right_time = round(t, 2) % a == 0
                 return right_time and (space_available or s.CAR_FACT_FORCE_CREA)
+
             return fact_func
         else:
             # sinon, de type [a, b], attend aléatoirement entre a et b secondes
@@ -208,6 +214,7 @@ class CarFactory:
                     return space_available or s.CAR_FACT_FORCE_CREA
                 else:
                     return False
+
             return fact_func
 
 
@@ -281,7 +288,7 @@ class TrafficLight:
             fake_car.road = self.road
         elif self.state == 1:  # si feu orange
             fake_car = Car(0, 0, 0, 0, (0, 0, 0), None)
-            fake_car.d = self.road.length + s.DELTA_D_MIN/s.TL_ORANGE_SLOW_DOWN_COEFF
+            fake_car.d = self.road.length + s.DELTA_D_MIN / s.TL_ORANGE_SLOW_DOWN_COEFF
             fake_car.road = self.road
         else:  # si feu vert
             fake_car = None
@@ -289,7 +296,8 @@ class TrafficLight:
 
 
 class Sensor:
-    def __init__(self, position: float = 1, attributes_to_monitor: Optional[str] | Sequence[Optional[str]] = ("v", "a"), obj_id=None):
+    def __init__(self, position: float = 1, attributes_to_monitor: Optional[str] | Sequence[Optional[str]] = ("v", "a"),
+                 obj_id=None):
         """
         Capteur qui récupère des données de la simulation.
 
@@ -486,7 +494,8 @@ class Road:
                 car.d -= self.length  # on initialise le prochain d
                 if car.next_road is not None:
                     car.next_road.new_car(car)  # on l'ajoute à la prochaine route si elle existe
-                self.cars.remove(car)  # on retire la voiture de la liste des voitures (pas d'impact sur la boucle avec enumerate)
+                self.cars.remove(
+                    car)  # on retire la voiture de la liste des voitures (pas d'impact sur la boucle avec enumerate)
 
     def update_sensors(self, t):
         for sensor in self.sensors:
@@ -541,14 +550,14 @@ class ArcRoad:
         intersec = intersection_droites(start, vdstart, end, vdend)
         self.points = bezier_curve(self.start, intersec, self.end, n)
         sroad_length = length(self.points[0], self.points[1])
-        self.length = sroad_length*n
+        self.length = sroad_length * n
 
         self.sroads = []
         self.sroad_end_to_arcroad_end = {}
         for i in range(n):
             rstart = self.points[i]
             rend = self.points[i + 1]
-            sroad = SRoad(rstart, rend, width, color, v_max*s.ARCROAD_V_MAX_COEFF, -(n*self.id+i))
+            sroad = SRoad(rstart, rend, width, color, v_max * s.ARCROAD_V_MAX_COEFF, -(n * self.id + i))
             self.sroads.append(sroad)
 
         for index, sroad in enumerate(self.sroads):
@@ -580,7 +589,7 @@ class ArcRoad:
             if leaders is None:
                 sroad.update_cars(dt, None)
             else:
-                nleaders = [(leader, d + (self.n - index)*sroad.length, i) for leader, d, i in leaders]
+                nleaders = [(leader, d + (self.n - index) * sroad.length, i) for leader, d, i in leaders]
                 sroad.update_cars(dt, nleaders)
 
     @property

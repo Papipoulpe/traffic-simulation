@@ -1,6 +1,5 @@
 from colorama import Fore, Style
 
-
 INF = float("+inf")
 
 DEF_FONT_PATH = "ressources/jbmono.ttf"
