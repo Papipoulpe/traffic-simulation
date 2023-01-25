@@ -18,6 +18,21 @@ def draw_polygon(surface: pygame.Surface, color: Couleur, points: tuple[Vecteur,
     gfx.aapolygon(surface, points_with_off_set, color)
 
 
+def draw_line(surface: pygame.Surface, color: Couleur, start: Vecteur, end: Vecteur, off_set: Vecteur = npz(2)):
+    """
+    Dessine un segment.
+
+    :param surface: surface surlaquelle dessiner
+    :param color: couleur du trait
+    :param start: coordonnées du début du segment
+    :param end: coordonnées de la fin du segment
+    :param off_set: décalage par rapport à l'origine
+    """
+    x1, y1 = start + off_set
+    x2, y2 = end + off_set
+    gfx.line(surface, x1, y1, x2, y2, color)
+
+
 def draw_rect(surface: pygame.Surface, color: Couleur, up_left_corner: Vecteur, width: float, heigth: float, off_set: Vecteur = npz(2)):
     """
     Dessine un rectangle rempli, sans rotation.

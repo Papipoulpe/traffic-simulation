@@ -19,7 +19,8 @@ class Car:
         self.road = None
         self.next_road = None
 
-        self.d = 0  # distance du derrière depuis le début de la route
+        self._d = 0  # distance du derrière depuis le début de la route
+        self.total_d = 0  # distance totale parcourue par la voiture
         self._pos = npz(2)  # position du mileu du derrière dans la fenêtre
         self.v = v  # vitesse
         self.a = a  # acceleration
@@ -34,10 +35,22 @@ class Car:
         self.front_bumper_hitbox = npz((4, 2))  # coordonnées des coins du rectangle à l'avant de la voiture, pour détecter les collisions
         self.side_bumper_hurtbox = npz((4, 2))  # coordonnées des coins du rectangle sur les côtés et l'arrière de la voiture, pour détecter les collisions
 
-        self.bumping_cars = []  # autres voitures avec lesquelles elle est en collision
+        self.leaders = []  # leaders de la voitures
 
     def __repr__(self):
-        return f"Car(id={self.id}, pos={self.pos}, d={self.d}, v={self.v}, a={self.a}, next_road={self.next_road}, coins={rec_round(self.corners)}, bumping_cars={self.bumping_cars}, color={closest_color(self.color)})"
+        return f"Car(id={self.id}, pos={self.pos}, d={self.d}, v={self.v}, a={self.a}, coins={rec_round(self.corners)}, virtual_leader={self.virtual_leader}, leaders={self.leaders}, next_road={self.next_road}, color={closest_color(self.color)})"
+
+    def __eq__(self, other):
+        return self.id == other.id
+
+    @property
+    def d(self):
+        return self._d
+
+    @d.setter
+    def d(self, d):
+        self.total_d += d - self._d
+        self._d = d
 
     @property
     def pos(self):
@@ -79,19 +92,13 @@ class Car:
         c4 = self.pos + vn_w + vn_ddm + vd_l  # devant droit
         self.side_bumper_hurtbox = c1, c2, c3, c4
 
-    def update(self, dt, leader_coords):
+    def update(self, dt):
         """
         Actualise les coordonnées du mouvement (position, vitesse, accéleration) de la voiture.
 
         :param dt: durée du mouvement
-        :param leader_coords: distance et vitesse d'une éventuelle voiture devant
         """
-        if self.bumping_cars:
-            n = len(self.bumping_cars)
-            d_avg = sum(length(self.pos, other_car.pos) for other_car in self.bumping_cars) / n
-            v_avg = sum(other_car.v for other_car in self.bumping_cars) / n
-            d, v = leader_coords
-            leader_coords = (d_avg + d)/2, (v_avg + v)/2
+        leader_coords = self.virtual_leader
 
         idm(self, leader_coords, dt)
 
@@ -99,6 +106,21 @@ class Car:
         """Renvoie si la voiture **percute** ``other_car``, c'est-à-dire si un des coins de
         ``car.front_bumper_hitbox`` est à l'intérieur de ``other_car.side_bumper_hurtbox``."""
         return any(is_inside_rectangle(corner, other_car.side_bumper_hurtbox) for corner in self.front_bumper_hitbox)
+
+    @property
+    def virtual_leader(self):
+        """Renvoie la distance au et la vitesse du leader virtuel de la voiture, qui prend en compte les prochaines voitures et les voitures avec lesquelle elle est en collision."""
+        if not self.leaders:
+            return None
+
+        leader_coords = npz(2)
+        total_imp = 0
+
+        for other_car, d, importance in self.leaders:
+            leader_coords += npa([d, other_car.v]) * importance
+            total_imp += importance
+
+        return leader_coords/total_imp
 
 
 class CarFactory:
@@ -172,9 +194,9 @@ class CarFactory:
                 a = arg
 
             def fact_func(t, last_car):
-                place_dispo = last_car is None or last_car.d > last_car.length + s.DELTA_D_MIN  # s'il y a de la place disponible ou non
-                bon_moment = round(t, 2) % a == 0
-                return bon_moment and place_dispo
+                space_available = last_car is None or last_car.d > last_car.length + s.DELTA_D_MIN  # s'il y a de la place disponible ou non
+                right_time = round(t, 2) % a == 0
+                return right_time and (space_available or s.CAR_FACT_FORCE_CREA)
             return fact_func
         else:
             # sinon, de type [a, b], attend aléatoirement entre a et b secondes
@@ -182,8 +204,10 @@ class CarFactory:
                 if t >= self.next_t:
                     delay = np.random.uniform(arg[0], arg[1])
                     self.next_t = t + delay
-                    place_dispo = last_car is None or last_car.d > last_car.length + s.DELTA_D_MIN  # s'il y a de la place disponible ou non
-                    return place_dispo
+                    space_available = last_car is None or last_car.d > last_car.length + s.DELTA_D_MIN  # s'il y a de la place disponible ou non
+                    return space_available or s.CAR_FACT_FORCE_CREA
+                else:
+                    return False
             return fact_func
 
 
@@ -270,10 +294,10 @@ class Sensor:
         Capteur qui récupère des données de la simulation.
 
         :param position: pourcentage de la route où sera placé le capteur
-        :param attributes_to_monitor: les attributs des voitures à surveiller, en chaînes de caractères (``v``, ``a``, ``length``, ``width``, ``color``...)
+        :param attributes_to_monitor: les attributs des voitures à surveiller, en chaînes de caractères,  parmi ``v``, ``a``, ``length``, ``width``, ``color`` et ``total_d``
         """
         self.id = new_id(self, obj_id)
-        self.atm = self.init_atm(attributes_to_monitor)
+        self.attributes_to_monitor = self.init_atm(attributes_to_monitor)
         self.position = position
         self.corners = npz((4, 2))
 
@@ -284,7 +308,7 @@ class Sensor:
         self._d = 0
 
     def __repr__(self):
-        return f"Sensor(id={self.id}, position={self.position}, atm={self.atm})"
+        return f"Sensor(id={self.id}, position={self.position}, attributes_to_monitor={self.attributes_to_monitor})"
 
     @staticmethod
     def init_atm(atm):
@@ -314,11 +338,11 @@ class Sensor:
 
     @property
     def df(self):
-        return data_frame(data=self.data, columns=["t", "car_id"] + self.atm)
+        return data_frame(data=self.data, columns=["t", "car_id"] + self.attributes_to_monitor)
 
     def watch_car(self, car, t):
         data_row = [t, car.id]
-        for attr in self.atm:
+        for attr in self.attributes_to_monitor:
             val = car.__getattribute__(attr)
             if attr in ["v", "a", "width", "length"]:
                 val /= s.SCALE
@@ -385,8 +409,8 @@ class Road:
     def __repr__(self):
         return f"Road(id={self.id}, start={self.start}, end={self.end}, vd={self.vd}, color={closest_color(self.color)})"
 
-    def __eq__(self, other_car):
-        return self.id == other_car.id
+    def __eq__(self, other):
+        return self.id == other.id
 
     def init_arrows_coords(self):
         """Renvoie les coordonnées des flèches de la route."""
@@ -432,30 +456,28 @@ class Road:
         return sensors
 
     def dist_to_pos(self, d):
-        """Renvoie les coordonnées d'un objet à une distance ``d`` du début de la route."""
+        """Renvoie les coordonnées d'un objet de la route à une distance ``d`` du début de la route."""
         return self.start + self.vd * d
 
-    def update_cars(self, dt, leader_coords):
+    def update_cars(self, dt, leaders):
         """
         Bouge les voitures de la route à leurs positions après dt.
 
         :param dt: durée du mouvement
-        :param leader_coords: distance et vitesse de la voiture leader de la première voiture de la route
+        :param leaders: voitures leaders de la première voiture de la route
         """
         for index, car in enumerate(self.cars):
             if index > 0:  # pour toutes les voitures sauf la première, donner la voiture devant
                 leading_car = self.cars[index - 1]
-                leading_car_coords = leading_car.d, leading_car.v
+                car.leaders += [(leading_car, leading_car.d - car.d, s.CAR_LEADERS_COEFF_IN_FRONT_CAR)]
             elif self.traffic_light.dummy_car:  # si le feu est rouge, donner la fake_car du feu
                 leading_car = self.traffic_light.dummy_car
-                leading_car_coords = leading_car.d, leading_car.v
-            elif leader_coords is not None:  # sinon pour la première voiture, donner la prochaine voiture
-                leading_car_coords = leader_coords[0] + self.length, leader_coords[1]
-            else:
-                leading_car_coords = None
+                car.leaders += [(leading_car, leading_car.d - car.d, s.CAR_LEADERS_COEFF_IN_FRONT_CAR)]
+            elif leaders:  # sinon pour la première voiture, donner la prochaine voiture
+                car.leaders += [(leader, self.length - car.d + d, importance) for leader, d, importance in leaders]
 
             # mise à jour des vecteurs du mouvement
-            car.update(dt, leading_car_coords)
+            car.update(dt)
 
             # mise à jour de la position et des coins d'affichage
             car.pos = self.dist_to_pos(car.d)
@@ -469,6 +491,10 @@ class Road:
     def update_sensors(self, t):
         for sensor in self.sensors:
             sensor.watch_road(t)
+
+    def update_traffic_light(self, t):
+        if self.traffic_light is not None:
+            self.traffic_light.update(t)
 
     def new_car(self, car: Car):
         """Ajoute une voiture à la route, qui conservera son ``car.d``."""
@@ -509,7 +535,7 @@ class ArcRoad:
         self.n = n
 
         self.car_factory = self.init_car_factory(car_factory)
-        self.traffic_light = None
+        self.traffic_light, self.update_traffic_light = None, empty_function
         self.sensors, self.update_sensors = [], empty_function
 
         intersec = intersection_droites(start, vdstart, end, vdend)
@@ -532,6 +558,9 @@ class ArcRoad:
     def __repr__(self):
         return f"ArcRoad(id={self.id}, start={self.start}, end={self.end}, color={closest_color(self.color)}, length={self.length}, sroads={self.sroads})"
 
+    def __eq__(self, other):
+        return self.id == other.id
+
     @staticmethod
     def init_car_factory(car_factory):
         if car_factory is None:
@@ -546,14 +575,13 @@ class ArcRoad:
             car_list += sroad.cars
         return car_list
 
-    def update_cars(self, dt, leader_coords):
+    def update_cars(self, dt, leaders):
         for index, sroad in enumerate(self.sroads):
-            if leader_coords is None:
+            if leaders is None:
                 sroad.update_cars(dt, None)
             else:
-                leader_d, leader_v = leader_coords
-                leader_d += (self.n - index)*sroad.length
-                sroad.update_cars(dt, (leader_d, leader_v))
+                nleaders = [(leader, d + (self.n - index)*sroad.length, i) for leader, d, i in leaders]
+                sroad.update_cars(dt, nleaders)
 
     @property
     def car_sorter(self):

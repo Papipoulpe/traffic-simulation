@@ -27,6 +27,7 @@ class Simulation:
         self.speed_ajusted_fps = self.FPS / s.SPEED  # pas de temps ajusté pour la vitesse de la simulation
         self.speed = s.SPEED  # vitesse de la simulation
         self.over = self.paused = False  # si la simulation est finie ou en pause
+        self.duration = INF  # durée de la simulation, définie dans self.start_loop() par l'utilisateur
 
         self.roads = []  # liste des routes
         self.road_graph = {}  # graphe des routes
@@ -62,6 +63,8 @@ class Simulation:
 
     def start_loop(self, duration: float):
         """Ouvre une fenêtre et lance la simulation."""
+        self.duration = duration
+
         while not self.over:  # tant que la simulation n'est pas terminée
             for event in pygame.event.get():  # on regarde les dernières actions de l'utilisateur
                 self.manage_event(event)
@@ -84,10 +87,9 @@ class Simulation:
                 continue  # saute la suite de la boucle et passe à l'itération suivante
 
             for road in self.roads:
-                # affichage des voitures de la route
                 for car in road.cars:
-                    self.show_car(car)
-                    self.set_bumping_cars(car)
+                    self.show_car(car)  # affichage des voitures de la route
+                    car.leaders = self.get_bumping_cars(car)
 
                 # affiche les capteurs
                 for sensor in road.sensors:
@@ -96,10 +98,13 @@ class Simulation:
                 self.show_traffic_light(road.traffic_light)  # affichage du feu
 
                 # actualisation des coordonnées des voitures de la route, des capteur et du feu
-                road.update_cars(dt=self.dt, leader_coords=self.get_leader_coords(road))
+                road.update_cars(dt=self.dt, leaders=self.get_leaders(road, avg=s.GET_LEADERS_METHOD_AVG))
 
                 # actualise les capteurs
                 road.update_sensors(self.t)
+
+                # actualise le feu
+                road.update_traffic_light(self.t)
 
                 # éventuelle création d'une nouvelle voiture au début de la route
                 args_crea = {"t": self.t}
@@ -120,7 +125,7 @@ class Simulation:
             self.start_loop(duration)
             real_duration = time() - starting_time
             simulation_speed = round(duration/real_duration, 2)
-            print(f"Simulation {tbold(self.title)} terminée au bout de {real_duration}s{(', soit une vitesse de ' + str(simulation_speed)) if simulation_speed < INF else ''}.")
+            print(f"Simulation {tbold(self.title)} terminée au bout de {real_duration}s{(', soit ' + str(simulation_speed) + ' fois la durée réelle') if simulation_speed < INF else ''}.")
         except Exception as exception:
             self.print_errors(exception)
         finally:
@@ -168,11 +173,13 @@ class Simulation:
 
     @property
     def info_to_show(self):
-        """Renvoie les informations à afficher sur la fenêtre : horloge, nombre d'images, vitesse..."""
-        return f"t = {round(self.t, 2):<7} = {round(self.t//60):>02}m{round(self.t) % 60:02}s | vitesse = ×{self.speed if self.speed != int(self.speed) else int(self.speed):<4} | {'en pause' if self.paused else 'en cours'} | ESPACE : mettre en pause, FLÈCHE DROITE/HAUT : accélérer, FLÈCHE GAUCHE/BAS : ralentir, ENTRER : recentrer"
+        """Renvoie les informations à afficher sur la fenêtre : horloge, vitesse..."""
+        str_speed = self.speed if self.speed != int(self.speed) else int(self.speed)
+        duration_perc = f" = {int(self.t/self.duration*100):>2}%" if self.duration < INF else ""
+        return f"t = {round(self.t, 2):<7} = {round(self.t//60):>02}m{round(self.t) % 60:02}s{duration_perc} | vitesse = ×{str_speed:<4} | {'en pause' if self.paused else 'en cours'}"
 
     def manage_event(self, event):
-        """Gère les conséquences en cas d'un certain évenement pygame (pause, changement de vitesse, déplacement...)."""
+        """Gère les conséquences en cas d'un certain évenement pygame, c'est-à-dire une action de l'utilisateur (pause, changement de vitesse, déplacement...)."""
         if event.type == pygame.QUIT:  # arrêter la boucle quand la fenêtre est fermée
             self.over = True
 
@@ -189,7 +196,7 @@ class Simulation:
                         self.print_sensors_results()
                     if s.SENSOR_EXPORT_RES_AT_PAUSE:
                         self.export_sensors_results()
-            elif event.key in (pygame.K_LEFT, pygame.K_DOWN) and self.speed >= max(0.5, s.MIN_SPEED * 2):
+            elif event.key in (pygame.K_LEFT, pygame.K_DOWN) and self.speed >= 0.5:
                 # si l'utilisateur appuie sur la flèche gauche ou bas, ralentir jusqu'à 0.25
                 self.speed = round(self.speed / 2, 2)
                 self.speed_ajusted_fps = round(self.speed_ajusted_fps / 2, 2)
@@ -275,7 +282,7 @@ class Simulation:
 
     def print_sensor_results(self, sensor: Sensor):
         if sensor.results.strip():
-            text = tbold(f"At t={round(self.t, 2)}s, {sensor} on Road(id={sensor.road.id}) :\n") + sensor.results + "\n"
+            text = tbold(f"À t={round(self.t, 2)}s, {sensor} sur Road(id={sensor.road.id}) :\n") + sensor.results + "\n"
             print(text)
 
     def print_sensors_results(self, *sensors_id):
@@ -293,7 +300,7 @@ class Simulation:
         sheet_name = f"{self.title} ({round(self.t, 2)}s) capteur {sensor.id}"
         sensor.export(file_path=s.SENSOR_EXPORTS_DIRECTORY + file_name, sheet_name=sheet_name, describe=describe)
 
-    def export_sensors_results(self, *sensors_id, describe=True):
+    def export_sensors_results(self, *sensors_id, describe: bool = True):
         if not sensors_id:
             for road in self.roads:
                 for sensor in road.sensors:
@@ -376,21 +383,23 @@ class Simulation:
 
             road.car_sorter = car_sorter
 
-    def get_leader_coords(self, road: Road, avg: bool = s.GET_LEADER_COORDS_METHOD_AVG):
-        """Renvoie la distance et la vitesse d'un éventuel leader de la première voiture de la route.
+    def get_leaders(self, road: Road, avg: bool):
+        """
+        Renvoie les éventuels leaders de la première voiture de la route, dans une liste de la forme ``[(car, distance, importance), ...]``.
 
-        Si GET_LEADER_COORDS_METHOD_AVG est True, renvoie la moyenne des distances, depuis la fin de la route, et des vitesses des dernières voitures des prochaines routes, pondérée par la probabilité que la première voiture aille sur ces routes.
-
-        Sinon, renvoie celles de la dernière voiture de la prochaine route de la première voiture de la route."""
+        :param road: route en question
+        :param avg: méthode de recherche : si True, renvoie les dernières voitures des prochaines routes, coefficientées par la probabilité que la première voiture aille sur ces routes. Sinon, renvoie celles de la dernière voiture de la prochaine route de la première voiture de la route.
+        """
         if avg:  # si GET_LEADER_COORDS_METHOD_AVG est True
             next_roads_probs = self.road_graph[road.id]  # récupération des prochaines routes et de leurs probas
 
             if next_roads_probs is None:  # si pas de prochaine route
-                return 10*road.length, road.v_max
-            elif isinstance(next_roads_probs, int):  # si un seul choix de prochaine route
+                return []
+
+            if isinstance(next_roads_probs, int):  # si un seul choix de prochaine route
                 next_roads_probs = {next_roads_probs: 1}
 
-            d, v = 0, 0  # initialisation de d et v pour la moyenne
+            leaders = []
 
             for next_road_id in next_roads_probs:  # pour chaque prochaine route
                 prob = next_roads_probs[next_road_id]  # on récupère la probabilité
@@ -398,33 +407,30 @@ class Simulation:
 
                 if next_road.cars:  # si elle contient des voitures, on prend les coordonnées de la première
                     next_car = next_road.cars[-1]
-                    next_d, next_v = next_car.d, next_car.v
-                    d += prob*next_d
-                    v += prob*next_v
+                    leaders.append((next_car, next_car.d, prob * s.CAR_LEADERS_COEFF_NEXT_ROAD_CAR))
                 else:  # sinon, on cherche plus loin
-                    next_avg_leading_car_coords = self.get_leader_coords(next_road)
-                    d += prob*(next_avg_leading_car_coords[0] + next_road.length)
-                    v += prob*next_avg_leading_car_coords[1]
+                    next_leaders = self.get_leaders(next_road, avg=True)
+                    leaders += [(next_car, next_road.length + d, prob * next_prob) for next_car, d, next_prob in next_leaders]
 
-            return d, v
+            return leaders
 
         else:  # si GET_LEADER_COORDS_METHOD_AVG est False
 
             next_road = road.cars[0].next_road
 
-            if next_road is None:
-                return self.get_leader_coords(road, avg=True)
-            elif next_road.cars:
-                last_car = next_road.cars[-1]
-                return last_car.d, last_car.v
-            else:
-                d, v = self.get_leader_coords(next_road, avg=True)
-                return d + next_road.length, v
+            if next_road is None:  # dans le rare cas où la première voiture n'a pas encore de prochaine route
+                return self.get_leaders(road, avg=True)
+            elif next_road.cars:  # si elle en a une et qu'elle contient des voitures
+                next_car = next_road.cars[-1]
+                return [(next_car, next_car.d, s.CAR_LEADERS_COEFF_NEXT_ROAD_CAR)]
+            else:  # si elle en a une mais qui ne contient pas de voiture
+                next_leaders = self.get_leaders(next_road, avg=True)
+                return [(next_car, next_road.d + d, next_prob) for next_car, d, next_prob in next_leaders]
 
-    def set_bumping_cars(self, car: Car):
-        """Met à jour les voitures avec lequelles ``car`` rentre en collision."""
+    def get_bumping_cars(self, car: Car):
+        """Renvoie les voitures avec lequelles ``car`` rentre en collision."""
         if not s.USE_BUMPING_BOXES or not is_inside_circle(car.pos, self.bumping_zone):
-            car.bumping_cars = []
+            return []
 
         else:
             bumping_cars = []
@@ -433,14 +439,14 @@ class Simulation:
                 if road != car.road:
                     for other_car in road.cars:
                         is_bumping = car.is_bumping_with(other_car)
-                        is_bumping_first = car not in other_car.bumping_cars
-                        other_is_in_bumping_zone = is_inside_circle(other_car.pos, self.bumping_zone)
-                        if is_bumping and is_bumping_first and other_is_in_bumping_zone:
-                            bumping_cars.append(other_car)
+                        is_bumping_first = car not in [leader for leader, _, _ in other_car.leaders]
+                        if is_bumping and is_bumping_first and other_car != car:
+                            d = length(car.pos, other_car.pos)
+                            bumping_cars.append((other_car, d, s.CAR_LEADERS_COEFF_BUMPING_CARS))
 
-            car.bumping_cars = bumping_cars
+            return bumping_cars
 
-    def set_bumping_zone(self, center: tuple[float, float] = None, radius: float = INF):
+    def def_bumping_zone(self, center: tuple[float, float] = None, radius: float = INF):
         """
         Définie la zone circulaire où la simulation utilise les hitbox et hurtbox des voitures pour éviter les collisions.
         La détection de collision sera automatiquement activée, même si ``USE_BUMPING_BOXES = False``.
@@ -457,7 +463,7 @@ class Simulation:
 
     def show_bumping_zone(self):
         center, radius = self.bumping_zone
-        if s.SHOW_BUMPING_ZONES and radius < INF:
+        if s.SHOW_BUMPING_ZONE and radius < INF:
             da = lambda color: int(color * 0.93)
             r, g, b = self.bg_color
             draw_circle(self.surface, (da(r), da(g), da(b)), center, radius, self.off_set)

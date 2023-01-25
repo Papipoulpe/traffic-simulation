@@ -70,7 +70,7 @@ def normal_vector(v: Vecteur, new_norm: float = 1) -> Vecteur:
 
 def angle_of_vect(v: Vecteur):
     """Angle du vecteur ``v`` avec l'axe des abscisses, en degrés."""
-    u = npa((1, 1j))
+    u = npa((1, -1j))
     return np.angle(dot(u, v), deg=True)
 
 
@@ -106,9 +106,8 @@ def update_taylor_protected(car, dt: float):
 
 def idm(car, leader_coords: Optional[Vecteur], dt: float):
     """Intelligent Driver Model. Calcule l'accélération idéale de la voiture."""
-    if leader_coords:  # si on a un leader
-        lead_d, lead_v = leader_coords
-        delta_d = lead_d - (car.d + car.length)
+    if leader_coords is not None:  # si on a un leader
+        delta_d, lead_v = leader_coords
 
         if delta_d <= 0:  # si la voiture est en avance, la faire attendre et ralentir
             car.d, car.v, car.a = car.d, 0, car.a
