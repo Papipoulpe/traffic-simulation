@@ -6,20 +6,27 @@ from matplotlib import pyplot as plt
 
 from .components import *
 from .drawing import *
-from .ressources import *
+from .constants import *
 
 
 class Simulation:
-    def __init__(self, title: str = "Traffic Simulation", width: int = 1440, height: int = 820):
+    def __init__(self, title: str = "Traffic Simulation", width: Optional[int] = None, height: Optional[int] = None):
         """
         Simulation du trafic.
 
         :param title: titre de la fenêtre
-        :param width: largeur de la fenêtre, en pixels
-        :param height: hauteur de la fenêtre, en pixels
+        :param width: largeur de la fenêtre, en pixels. Détectée automatiquement si non fourni, puis récupérable avec Simulation.size[0].
+        :param height: hauteur de la fenêtre, en pixels. Détectée automatiquement si non fourni, puis récupérable avec Simulation.size[1].
         """
         self.id = new_id(self, 0)
         self.title = title  # titre de la fenêtre
+        pygame.init()  # initialisation de pygame
+        pygame.display.set_caption(title)  # modification du titre de la fenêtre
+        monitor_info = pygame.display.Info()
+        if width is None:
+            width = monitor_info.current_w
+        if height is None:
+            height = monitor_info.current_h
         self.size = npa((width, height))  # taille de la fenêtre
         self.t = 0.0  # suivi du temps
         self.FPS = s.FPS  # images par seconde
@@ -33,21 +40,17 @@ class Simulation:
         self.road_graph = {}  # graphe des routes
         self.bumping_zone = (npz(2), INF)  # zone où get_bumping_cars est utilisé
 
-        pygame.init()  # initialisation de pygame
-        pygame.display.set_caption(title)  # modification du titre de la fenêtre
-
         self.surface = pygame.display.set_mode(self.size)  # création de la fenêtre
         self.clock = pygame.time.Clock()  # création de l'horloge pygame
         self.bg_color = s.BACKGROUND_COLOR  # couleur d'arrière plan de la fenêtre
         self.surface.fill(self.bg_color)  # coloriage de l'arrière plan
+
         self.FONT = pygame.font.Font(s.FONT_PATH, s.FONT_SIZE)  # police d'écriture des informations
         self.SMALL_FONT = pygame.font.Font(s.FONT_PATH, round(s.CAR_WIDTH * 0.8))  # pour les voitures
-
         arrow = pygame.image.load(s.ARROW_PATH).convert_alpha()  # chargement de l'image de flèche
-        self.ROAD_ARROW = pygame.transform.smoothscale(arrow, (
-        s.ROAD_WIDTH * 0.7, s.ROAD_WIDTH * 0.7))  # ajustement de la taille des flèches pour les routes
-        self.CAR_ARROW = pygame.transform.smoothscale(arrow,
-                                                      (s.CAR_WIDTH * 0.8, s.CAR_WIDTH * 0.8))  # pour les voitures
+        self.ROAD_ARROW = pygame.transform.smoothscale(arrow, (s.ROAD_WIDTH * 0.7, s.ROAD_WIDTH * 0.7))  # ajustement de la taille des flèches pour les routes
+        self.road_rotated_arrow = {}  # générer l'image de flèche avec l'angle de la route est très long, on le fera qu'une fois au début pour la garder
+        self.CAR_ARROW = pygame.transform.smoothscale(arrow, (s.CAR_WIDTH * 0.8, s.CAR_WIDTH * 0.8))  # pour les voitures
 
         self.off_set = npz(2)  # décalage par rapport à l'origine, pour bouger la simulation
         self.dragging = False  # si l'utilisateur est en train de bouger la simulation
@@ -66,6 +69,13 @@ class Simulation:
     def start_loop(self, duration: float):
         """Ouvre une fenêtre et lance la simulation."""
         self.duration = duration
+
+        for road in self.roads:
+            if isinstance(road, Road):
+                self.road_rotated_arrow[road.id] = pygame.transform.rotate(self.ROAD_ARROW, road.angle)
+            elif isinstance(road, ArcRoad):
+                for sroad in road.sroads:
+                    self.road_rotated_arrow[sroad.id] = pygame.transform.rotate(self.ROAD_ARROW, sroad.angle)
 
         while not self.over:  # tant que la simulation n'est pas terminée
             for event in pygame.event.get():  # on regarde les dernières actions de l'utilisateur
@@ -100,7 +110,8 @@ class Simulation:
                 self.show_traffic_light(road.traffic_light)  # affichage du feu
 
                 # actualisation des coordonnées des voitures de la route, des capteur et du feu
-                road.update_cars(dt=self.dt, leaders=self.get_leaders(road, avg=s.GET_LEADERS_METHOD_AVG))
+                road_leaders = self.get_leaders(road, avg=s.GET_LEADERS_METHOD_AVG)
+                road.update_cars(self.dt, road_leaders)
 
                 # actualise les capteurs
                 road.update_sensors(self.t)
@@ -126,9 +137,8 @@ class Simulation:
             starting_time = time()
             self.start_loop(duration)
             real_duration = time() - starting_time
-            simulation_speed = round(duration / real_duration, 2)
-            print(
-                f"Simulation {tbold(self.title)} terminée au bout de {real_duration}s{(', soit ' + str(simulation_speed) + ' fois la durée réelle') if simulation_speed < INF else ''}.")
+            simulation_speed = round(real_duration / duration, 2)
+            print(f"Simulation {tbold(self.title)} terminée au bout de {real_duration}s{(', soit ' + str(simulation_speed) + ' fois la durée réelle') if simulation_speed > 0 else ''}.")
         except Exception as exception:
             self.print_errors(exception)
         finally:
@@ -202,11 +212,11 @@ class Simulation:
                     if s.SENSOR_EXPORT_RES_AT_PAUSE:
                         self.export_sensors_results()
             elif event.key in (pygame.K_LEFT, pygame.K_DOWN) and self.speed >= 0.5:
-                # si l'utilisateur appuie sur la flèche gauche ou bas, ralentir jusqu'à 0.25
+                # si l'utilisateur appuie sur la flèche gauche ou bas
                 self.speed = round(self.speed / 2, 2)
                 self.speed_ajusted_fps = round(self.speed_ajusted_fps / 2, 2)
             elif event.key in (pygame.K_RIGHT, pygame.K_UP) and 2 * self.speed <= s.MAX_SPEED:
-                # si l'utilisateur appuie sur la flèche droite ou haut, accélérer jusqu'à 32
+                # si l'utilisateur appuie sur la flèche droite ou haut, accélérer jusqu'à MAX_SPEED
                 self.speed = round(self.speed * 2, 2)
                 self.speed_ajusted_fps = round(self.speed_ajusted_fps * 2, 2)
             elif event.key == pygame.K_RETURN:
@@ -275,7 +285,7 @@ class Simulation:
             if isinstance(road, Road):
                 draw_polygon(self.surface, road.color, road.coins, self.off_set)
 
-                rotated_arrow = pygame.transform.rotate(self.ROAD_ARROW, road.angle)
+                rotated_arrow = self.road_rotated_arrow[road.id]
 
                 for arrow_coord in road.arrows_coords:
                     x, y, _ = arrow_coord
@@ -294,7 +304,7 @@ class Simulation:
 
     def print_sensor_results(self, sensor: Sensor):
         if sensor.results.strip():
-            text = tbold(f"À t={round(self.t, 2)}s, {sensor} sur Road(id={sensor.road.id}) :\n") + sensor.results + "\n"
+            text = tbold(f"Résulats à t={round(self.t, 2)}s de {sensor} sur Road(id={sensor.road.id}) :\n") + sensor.results + "\n"
             print(text)
 
     def print_sensors_results(self, *sensors_id):
@@ -339,12 +349,8 @@ class Simulation:
 
     def create_road(self, **kw):
         """Créer une route."""
-        start, end, vdstart, vdend, v_max, car_factory, color, w, obj_id = kw.get("start", (0, 0)), kw.get("end", (
-        0, 0)), kw.get("vdstart"), kw.get("vdend"), kw.get("v_max", s.V_MAX), kw.get("car_factory"), kw.get("color",
-                                                                                                            s.ROAD_COLOR), kw.get(
-            "width", s.ROAD_WIDTH), kw.get("id")
-        start, end, vdstart, vdend = self.rc_to_sc(start), self.rc_to_sc(end), self.rc_to_sc(vdstart), self.rc_to_sc(
-            vdend)
+        start, end, vdstart, vdend, v_max, car_factory, color, w, obj_id = kw.get("start", (0, 0)), kw.get("end", (0, 0)), kw.get("vdstart"), kw.get("vdend"), kw.get("v_max", s.V_MAX), kw.get("car_factory"), kw.get("color", s.ROAD_COLOR), kw.get("width", s.ROAD_WIDTH), kw.get("id")
+        start, end, vdstart, vdend = self.rc_to_sc(start), self.rc_to_sc(end), self.rc_to_sc(vdstart), self.rc_to_sc(vdend)
         v_max *= s.SCALE  # mise à l'échelle de v_max
         if isinstance(start, int):  # si l'argument start est un id de route
             rstart = get_by_id(start)
@@ -370,7 +376,7 @@ class Simulation:
         """Créer des routes, renvoie la liste des routes.
 
         Les éléments de ``road_list`` sont des dictionnaires de la forme :\n
-        - pour une route droite, ``{"id": int (optionnel), "type": "road", "start": (float, float) | int, "end": (float, float) | int, "v_max": float (optionnel), "car_factory": CarFactory (optionnel), "traffic_light": TrafficLight (optionnel), "with_arrows": bool (optionnel)}``
+        - pour une route droite, ``{"id": int (optionnel), "type": "road", "start": (float, float) | int, "end": (float, float) | int, "v_max": float (optionnel), "car_factory": CarFactory (optionnel), "traffic_light": TrafficLight (optionnel), "sensors": Sensor (optionnel), "with_arrows": bool (optionnel)}``
         - pour une route courbée, ``{"id": int (optionnel), "type": "arcroad", "start": (float, float) | int, "vdstart": (float, float), "end": (float, float) | int, "vdend": (float, float), "v_max": float (optionnel), "n": int (optionnel), "car_factory": CarFactory (optionnel)}``
 
         avec :\n
@@ -383,6 +389,7 @@ class Simulation:
         - ``vdend`` pour arcroad, si ``end`` est un couple de coordonnées, vecteur directeur de la fin
         - ``n`` pour arcroad, l'éventuel nombre de routes droites la composant, par défaut ``N_ARCROAD``
         - ``traffic_light`` pour road, l'éventuel TrafficLight
+        - ``sensors`` pour road, le ou les éventuels capteurs de la route
         - ``with_arrow`` pour road, si des flèches seront affichées sur la route dans le sens de la circulation
         """
         return [self.create_road(**road) for road in road_list]
@@ -429,7 +436,7 @@ class Simulation:
 
                 if next_road.cars:  # si elle contient des voitures, on prend les coordonnées de la première
                     next_car = next_road.cars[-1]
-                    leaders.append((next_car, next_car.d, prob * s.CAR_LEADERS_COEFF_NEXT_ROAD_CAR))
+                    leaders.append((next_car, next_car.d - next_car.length/2, prob * s.CAR_LEADERS_COEFF_NEXT_ROAD_CAR))
                 else:  # sinon, on cherche plus loin
                     next_leaders = self.get_leaders(next_road, avg=True)
                     leaders += [(next_car, next_road.length + d, prob * next_prob) for next_car, d, next_prob in
@@ -464,15 +471,16 @@ class Simulation:
             for road in self.roads:
                 if road != car.road:
                     for other_car in road.cars:
-                        is_bumping = car.is_bumping_with(other_car)
                         is_bumping_first = car not in [leader for leader, _, _ in other_car.leaders]
-                        if is_bumping and is_bumping_first and other_car != car:
-                            d = length(car.pos, other_car.pos)
-                            bumping_cars.append((other_car, d, s.CAR_LEADERS_COEFF_BUMPING_CARS))
+                        if is_bumping_first:
+                            is_bumping = car.is_bumping_with(other_car)
+                            if is_bumping and other_car != car:  # couteux à calculer, donc pas de "and"
+                                d = max(length(car.pos, other_car.pos) - car.length/2 - other_car.length/2, 0)
+                                bumping_cars.append((other_car, d, s.CAR_LEADERS_COEFF_BUMPING_CARS))
 
             return bumping_cars
 
-    def def_bumping_zone(self, center: tuple[float, float] = None, radius: float = INF):
+    def set_bumping_zone(self, center: tuple[float, float] = None, radius: float = INF):
         """
         Définie la zone circulaire où la simulation utilise les hitbox et hurtbox des voitures pour éviter les collisions.
         La détection de collision sera automatiquement activée, même si ``USE_BUMPING_BOXES = False``.

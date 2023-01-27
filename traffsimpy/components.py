@@ -65,8 +65,7 @@ class Car:
         vd = self.road.vd  # on récupère le vecteur directeur de la route
         vd_l = vd * self.length / 2  # on le norme pour la longueur de la voiture
         vd_ddm = vd * self.delta_d_min / 2  # on le norme pour la distance de sécurité
-        vd_ddmp = vd * (
-                    self.delta_d_min + self.v + self.t_react) / 2  # on le norme pour la distance de sécurité et la vitesse
+        vd_ddmp = vd * (self.delta_d_min + self.v + self.t_react) / 2  # on le norme pour la distance de sécurité et la vitesse
         vn_w = normal_vector(
             self.road.vd,
             self.width / 2)  # vecteur normal de la route normé pour la largeur de la voiture
@@ -108,7 +107,14 @@ class Car:
     def is_bumping_with(self, other_car: "Car"):
         """Renvoie si la voiture **percute** ``other_car``, c'est-à-dire si un des coins de
         ``car.front_bumper_hitbox`` est à l'intérieur de ``other_car.side_bumper_hurtbox``."""
-        return any(is_inside_rectangle(corner, other_car.side_bumper_hurtbox) for corner in self.front_bumper_hitbox)
+        if not is_inside_circle(other_car.pos, (self.pos, self.delta_d_min + self.v + self.t_react)):
+            return False
+
+        for c in self.front_bumper_hitbox:
+            if is_inside_rectangle(c, other_car.side_bumper_hurtbox):
+                return True
+
+        return False
 
     @property
     def virtual_leader(self):
@@ -254,15 +260,33 @@ class TrafficLight:
     def __init__(self, state_init: int, static=False, obj_id: int = None):
         """Feux de signalisation."""
         self.id = new_id(self, obj_id)
-        self.road: Road = ...  # route auquel le feu est rattaché
+        self._road: Road = ...  # route auquelle le feu est rattaché
+        self.pos = npz(2)
         self.coins = npz((4, 2))  # coins pour affichage
         self.width = s.TL_WIDTH
 
         self.state = self.state_init = state_init  # signalisation du feu : rouge 0, orange 1 ou vert 2
         self.static = static
 
+        self.dummy_cars = {}
+
     def __repr__(self):
         return f"TrafficLight(id={self.id}, state={self.state}, state_init={self.state_init}, static={self.static})"
+
+    @property
+    def road(self):
+        return self._road
+
+    @road.setter
+    def road(self, road):
+        self._road = road
+        dummy_car_red = Car(0, 0, 0, 0, (0, 0, 0), None)
+        dummy_car_orange = Car(0, 0, 0, 0, (0, 0, 0), None)
+        dummy_car_red._d = self.road.length  # bypass d.setter
+        dummy_car_orange._d = self.road.length + s.DELTA_D_MIN / s.TL_ORANGE_SLOW_DOWN_COEFF
+        dummy_car_red.road = dummy_car_orange.road = self.road
+        dummy_car_red._pos = dummy_car_orange._pos = self.pos  # bypass pos.setter
+        self.dummy_cars = {0: dummy_car_red, 1: dummy_car_orange}
 
     def update(self, t):
         """Actualise l'état du feu, c'est-à-dire rouge, orange ou vert."""
@@ -282,17 +306,7 @@ class TrafficLight:
     @property
     def dummy_car(self):
         """Renvoie une fausse voiture, qui fera ralentir la première voiture de la route selon la couleur du feu."""
-        if self.state == 0:  # si feu rouge
-            fake_car = Car(0, 0, 0, 0, (0, 0, 0), None)
-            fake_car.d = self.road.length + s.DELTA_D_MIN
-            fake_car.road = self.road
-        elif self.state == 1:  # si feu orange
-            fake_car = Car(0, 0, 0, 0, (0, 0, 0), None)
-            fake_car.d = self.road.length + s.DELTA_D_MIN / s.TL_ORANGE_SLOW_DOWN_COEFF
-            fake_car.road = self.road
-        else:  # si feu vert
-            fake_car = None
-        return fake_car
+        return self.dummy_cars.get(self.state)
 
 
 class Sensor:
@@ -415,7 +429,7 @@ class Road:
         self.sensors = self.init_sensors(sensors)
 
     def __repr__(self):
-        return f"Road(id={self.id}, start={self.start}, end={self.end}, vd={self.vd}, color={closest_color(self.color)})"
+        return f"Road(id={self.id}, start={self.start}, end={self.end}, length={self.length}, vd={self.vd}, color={closest_color(self.color)})"
 
     def __eq__(self, other):
         return self.id == other.id
@@ -445,10 +459,11 @@ class Road:
             return TrafficLight(state_init=2, static=True)
         else:
             traffic_light.road = self
-            vnx, vny = normal_vector(self.vd, self.width / 2)
-            x1, y1 = self.dist_to_pos(self.length)
-            x2, y2 = self.dist_to_pos(self.length - traffic_light.width)
-            traffic_light.coins = (x1 + vnx, y1 + vny), (x1 - vnx, y1 - vny), (x2 - vnx, y2 - vny), (x2 + vnx, y2 + vny)
+            vn = normal_vector(self.vd, self.width / 2)
+            pos1 = self.dist_to_pos(self.length)
+            pos2 = self.dist_to_pos(self.length - traffic_light.width)
+            traffic_light.coins = pos1 + vn, pos1 - vn, pos2 - vn, pos2 + vn
+            traffic_light.pos = (pos1 + pos2)/2
             return traffic_light
 
     def init_sensors(self, sensors):
@@ -477,12 +492,12 @@ class Road:
         for index, car in enumerate(self.cars):
             if index > 0:  # pour toutes les voitures sauf la première, donner la voiture devant
                 leading_car = self.cars[index - 1]
-                car.leaders += [(leading_car, leading_car.d - car.d, s.CAR_LEADERS_COEFF_IN_FRONT_CAR)]
+                car.leaders += [(leading_car, leading_car.d - leading_car.length/2 - car.d - car.length/2, s.CAR_LEADERS_COEFF_IN_FRONT_CAR)]
             elif self.traffic_light.dummy_car:  # si le feu est rouge, donner la fake_car du feu
                 leading_car = self.traffic_light.dummy_car
-                car.leaders += [(leading_car, leading_car.d - car.d, s.CAR_LEADERS_COEFF_IN_FRONT_CAR)]
+                car.leaders += [(leading_car, leading_car.d - leading_car.length/2 - car.d - car.length/2, s.CAR_LEADERS_COEFF_IN_FRONT_CAR)]
             elif leaders:  # sinon pour la première voiture, donner la prochaine voiture
-                car.leaders += [(leader, self.length - car.d + d, importance) for leader, d, importance in leaders]
+                car.leaders += [(leader, self.length - car.d - car.length/2 + d, importance) for leader, d, importance in leaders]
 
             # mise à jour des vecteurs du mouvement
             car.update(dt)

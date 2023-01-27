@@ -1,13 +1,13 @@
 import json
 from typing import *
 from numpy.typing import NDArray
-
 import numpy as np
 import pandas as pd
 import webcolors
 
 import traffsimpy.settings as s
-from .ressources import *
+from .constants import *
+
 
 np.seterr("raise")  # change la gestion des erreurs de maths (division par zéro, racine de réel négatif...)
 
@@ -37,14 +37,9 @@ npa = np.array
 npz = np.zeros
 
 
-def dot(u: Vecteur, v: Vecteur):
-    """Renvoie le résultat du produit scalaire ``u•v``."""
-    return np.dot(u, v)
-
-
 def norm(v: Vecteur):
     """Renvoie la norme ``||v||``."""
-    return np.sqrt(dot(v, v))
+    return np.sqrt(v @ v)
 
 
 def normed(v: Vecteur, new_norm: float = 1) -> Vecteur:
@@ -71,7 +66,7 @@ def normal_vector(v: Vecteur, new_norm: float = 1) -> Vecteur:
 def angle_of_vect(v: Vecteur):
     """Angle du vecteur ``v`` avec l'axe des abscisses, en degrés."""
     u = npa((1, -1j))
-    return np.angle(dot(u, v), deg=True)
+    return np.angle(u @ v, deg=True)
 
 
 def rec_round(obj: Iterable | float, prec: Optional[int] = None) -> Iterable | float:
@@ -176,15 +171,13 @@ def is_inside_rectangle(m: Vecteur, rectangle: np.ndarray) -> bool:
     ab = b - a
     ad = d - a
     # M est dans ABCD ssi (0 < AM⋅AB < AB⋅AB) et (0 < AM⋅AD < AD⋅AD)
-    return 0 <= dot(am, ab) <= dot(ab, ab) and 0 <= dot(am, ad) <= dot(ad, ad)
+    return 0 <= am @ ab <= ab @ ab and 0 <= am @ ad <= ad @ ad
 
 
 def is_inside_circle(m: Vecteur, circle: tuple[Vecteur, float]):
-    """Renvoie si le point ``m`` est à l'intérieur du cercle, défini par son centre et son rayon."""
-    x, y = m
+    """Renvoie si le point ``m`` appartient au disque, défini par son centre et son rayon."""
     center, radius = circle
-    cx, cy = center
-    return (x - cx) * (x - cx) + (y - cy) * (y - cy) <= radius
+    return (m - center) @ (m - center) <= radius*radius
 
 
 def data_frame(columns: list[str], data: Any = None) -> pd.DataFrame:

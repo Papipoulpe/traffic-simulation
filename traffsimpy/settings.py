@@ -1,8 +1,8 @@
-from .ressources import *
+from .constants import *
 
 # Affichage
 
-PRINT_DETAILED_LOGS = True  # si on affiche les détails de la simulation quand l'utilisateur met en pause ou quand le programme s'arrête
+PRINT_DETAILED_LOGS = False  # si on affiche les détails de la simulation quand l'utilisateur met en pause ou quand le programme s'arrête
 PRINT_ERRORS = True  # si on affiche les erreurs quand le programme se plante
 BACKGROUND_COLOR = BLUE_BG  # couleur de l'arrière plan de la fenêtre
 INFO_BACKGROUND_COLOR = BLUE_TXT_BG  # couleur de l'arrière plan du texte
@@ -11,8 +11,8 @@ SHOW_BUMPING_ZONE = True  # si on affiche les zones où les collisions sont dét
 
 # Simulation
 
-FPS = 60  # Hz, images par secondes de la simulation
-SPEED = 1  # vitesse de la simulation
+FPS = 60  # Hz, nombre d'images par seconde initial de la simulation
+SPEED = 1  # vitesse initiale de la simulation
 MAX_SPEED = 4  # vitesse maximum possible, peu d'effets au delà de 4 pour un processeur classique
 SCALE = 10  # pixels/m, échelle de la simulation
 GET_LEADERS_METHOD_AVG = False  # méthode pour determiner le leader de la première voiture d'une route. True = dernières voitures des prochaines routes, coefficientées par la probabilité que la voiture aille sur ces routes. False = dernière voiture de la prochaine route de la voiture.
@@ -32,7 +32,7 @@ ROAD_COLOR = BLUE_ROAD  # couleur des routes
 ROAD_ARROW_PERIOD = 100  # pixels, période spatiale des flèches
 ARCROAD_NUM_OF_SROAD = 10  # nombre de routes droites pour les routes courbées
 ARCROAD_V_MAX_COEFF = 0.45  # coefficient de ralentissement pour les routes courbées, facteur de V_MAX
-CAR_FACT_FORCE_CREA = False  # /!\ peut énormément ralentir la simulation, si les CarFactory continuent de rajouter des voitures sur les routes lorsqu'elles sont déjà pleines
+CAR_FACT_FORCE_CREA = False  # si les CarFactory continuent de rajouter des voitures sur les routes déjà pleines (/!\ peut énormément ralentir la simulation)
 
 # Voitures
 
@@ -43,15 +43,15 @@ CAR_LENGTH = 3  # m, longueur par défaut des voitures
 CAR_COLOR = BLUE_GREEN_CAR  # couleur par défaut des voitures
 CAR_SPEED_CODED_COLOR = False  # si la couleur des voitures représente leurs vitesses (de rouge = lent à bleu = rapide)
 
-CAR_SHOW_BUMPING_BOXES = True  # si on affiche les zones de collision (hitbox, hurtbox) des voitures
-CAR_SHOW_LEADER_LINKS = True  # si on affiche les liens entre la voitures et ses leaders
+CAR_SHOW_BUMPING_BOXES = False  # si on affiche les zones de collision (hitbox, hurtbox) des voitures
+CAR_SHOW_LEADER_LINKS = False  # si on affiche les liens entre la voitures et ses leaders
 CAR_SHOW_ARROW = False  # si on affiche la direction de chaque voiture sur son toit
 CAR_SHOW_ID = False  # si on affiche l'id de chaque voiture sur son toit
 CAR_SHOW_SPEED_MS = False  # si on affiche la vitesse de chaque voiture sur son toit en m/s
-CAR_SHOW_SPEED_KMH = True  # si on affiche la vitesse de chaque voiture sur son toit en km/h
+CAR_SHOW_SPEED_KMH = False  # si on affiche la vitesse de chaque voiture sur son toit en km/h
 
-CAR_LEADERS_COEFF_BUMPING_CARS = 10  # coefficient d'importances des voitures en collisions dans le calcul du leader
-CAR_LEADERS_COEFF_IN_FRONT_CAR = 5  # coefficient d'importances de la voiture de devant dans le calcul du leader
+CAR_LEADERS_COEFF_BUMPING_CARS = 20  # coefficient d'importances des voitures en collisions dans le calcul du leader
+CAR_LEADERS_COEFF_IN_FRONT_CAR = 8  # coefficient d'importances de la voiture de devant dans le calcul du leader
 CAR_LEADERS_COEFF_NEXT_ROAD_CAR = 5  # coefficient d'importances de la première voiture de la prochaine route dans le calcul du leader
 
 CAR_RAND_COLOR_MIN = 70  # minimum de r, g et b pour les couleurs aléatoires des voitures
@@ -84,7 +84,7 @@ TL_ORANGE_SLOW_DOWN_COEFF = 0.5  # coefficient de ralentissement du feu orange, 
 
 # Capteurs
 
-SENSOR_EXPORTS_DIRECTORY = "exemples/resultats_capteurs/"
+SENSOR_EXPORTS_DIRECTORY = ""
 SENSOR_PRINT_RES_AT_PAUSE = False  # si les capteurs affichent leurs résulats à chaque mise en pause
 SENSOR_EXPORT_RES_AT_PAUSE = False  # si les capteurs exportent leurs résulats à chaque mise en pause
 SENSOR_COLOR = SENSOR_PURPLE  # couleur du trait représentant un capteur

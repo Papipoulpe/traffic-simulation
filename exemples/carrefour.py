@@ -4,7 +4,7 @@ sim = Simulation("Carrefour", 1440, 840)
 
 road_list = [
     {"id": 1, "type": "road", "start": (-60, 400), "end": (650, 400),  # routes de gauche
-     "car_factory": CarFactory(["rand_color"], [5, 7.5]), "sensors": Sensor(10)},
+     "car_factory": CarFactory(["rand_color"], [3, 7.5]), "sensors": Sensor(50)},
     {"id": 2, "type": "road", "start": (650, 440), "end": (-60, 440)},
 
     {"id": 3, "type": "road", "start": (1500, 440), "end": (790, 440),  # routes de droite
@@ -35,12 +35,13 @@ road_list = [
     {"id": 74, "type": "arcroad", "start": 7, "end": 4},
     {"id": 76, "type": "road", "start": 7, "end": 6, "with_arrows": False}]
 
-road_graph = {1: {14: 0.3, 16: 0.4, 18: 0.3}, 14: 4, 16: 6, 18: 8, 2: None,
-              3: {32: 0.3, 36: 0.4, 38: 0.3}, 32: 2, 36: 6, 38: 8, 4: None,
-              5: {52: 0.3, 54: 0.4, 58: 0.3}, 52: 2, 54: 4, 58: 8, 6: None,
-              7: {72: 0.3, 74: 0.4, 76: 0.3}, 72: 2, 74: 4, 76: 6, 8: None}
+road_graph = {
+    1: {14: 0.3, 16: 0.4, 18: 0.3}, 14: 4, 16: 6, 18: 8, 2: None,
+    3: {32: 0.3, 36: 0.4, 38: 0.3}, 32: 2, 36: 6, 38: 8, 4: None,
+    5: {52: 0.3, 54: 0.4, 58: 0.3}, 52: 2, 54: 4, 58: 8, 6: None,
+    7: {72: 0.3, 74: 0.4, 76: 0.3}, 72: 2, 74: 4, 76: 6, 8: None}
 
 sim.create_roads(road_list)
 sim.set_road_graph(road_graph)
 
-sim.start()
+sim.start(120)
