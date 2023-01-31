@@ -31,7 +31,7 @@ ROAD_WIDTH = 3  # m, largeur des routes
 ROAD_COLOR = BLUE_ROAD  # couleur des routes
 ROAD_ARROW_PERIOD = 100  # pixels, période spatiale des flèches
 ARCROAD_NUM_OF_SROAD = 10  # nombre de routes droites pour les routes courbées
-ARCROAD_V_MAX_COEFF = 0.45  # coefficient de ralentissement pour les routes courbées, facteur de V_MAX
+ARCROAD_V_MAX_COEFF = 0.6  # coefficient de ralentissement pour les routes courbées, facteur de V_MAX et d'un coefficient de courbure
 CAR_FACT_FORCE_CREA = False  # si les CarFactory continuent de rajouter des voitures sur les routes déjà pleines (/!\ peut énormément ralentir la simulation)
 
 # Voitures
@@ -43,11 +43,11 @@ CAR_LENGTH = 3  # m, longueur par défaut des voitures
 CAR_COLOR = BLUE_GREEN_CAR  # couleur par défaut des voitures
 CAR_SPEED_CODED_COLOR = False  # si la couleur des voitures représente leurs vitesses (de rouge = lent à bleu = rapide)
 
-CAR_SHOW_BUMPING_BOXES = False  # si on affiche les zones de collision (hitbox, hurtbox) des voitures
-CAR_SHOW_LEADER_LINKS = False  # si on affiche les liens entre la voitures et ses leaders
+CAR_SHOW_BUMPING_BOXES = True  # si on affiche les zones de collision (hitbox, hurtbox) des voitures
+CAR_SHOW_LEADER_LINKS = True  # si on affiche les liens entre la voitures et ses leaders
 CAR_SHOW_ARROW = False  # si on affiche la direction de chaque voiture sur son toit
-CAR_SHOW_ID = False  # si on affiche l'id de chaque voiture sur son toit
-CAR_SHOW_SPEED_MS = False  # si on affiche la vitesse de chaque voiture sur son toit en m/s
+CAR_SHOW_ID = True  # si on affiche l'id de chaque voiture sur son toit
+CAR_SHOW_SPEED_MS = True  # si on affiche la vitesse de chaque voiture sur son toit en m/s
 CAR_SHOW_SPEED_KMH = False  # si on affiche la vitesse de chaque voiture sur son toit en km/h
 
 CAR_LEADERS_COEFF_BUMPING_CARS = 20  # coefficient d'importances des voitures en collisions dans le calcul du leader
@@ -66,7 +66,7 @@ CAR_RAND_WIDTH_MAX = 2.4  # m, maximum pour les largeurs aléatoires des voiture
 DELTA_D_MIN = 2  # m, distance minimum entre deux voitures
 V_MAX = 13.9  # m/s, limite de vitesse par défaut des routes droites (50 km/h = 13.9 m/s, 30 km/h = 8.3 m/s)
 A_MAX = 1  # m/s², accéleration maximum d'une voiture
-A_MIN = 1.5  # m/s², décélération minimum d'une voiture
+A_MIN = -2.5  # m/s², décélération minimum d'une voiture
 A_MIN_CONF = 10  # m/s², décélération confortable d'une voiture
 A_EXP = 4  # exposant de l'accéleration, contrôle la "douceur"
 T_REACT = 1  # s, temps de réaction du conducteur

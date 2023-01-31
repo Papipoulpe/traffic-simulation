@@ -89,12 +89,12 @@ class Simulation:
             if self.paused:  # si en pause
                 for road in self.roads:
                     for car in road.cars:
-                        self.show_car(car)  # affichage des voitures de la route
+                        self.show_car(car)  # affiche les voitures de la route
                     for sensor in road.sensors:
-                        self.show_sensor(sensor)
-                    self.show_traffic_light(road.traffic_light)
+                        self.show_sensor(sensor)  # affiche les capteurs de la route
+                    self.show_traffic_light(road.traffic_light)  # affiche le feu
                 self.show_info(self.info_to_show)  # affiche les informations
-                pygame.display.flip()  # actualisation de la fenêtre
+                pygame.display.update()  # actualisation de la fenêtre
                 self.clock.tick(self.FPS)  # pause d'une durée dt
                 continue  # saute la suite de la boucle et passe à l'itération suivante
 
@@ -103,31 +103,28 @@ class Simulation:
                     self.show_car(car)  # affichage des voitures de la route
                     car.leaders = self.get_bumping_cars(car)
 
-                # affiche les capteurs
+                # affichage des capteurs
                 for sensor in road.sensors:
                     self.show_sensor(sensor)
 
-                self.show_traffic_light(road.traffic_light)  # affichage du feu
+                # affichage du feu
+                self.show_traffic_light(road.traffic_light)
 
                 # actualisation des coordonnées des voitures de la route, des capteur et du feu
                 road_leaders = self.get_leaders(road, avg=s.GET_LEADERS_METHOD_AVG)
                 road.update_cars(self.dt, road_leaders)
-
-                # actualise les capteurs
                 road.update_sensors(self.t)
-
-                # actualise le feu
                 road.update_traffic_light(self.t)
 
                 # éventuelle création d'une nouvelle voiture au début de la route
-                args_crea = {"t": self.t}
                 args_fact = {"t": self.t, "last_car": road.cars[-1] if road.cars else None}
-                new_car = road.car_factory.factory(args_crea=args_crea, args_fact=args_fact)
+                args_crea = {"t": self.t}
+                new_car = road.car_factory.factory(args_fact, args_crea)
                 road.new_car(new_car)
 
             self.t += self.dt  # actualisation du suivi du temps
             self.show_info(self.info_to_show)  # affiche les informations
-            pygame.display.flip()  # actualisation de la fenêtre
+            pygame.display.update()  # actualisation de la fenêtre
             self.clock.tick(self.speed_ajusted_fps)  # pause d'une durée dt
             self.over = (self.t >= duration) or self.over  # arrêt si le temps est écoulé ou si l'utilisateur quitte
 
@@ -436,7 +433,7 @@ class Simulation:
 
                 if next_road.cars:  # si elle contient des voitures, on prend les coordonnées de la première
                     next_car = next_road.cars[-1]
-                    leaders.append((next_car, next_car.d - next_car.length/2, prob * s.CAR_LEADERS_COEFF_NEXT_ROAD_CAR))
+                    leaders.append((next_car, next_car.d - next_car.length / 2, prob * s.CAR_LEADERS_COEFF_NEXT_ROAD_CAR))
                 else:  # sinon, on cherche plus loin
                     next_leaders = self.get_leaders(next_road, avg=True)
                     leaders += [(next_car, next_road.length + d, prob * next_prob) for next_car, d, next_prob in
@@ -450,6 +447,9 @@ class Simulation:
                 return None
 
             next_road = road.cars[0].next_road
+
+            if isinstance(next_road, ArcRoad):
+                next_road = next_road.sroads[0]
 
             if next_road is None:  # dans le rare cas où la première voiture n'a pas encore de prochaine route
                 return self.get_leaders(road, avg=True)
@@ -475,7 +475,7 @@ class Simulation:
                         if is_bumping_first:
                             is_bumping = car.is_bumping_with(other_car)
                             if is_bumping and other_car != car:  # couteux à calculer, donc pas de "and"
-                                d = max(length(car.pos, other_car.pos) - car.length/2 - other_car.length/2, 0)
+                                d = max(distance(car.pos, other_car.pos) - car.length / 2 - other_car.length / 2, 0)
                                 bumping_cars.append((other_car, d, s.CAR_LEADERS_COEFF_BUMPING_CARS))
 
             return bumping_cars

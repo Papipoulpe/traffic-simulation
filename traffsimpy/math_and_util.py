@@ -2,7 +2,6 @@ import json
 from typing import *
 from numpy.typing import NDArray
 import numpy as np
-import pandas as pd
 import webcolors
 
 import traffsimpy.settings as s
@@ -47,7 +46,7 @@ def normed(v: Vecteur, new_norm: float = 1) -> Vecteur:
     return new_norm * v / norm(v)
 
 
-def length(p1: Vecteur, p2: Vecteur):
+def distance(p1: Vecteur, p2: Vecteur) -> float:
     """Renvoie la longueur du segment ``[p1p2]``."""
     return norm(p2 - p1)
 
@@ -63,7 +62,7 @@ def normal_vector(v: Vecteur, new_norm: float = 1) -> Vecteur:
     return normed(npa((-b, a)), new_norm)
 
 
-def angle_of_vect(v: Vecteur):
+def angle_of_vect(v: Vecteur) -> float:
     """Angle du vecteur ``v`` avec l'axe des abscisses, en degrés."""
     u = npa((1, -1j))
     return np.angle(u @ v, deg=True)
@@ -99,8 +98,8 @@ def update_taylor_protected(car, dt: float):
     car.d = car.d + max(0, car.v * dt + 1 / 2 * car.a * dt * dt)  # dev de taylor ordre 2, protégé
 
 
-def idm(car, leader_coords: Optional[Vecteur], dt: float):
-    """Intelligent Driver Model. Calcule l'accélération idéale de la voiture."""
+def idm(car, leader_coords: Optional[Vecteur]):
+    """Intelligent Driver Model."""
     if leader_coords is not None:  # si on a un leader
         delta_d, lead_v = leader_coords
 
@@ -110,17 +109,55 @@ def idm(car, leader_coords: Optional[Vecteur], dt: float):
 
         delta_v = car.v - lead_v
 
-        dd_parfait = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(
-            2 * s.A_MIN_CONF * car.a_max))
-        a_interaction = (dd_parfait / delta_d) ** 2
+        dd_parfait = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * s.A_MIN_CONF * car.a_max))
+        a_interaction = (temp := (dd_parfait / delta_d)) * temp
     else:
         a_interaction = 0
 
-    a_free_road = 1 - (car.v / car.road.v_max) ** car.a_exp
+    a_free_road = 1 - np.float_power((car.v / car.road.v_max), car.a_exp)
     a_idm = car.a_max * (a_free_road - a_interaction)
-    car.a = min(car.a_min, a_idm)
 
-    update_taylor_protected(car, dt)
+    return a_idm
+
+
+def iidm(car, leader_coords: Optional[Vecteur]):
+    """Improved Intelligent Driver Model."""
+    if car.v <= car.road.v_max:
+        a_free_road = car.a_max * (1 - (car.v/car.road.v_max) ** car.a_exp)
+
+        if leader_coords is None:
+            a_iidm = a_free_road
+        else:
+            delta_d, lead_v = leader_coords
+            delta_v = car.v - lead_v
+            dd_parfait = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * s.A_MIN_CONF * car.a_max))
+            z = dd_parfait/delta_d if delta_d > 0 else INF
+
+            if z >= 1:
+                a_iidm = car.a_max * (1 - z*z)
+            else:
+                if a_free_road > 0:
+                    a_iidm = a_free_road * (1 - np.float_power(z, 2 * car.a_max / a_free_road))
+                else:
+                    a_iidm = 0
+
+    else:
+        a_free_road = - s.A_MIN_CONF * (1 - np.float_power(car.road.v_max/car.v, car.a_max * car.a_max / s.A_MIN_CONF))
+
+        if leader_coords is None:
+            a_iidm = a_free_road
+        else:
+            delta_d, lead_v = leader_coords
+            delta_v = car.v - lead_v
+            dd_parfait = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * s.A_MIN_CONF * car.a_max))
+            z = dd_parfait/delta_d if delta_d > 0 else INF
+
+            if z >= 1:
+                a_iidm = a_free_road + car.a_max * (1 - z*z)
+            else:
+                a_iidm = a_free_road
+
+    return a_iidm
 
 
 def intersection_droites(p1: Vecteur, vd1: Vecteur, p2: Vecteur, vd2: Vecteur) -> Vecteur:
@@ -174,15 +211,10 @@ def is_inside_rectangle(m: Vecteur, rectangle: np.ndarray) -> bool:
     return 0 <= am @ ab <= ab @ ab and 0 <= am @ ad <= ad @ ad
 
 
-def is_inside_circle(m: Vecteur, circle: tuple[Vecteur, float]):
+def is_inside_circle(m: Vecteur, circle: tuple[Vecteur, float]) -> bool:
     """Renvoie si le point ``m`` appartient au disque, défini par son centre et son rayon."""
     center, radius = circle
     return (m - center) @ (m - center) <= radius*radius
-
-
-def data_frame(columns: list[str], data: Any = None) -> pd.DataFrame:
-    """Renvoie une table de données."""
-    return pd.DataFrame(data=data, columns=columns)
 
 
 def blue_red_gradient(shade: float):

@@ -1,29 +1,36 @@
+import pandas as pd
+
 from .math_and_util import *
 
 
 class Car:
-    def __init__(self, v, a, le, width, color, obj_id):
+    def __init__(self, v: float = s.CAR_V, a: float = s.CAR_A, length: float = s.CAR_LENGTH, width: float = s.CAR_WIDTH, color: Couleur = s.CAR_COLOR, obj_id: Optional[int] = None):
         """
         Voiture.
 
         :param v: vitesse
         :param a: acceleration
-        :param le: longueur
+        :param length: longueur
         :param width: largeur
         :param color: couleur
         :param obj_id: éventuel identifiant
         """
         self.id = new_id(self, obj_id)
         self.color = color
-        self.length, self.width = le, width
+        self.length, self.width = length, width
         self.road = None
         self.next_road = None
+        self.simulation = get_by_id(0)
 
         self._d = 0  # distance du derrière depuis le début de la route
         self.total_d = 0  # distance totale parcourue par la voiture
         self._pos = npz(2)  # position du mileu du derrière dans la fenêtre
         self.v = v  # vitesse
         self.a = a  # acceleration
+
+        self.d_t = {}
+        self.v_t = {}
+        self.a_t = {}
 
         self.delta_d_min = s.DELTA_D_MIN  # pour l'IDM
         self.a_max = s.A_MAX  # pour l'IDM
@@ -32,10 +39,8 @@ class Car:
         self.t_react = s.T_REACT  # pour l'IDM
 
         self.corners = npz((4, 2))  # coordonnées des coins du rectangle représentant la voiture, pour affichage
-        self.front_bumper_hitbox = npz(
-            (4, 2))  # coordonnées des coins du rectangle à l'avant de la voiture, pour détecter les collisions
-        self.side_bumper_hurtbox = npz((4,
-                                        2))  # coordonnées des coins du rectangle sur les côtés et l'arrière de la voiture, pour détecter les collisions
+        self.front_bumper_hitbox = npz((4, 2))  # coordonnées des coins du rectangle à l'avant de la voiture, pour détecter les collisions
+        self.side_bumper_hurtbox = npz((4, 2))  # coordonnées des coins du rectangle sur les côtés et l'arrière de la voiture, pour détecter les collisions
 
         self.leaders = []  # leaders de la voitures
 
@@ -53,6 +58,7 @@ class Car:
     def d(self, d):
         self.total_d += d - self._d
         self._d = d
+        self.d_t[round(self.simulation.t, 4)] = d/s.SCALE
 
     @property
     def pos(self):
@@ -102,7 +108,12 @@ class Car:
         """
         leader_coords = self.virtual_leader
 
-        idm(self, leader_coords, dt)
+        self.a = iidm(self, leader_coords)
+
+        update_taylor_protected(self, dt)
+
+        self.v_t[round(self.simulation.t, 4)] = self.a/s.SCALE
+        self.a_t[round(self.simulation.t, 4)] = self.v/s.SCALE
 
     def is_bumping_with(self, other_car: "Car"):
         """Renvoie si la voiture **percute** ``other_car``, c'est-à-dire si un des coins de
@@ -133,47 +144,64 @@ class Car:
 
 
 class CarFactory:
-    def __init__(self, crea_func=None, fact_func=None, obj_id=None):
+    def __init__(self, freq_func=None, crea_func=None, obj_id=None):
         """
         Création de voitures à l'entrée d'une route.
 
-        :param fact_func: fréquence de création de voiture, peut être de type ``[a, b]`` pour une pause aléatoire entre la création de deux voiture, ``a`` pour une fréquence constante ou une fonction
-        :param crea_func: manière de choisir la voiture à créer, peut être de type ``"{'arg': val}"``, ``"rand_color"``, ``"rand_length"`` et/ou ``"rand_width"``, une fonction ou vide pour la voiture par défaut
+        :param freq_func: fréquence de création de voiture, peut être de type ``[a, b]`` pour une pause aléatoire d'une durée entre a et b secondes entre la création de deux voiture, ``a`` pour une fréquence constante ou une fonction f(t) -> bool
+        :param crea_func: manière de choisir la voiture à créer, peut être de type ``"{'arg': val, ...}"``, ``"rand_color"``, ``"rand_length"`` et/ou ``"rand_width"``, une fonction f(t) -> Car ou vide pour la voiture par défaut
         """
         self.id = new_id(self, obj_id)
 
         self.next_t = 0  # éventuelement utilisé pour fréquence aléatoire
 
+        self.fact_func = self.init_freqfunc(freq_func)  # on génère une fonction de fréquence de création
+
         if isinstance(crea_func, (str, list, type(None))):  # si crea_func n'est pas une fonction
-            self.crea_func = self.generic_creafunc(crea_func)  # on génère une fonction de création
+            self.crea_func = self.init_creafunc(crea_func)  # on génère une fonction de création
         else:
             self.crea_func = crea_func
-
-        if isinstance(fact_func, (list, float, int)):  # si fact_func n'est pas une fonction
-            self.fact_func = self.generic_factfunc(fact_func)  # on génère une fonction de fréquence de création
-        else:
-            self.fact_func = fact_func
 
     def __repr__(self):
         return f"CarFactory(id={self.id})"
 
-    def factory(self, args_crea, args_fact):
-        """
-        :param args_crea: arguments de la fonction de création
-        :param args_fact: arguments de la fonction de fréquence de création
-        """
-        if self.fact_func and self.fact_func(
-                **args_fact):  # si une fonction de fréquence est définie et qu'elle autorise la création
-            return self.crea_func(**args_crea)  # on renvoie la voiture créée par la fonction de création
+    def init_freqfunc(self, arg):
+        """Génère une fonction de fréquence de création."""
+        if isinstance(arg, (int, float)) or (isinstance(arg, (tuple, list)) and arg[0] == arg[1]):
+            # si de type a ou [a, a], renvoie True toutes les a secondes
+            if isinstance(arg, (list, tuple)):
+                a = arg[0]
+            else:
+                a = arg
+
+            def fact_func(t, last_car):
+                space_available = last_car is None or last_car.d > last_car.distance + s.DELTA_D_MIN  # s'il y a de la place disponible ou non
+                right_time = round(t, 2) % a == 0
+                return right_time and (space_available or s.CAR_FACT_FORCE_CREA)
+
+            return fact_func
+        elif isinstance(arg, (tuple, list)):
+            # si de type [a, b], attend aléatoirement entre a et b secondes
+            def fact_func(t, last_car):
+                if t >= self.next_t:
+                    delay = np.random.uniform(arg[0], arg[1])
+                    self.next_t = t + delay
+                    space_available = last_car is None or last_car.d > last_car.length + s.DELTA_D_MIN  # s'il y a de la place disponible ou non
+                    return space_available or s.CAR_FACT_FORCE_CREA
+                else:
+                    return False
+
+            return fact_func
+        else:  # si une fonction du temps est fournie
+            return lambda t, last_car: arg(t)
 
     @staticmethod
-    def generic_creafunc(arg):
+    def init_creafunc(arg):
         """Génère une fonction de création."""
         if isinstance(arg, str):
             arg = [arg]
 
-        attrs = {"v":      s.CAR_V, "a": s.CAR_A, "color": s.CAR_COLOR, "width": s.CAR_WIDTH, "le": s.CAR_LENGTH,
-                 "obj_id": None}
+        attrs = {"v": s.CAR_V, "a": s.CAR_A, "color": s.CAR_COLOR, "width": s.CAR_WIDTH, "length": s.CAR_LENGTH, "obj_id": None}
 
         def crea_func(*_, **__):
             if arg is None:
@@ -182,7 +210,7 @@ class CarFactory:
             if "rand_color" in arg:
                 attrs["color"] = [np.random.randint(s.CAR_RAND_COLOR_MIN, s.CAR_RAND_COLOR_MAX) for _ in range(3)]
             if "rand_length" in arg:
-                attrs["le"] = np.random.randint(s.CAR_RAND_LENGTH_MIN, s.CAR_RAND_LENGTH_MAX)
+                attrs["length"] = np.random.randint(s.CAR_RAND_LENGTH_MIN, s.CAR_RAND_LENGTH_MAX)
             if "rand_width" in arg:
                 attrs["width"] = np.random.randint(s.CAR_RAND_WIDTH_MIN, s.CAR_RAND_WIDTH_MAX)
             try:
@@ -195,33 +223,15 @@ class CarFactory:
 
         return crea_func
 
-    def generic_factfunc(self, arg):
-        """Génère une fonction de fréquence de création."""
-        if isinstance(arg, (int, float)) or arg[0] == arg[1]:
-            # si func_name est de type a ou [a, a], renvoie True toutes les a secondes
-            if isinstance(arg, (list, tuple)):
-                a = arg[0]
-            else:
-                a = arg
+    def factory(self, args_fact, args_crea):
+        """
+        Renvoie une voiture générée par la fonction de création si la fonction de fréquence de création l'autorise.
 
-            def fact_func(t, last_car):
-                space_available = last_car is None or last_car.d > last_car.length + s.DELTA_D_MIN  # s'il y a de la place disponible ou non
-                right_time = round(t, 2) % a == 0
-                return right_time and (space_available or s.CAR_FACT_FORCE_CREA)
-
-            return fact_func
-        else:
-            # sinon, de type [a, b], attend aléatoirement entre a et b secondes
-            def fact_func(t, last_car):
-                if t >= self.next_t:
-                    delay = np.random.uniform(arg[0], arg[1])
-                    self.next_t = t + delay
-                    space_available = last_car is None or last_car.d > last_car.length + s.DELTA_D_MIN  # s'il y a de la place disponible ou non
-                    return space_available or s.CAR_FACT_FORCE_CREA
-                else:
-                    return False
-
-            return fact_func
+        :param args_fact: arguments pour la fonction de fréquence de création
+        :param args_crea: arguments pour la fonction de création
+        """
+        if self.fact_func and self.fact_func(**args_fact):  # si une fonction de fréquence est définie et qu'elle autorise la création
+            return self.crea_func(**args_crea)  # on renvoie la voiture créée par la fonction de création
 
 
 class CarSorter:
@@ -260,8 +270,8 @@ class TrafficLight:
     def __init__(self, state_init: int, static=False, obj_id: int = None):
         """Feux de signalisation."""
         self.id = new_id(self, obj_id)
-        self._road: Road = ...  # route auquelle le feu est rattaché
-        self.pos = npz(2)
+        self.road: Road = ...  # route auquelle le feu est rattaché
+        self._pos = npz(2)
         self.coins = npz((4, 2))  # coins pour affichage
         self.width = s.TL_WIDTH
 
@@ -274,18 +284,22 @@ class TrafficLight:
         return f"TrafficLight(id={self.id}, state={self.state}, state_init={self.state_init}, static={self.static})"
 
     @property
-    def road(self):
-        return self._road
+    def pos(self):
+        return self._pos
 
-    @road.setter
-    def road(self, road):
-        self._road = road
+    @pos.setter
+    def pos(self, pos):
+        self._pos = pos
+
+        vd = self.road.vd * s.TL_WIDTH / 2
+        vn = normal_vector(vd, self.road.width / 2)
+        self.coins = pos - vd + vn, pos - vd - vn, pos + vd - vn, pos + vd + vn
+
         dummy_car_red = Car(0, 0, 0, 0, (0, 0, 0), None)
         dummy_car_orange = Car(0, 0, 0, 0, (0, 0, 0), None)
-        dummy_car_red._d = self.road.length  # bypass d.setter
+        dummy_car_red._d = self.road.length  # contourne car.d.setter
         dummy_car_orange._d = self.road.length + s.DELTA_D_MIN / s.TL_ORANGE_SLOW_DOWN_COEFF
-        dummy_car_red.road = dummy_car_orange.road = self.road
-        dummy_car_red._pos = dummy_car_orange._pos = self.pos  # bypass pos.setter
+        dummy_car_red._pos = dummy_car_orange._pos = pos  # contourne car.pos.setter
         self.dummy_cars = {0: dummy_car_red, 1: dummy_car_orange}
 
     def update(self, t):
@@ -316,15 +330,16 @@ class Sensor:
         Capteur qui récupère des données de la simulation.
 
         :param position: pourcentage de la route où sera placé le capteur
-        :param attributes_to_monitor: les attributs des voitures à surveiller, en chaînes de caractères,  parmi ``v``, ``a``, ``length``, ``width``, ``color`` et ``total_d``
+        :param attributes_to_monitor: les attributs des voitures à surveiller, en chaînes de caractères : None pour juste compter le nombre de voitures, ou autant que voulu parmi ``v``, ``a``, ``length``, ``width``, ``color`` et ``total_d`` ou parmi ``d(t)``, ``v(t)`` et ``a(t)``
         """
         self.id = new_id(self, obj_id)
-        self.attributes_to_monitor = self.init_atm(attributes_to_monitor)
         self.position = position
         self.corners = npz((4, 2))
 
         self.data = []
+        self.data_is_vals = True  # si le capteur récupère les valeurs instantantées des attributs des voitures ou l'historique de ces valeurs
         self.already_seen_cars_id = []
+        self.attributes_to_monitor = self.init_atm(attributes_to_monitor)
 
         self.road = None
         self._d = 0
@@ -332,14 +347,16 @@ class Sensor:
     def __repr__(self):
         return f"Sensor(id={self.id}, position={self.position}, attributes_to_monitor={self.attributes_to_monitor})"
 
-    @staticmethod
-    def init_atm(atm):
-        if isinstance(atm, str):
-            return [atm]
-        elif atm is None:
+    def init_atm(self, atm):
+        if atm is None:
             return []
+        elif isinstance(atm, str):
+            atm = [atm]
+        if any(arg in atm for arg in ["d(t)", "v(t)", "a(t)"]):
+            self.data_is_vals = False
         else:
-            return list(atm)
+            self.data_is_vals = True
+        return list(atm)
 
     @property
     def d(self):
@@ -360,14 +377,43 @@ class Sensor:
 
     @property
     def df(self):
-        return data_frame(data=self.data, columns=["t", "car_id"] + self.attributes_to_monitor)
+        atm_with_units = [f"{attr} ({UNITS_OF_CAR_ATTR[attr]})" for attr in self.attributes_to_monitor]
+
+        if self.data_is_vals:
+            return pd.DataFrame(data=self.data, columns=["t (s)", "car_id"] + atm_with_units)
+
+        else:
+            multi_index = pd.MultiIndex.from_product([self.already_seen_cars_id, atm_with_units], names=["car_id", "f(t)"])
+            data = []
+            dt = get_by_id(0).dt
+            t_max = max(data_t for data_t, *_ in self.data)
+            t = 0
+
+            while t <= t_max:
+                row = []
+                for data_row in self.data:
+                    _, _, *time_to_val_dics = data_row
+                    for time_to_val_dic in time_to_val_dics:
+                        val = time_to_val_dic.get(round(t, 4))
+                        row.append(val)
+                t += dt
+                data.append(row)
+
+            index = []
+            t = 0
+            while t <= t_max:
+                index.append(round(t, 4))
+                t += dt
+
+            return pd.DataFrame(data=data, columns=multi_index, index=index)
 
     def watch_car(self, car, t):
         data_row = [t, car.id]
         for attr in self.attributes_to_monitor:
-            val = car.__getattribute__(attr)
-            if attr in ["v", "a", "width", "length"]:
-                val /= s.SCALE
+            real_attr = {"d(t)": "d_t", "v(t)": "v_t", "a(t)": "a_t"}.get(attr, attr)
+            val = car.__getattribute__(real_attr)
+            if "m" in UNITS_OF_CAR_ATTR[attr] and isinstance(val, float):
+                val /= s.SCALE  # si l'attribut a une longueur dans ses unités, on la remet à l'échelle
             data_row.append(val)
         self.data.append(data_row)
         self.already_seen_cars_id.append(car.id)
@@ -387,7 +433,7 @@ class Sensor:
         else:
             self.df.to_excel(file_path, sheet_name)
 
-    def plot(self, x="t"):
+    def plot(self, x=None):
         df = self.df
         df.loc[:, df.columns != "car_id"].plot(x=x)
 
@@ -413,7 +459,7 @@ class Road:
         self.color = color
         self.with_arrows = with_arrows
 
-        self.length = length(self.start, self.end)
+        self.length = distance(self.start, self.end)  # longueur de la route
         self.vd = direction_vector(self.start, self.end)  # vecteur directeur de la route, normé
         vn = normal_vector(self.vd, self.width / 2)  # vecteur normal pour les coord des coins
         self.coins = self.start + vn, self.start - vn, self.end - vn, self.end + vn  # coordonnées des coins, pour l'affichage
@@ -459,11 +505,7 @@ class Road:
             return TrafficLight(state_init=2, static=True)
         else:
             traffic_light.road = self
-            vn = normal_vector(self.vd, self.width / 2)
-            pos1 = self.dist_to_pos(self.length)
-            pos2 = self.dist_to_pos(self.length - traffic_light.width)
-            traffic_light.coins = pos1 + vn, pos1 - vn, pos2 - vn, pos2 + vn
-            traffic_light.pos = (pos1 + pos2)/2
+            traffic_light.pos = self.dist_to_pos(self.length - traffic_light.width/2)
             return traffic_light
 
     def init_sensors(self, sensors):
@@ -564,15 +606,16 @@ class ArcRoad:
 
         intersec = intersection_droites(start, vdstart, end, vdend)
         self.points = bezier_curve(self.start, intersec, self.end, n)
-        sroad_length = length(self.points[0], self.points[1])
+        sroad_length = distance(self.points[0], self.points[1])
         self.length = sroad_length * n
 
         self.sroads = []
         self.sroad_end_to_arcroad_end = {}
+        angle_coeff = self.length / distance(start, end)
         for i in range(n):
             rstart = self.points[i]
             rend = self.points[i + 1]
-            sroad = SRoad(rstart, rend, width, color, v_max * s.ARCROAD_V_MAX_COEFF, -(n * self.id + i))
+            sroad = SRoad(rstart, rend, width, color, v_max * s.ARCROAD_V_MAX_COEFF * angle_coeff, -(n * self.id + i))
             self.sroads.append(sroad)
 
         for index, sroad in enumerate(self.sroads):

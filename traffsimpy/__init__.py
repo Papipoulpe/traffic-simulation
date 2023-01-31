@@ -1,7 +1,7 @@
 import os
 
 from .simulation import Simulation
-from .components import CarFactory, TrafficLight, Sensor
+from .components import CarFactory, TrafficLight, Sensor, Car
 
 os.chdir(os.path.dirname(__file__))
 
