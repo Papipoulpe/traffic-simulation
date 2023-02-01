@@ -144,23 +144,19 @@ class Car:
 
 
 class CarFactory:
-    def __init__(self, freq_func=None, crea_func=None, obj_id=None):
+    def __init__(self, freq=None, crea=None, obj_id=None):
         """
         Création de voitures à l'entrée d'une route.
 
-        :param freq_func: fréquence de création de voiture, peut être de type ``[a, b]`` pour une pause aléatoire d'une durée entre a et b secondes entre la création de deux voiture, ``a`` pour une fréquence constante ou une fonction f(t) -> bool
-        :param crea_func: manière de choisir la voiture à créer, peut être de type ``"{'arg': val, ...}"``, ``"rand_color"``, ``"rand_length"`` et/ou ``"rand_width"``, une fonction f(t) -> Car ou vide pour la voiture par défaut
+        :param freq: fréquence de création de voiture, peut être de type ``[a, b]`` pour une pause aléatoire d'une durée entre a et b secondes entre la création de deux voiture, ``a`` pour une fréquence constante ou une fonction f(t) -> bool
+        :param crea: manière de choisir la voiture à créer, peut être de type ``"{'arg': val, ...}"``, ``"rand_color"``, ``"rand_length"`` et/ou ``"rand_width"``, une fonction f(t) -> Car ou vide pour la voiture par défaut
         """
         self.id = new_id(self, obj_id)
 
         self.next_t = 0  # éventuelement utilisé pour fréquence aléatoire
 
-        self.fact_func = self.init_freqfunc(freq_func)  # on génère une fonction de fréquence de création
-
-        if isinstance(crea_func, (str, list, type(None))):  # si crea_func n'est pas une fonction
-            self.crea_func = self.init_creafunc(crea_func)  # on génère une fonction de création
-        else:
-            self.crea_func = crea_func
+        self.fact_func = self.init_freqfunc(freq)  # on génère une fonction de fréquence de création
+        self.crea_func = self.init_creafunc(crea)  # on génère une fonction de création
 
     def __repr__(self):
         return f"CarFactory(id={self.id})"
@@ -181,7 +177,7 @@ class CarFactory:
 
             return fact_func
         elif isinstance(arg, (tuple, list)):
-            # si de type [a, b], attend aléatoirement entre a et b secondes
+            # si de type [a, b], attendre aléatoirement entre a et b secondes
             def fact_func(t, last_car):
                 if t >= self.next_t:
                     delay = np.random.uniform(arg[0], arg[1])
@@ -192,12 +188,17 @@ class CarFactory:
                     return False
 
             return fact_func
+        elif arg is None:
+            return arg
         else:  # si une fonction du temps est fournie
             return lambda t, last_car: arg(t)
 
     @staticmethod
     def init_creafunc(arg):
         """Génère une fonction de création."""
+        if not isinstance(arg, (str, list, type(None))):
+            return arg
+
         if isinstance(arg, str):
             arg = [arg]
 

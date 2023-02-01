@@ -13,7 +13,7 @@ def crea_func(t):
 
 
 sim = Simulation("Fonctions personnalisées pour CarFactory", 1440, 820)
-car_factory = CarFactory(freq_func=freq_func, crea_func=crea_func)
+car_factory = CarFactory(freq=freq_func, crea=crea_func)
 
 sim.create_roads([{"type": "road", "start": (-60, 410), "end": (1500, 410), "car_factory": car_factory}])
 sim.start()

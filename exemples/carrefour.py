@@ -1,37 +1,50 @@
-from traffsimpy import Simulation, CarFactory, Sensor
+from traffsimpy import Simulation, CarFactory
 
-sim = Simulation("Carrefour", 1440, 840)
+
+w, h = 1440, 840  # taille de la fenêtre
+s = 70  # taille du carrefour
+ec = 20  # écart entre les routes
+marg = 60  # marge en dehors de la fenêtre
+
+x_ouest = w / 2 - s
+x_est = w / 2 + s
+y_nord = h / 2 + s
+y_sud = h / 2 - s
+
+car_factory_settings = {"freq": [3, 7.5], "crea": "rand_color"}
+
+sim = Simulation("Carrefour", w, h)
 
 road_list = [
-    {"id": 1, "type": "road", "start": (-60, 400), "end": (650, 400),  # routes de gauche
-     "car_factory": CarFactory(["rand_color"], [3, 7.5]), "sensors": Sensor(50)},
-    {"id": 2, "type": "road", "start": (650, 440), "end": (-60, 440)},
+    {"id": 1, "type": "road", "start": (-marg, h / 2 - ec), "end": (x_ouest, h / 2 - ec),  # routes de gauche
+     "car_factory": CarFactory(**car_factory_settings)},
+    {"id": 2, "type": "road", "start": (x_ouest, h / 2 + ec), "end": (-marg, h / 2 + ec)},
 
-    {"id": 3, "type": "road", "start": (1500, 440), "end": (790, 440),  # routes de droite
-     "car_factory": CarFactory(["rand_color"], [5, 7.5])},
-    {"id": 4, "type": "road", "start": (790, 400), "end": (1500, 400)},
+    {"id": 3, "type": "road", "start": (w + marg, h / 2 + ec), "end": (x_est, h / 2 + ec),  # routes de droite
+     "car_factory": CarFactory(**car_factory_settings)},
+    {"id": 4, "type": "road", "start": (x_est, h / 2 - ec), "end": (w + marg, h / 2 - ec)},
 
-    {"id": 5, "type": "road", "start": (740, -60), "end": (740, 350),  # routes du haut
-     "car_factory": CarFactory(["rand_color"], [5, 7.5])},
-    {"id": 6, "type": "road", "start": (700, 350), "end": (700, -60)},
+    {"id": 5, "type": "road", "start": (w / 2 + ec, -marg), "end": (w / 2 + ec, y_sud),  # routes du bas
+     "car_factory": CarFactory(**car_factory_settings)},
+    {"id": 6, "type": "road", "start": (w / 2 - ec, y_sud), "end": (w / 2 - ec, -marg)},
 
-    {"id": 7, "type": "road", "start": (700, 900), "end": (700, 490),  # routes du bas
-     "car_factory": CarFactory(["rand_color"], [5, 7.5])},
-    {"id": 8, "type": "road", "start": (740, 490), "end": (740, 900)},
+    {"id": 7, "type": "road", "start": (w / 2 - ec, h + marg), "end": (w / 2 - ec, y_nord),  # routes du haut
+     "car_factory": CarFactory(**car_factory_settings)},
+    {"id": 8, "type": "road", "start": (w / 2 + ec, y_nord), "end": (w / 2 + ec, h + marg)},
 
-    {"id": 14, "type": "road", "start": 1, "end": 4, "with_arrows": False},  # routes du carrefour
+    {"id": 14, "type": "road", "start": 1, "end": 4, "with_arrows": False},  # routes du carrefour depuis 1
     {"id": 16, "type": "arcroad", "start": 1, "end": 6},
     {"id": 18, "type": "arcroad", "start": 1, "end": 8},
 
-    {"id": 32, "type": "road", "start": 3, "end": 2, "with_arrows": False},
+    {"id": 32, "type": "road", "start": 3, "end": 2, "with_arrows": False},  # routes du carrefour depuis 3
     {"id": 36, "type": "arcroad", "start": 3, "end": 6},
     {"id": 38, "type": "arcroad", "start": 3, "end": 8},
 
-    {"id": 52, "type": "arcroad", "start": 5, "end": 2},
+    {"id": 52, "type": "arcroad", "start": 5, "end": 2},  # routes du carrefour depuis 5
     {"id": 54, "type": "arcroad", "start": 5, "end": 4},
     {"id": 58, "type": "road", "start": 5, "end": 8, "with_arrows": False},
 
-    {"id": 72, "type": "arcroad", "start": 7, "end": 2},
+    {"id": 72, "type": "arcroad", "start": 7, "end": 2},  # routes du carrefour depuis 7
     {"id": 74, "type": "arcroad", "start": 7, "end": 4},
     {"id": 76, "type": "road", "start": 7, "end": 6, "with_arrows": False}]
 
@@ -44,4 +57,4 @@ road_graph = {
 sim.create_roads(road_list)
 sim.set_road_graph(road_graph)
 
-sim.start(120)
+sim.start()

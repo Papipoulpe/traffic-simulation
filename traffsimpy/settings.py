@@ -15,7 +15,8 @@ FPS = 60  # Hz, nombre d'images par seconde initial de la simulation
 SPEED = 1  # vitesse initiale de la simulation
 MAX_SPEED = 4  # vitesse maximum possible, peu d'effets au delà de 4 pour un processeur classique
 SCALE = 10  # pixels/m, échelle de la simulation
-GET_LEADERS_METHOD_AVG = False  # méthode pour determiner le leader de la première voiture d'une route. True = dernières voitures des prochaines routes, coefficientées par la probabilité que la voiture aille sur ces routes. False = dernière voiture de la prochaine route de la voiture.
+GET_LEADERS_METHOD_AVG = False  # méthode pour déterminer le leader de la première voiture d'une route. True = dernières voitures des prochaines routes, coefficientées par la probabilité que la voiture aille sur ces routes. False = dernière voiture de la prochaine route de la voiture.
+GET_LEADERS_MAX_REC_DEPTH = 4  # niveau maximum de récursion du parcours en profondeur
 USE_BUMPING_BOXES = True  # si la simulation utlise les hitbox et hurtbox des voitures pour éviter les collisions
 
 # Ressources
@@ -30,7 +31,7 @@ ARROW_PATH = DEF_ARROW_PATH  # chemin à l'image de flèche
 ROAD_WIDTH = 3  # m, largeur des routes
 ROAD_COLOR = BLUE_ROAD  # couleur des routes
 ROAD_ARROW_PERIOD = 100  # pixels, période spatiale des flèches
-ARCROAD_NUM_OF_SROAD = 10  # nombre de routes droites pour les routes courbées
+ARCROAD_NUM_OF_SROAD = 20  # nombre de routes droites pour les routes courbées
 ARCROAD_V_MAX_COEFF = 0.6  # coefficient de ralentissement pour les routes courbées, facteur de V_MAX et d'un coefficient de courbure
 CAR_FACT_FORCE_CREA = False  # si les CarFactory continuent de rajouter des voitures sur les routes déjà pleines (/!\ peut énormément ralentir la simulation)
 
@@ -41,12 +42,12 @@ CAR_V = None  # m/s, vitesse par défaut des voitures (50 km/h = 13.9 m/s, 30 km
 CAR_WIDTH = 1.8  # m, largeur par défaut des voitures
 CAR_LENGTH = 3  # m, longueur par défaut des voitures
 CAR_COLOR = BLUE_GREEN_CAR  # couleur par défaut des voitures
-CAR_SPEED_CODED_COLOR = False  # si la couleur des voitures représente leurs vitesses (de rouge = lent à bleu = rapide)
+CAR_SPEED_CODED_COLOR = True  # si la couleur des voitures représente leurs vitesses (de rouge = lent à bleu = rapide)
 
-CAR_SHOW_BUMPING_BOXES = True  # si on affiche les zones de collision (hitbox, hurtbox) des voitures
-CAR_SHOW_LEADER_LINKS = True  # si on affiche les liens entre la voitures et ses leaders
+CAR_SHOW_BUMPING_BOXES = False  # si on affiche les zones de collision (hitbox, hurtbox) des voitures
+CAR_SHOW_LEADER_LINKS = False  # si on affiche les liens entre la voitures et ses leaders
 CAR_SHOW_ARROW = False  # si on affiche la direction de chaque voiture sur son toit
-CAR_SHOW_ID = True  # si on affiche l'id de chaque voiture sur son toit
+CAR_SHOW_ID = False  # si on affiche l'id de chaque voiture sur son toit
 CAR_SHOW_SPEED_MS = True  # si on affiche la vitesse de chaque voiture sur son toit en m/s
 CAR_SHOW_SPEED_KMH = False  # si on affiche la vitesse de chaque voiture sur son toit en km/h
 

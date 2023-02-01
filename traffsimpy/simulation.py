@@ -56,15 +56,15 @@ class Simulation:
         self.dragging = False  # si l'utilisateur est en train de bouger la simulation
         self.mouse_last = npz(2)  # dernière coordonnées de la souris
 
-    def rc_to_sc(self, coordinates: Vecteur | tuple[float, float]):
+    def rc_to_sc(self, coordinates: Vecteur | None, is_vect: bool = False):
         """Convertie des coordonnées naturelles (abscisses vers la droite, ordonnées vers le haut) en coordonnées
         de la simulation (abscisses vers la droite, ordonnées vers le bas)."""
-        if isinstance(coordinates, (tuple, list)):
-            x, y = coordinates
-            _, h = self.size
-            return x, h - y
-        else:
+        if isinstance(coordinates, (float, int, type(None))):
             return coordinates
+
+        x, y = coordinates
+        _, h = self.size if not is_vect else (0, 0)
+        return npa([x, h - y])
 
     def start_loop(self, duration: float):
         """Ouvre une fenêtre et lance la simulation."""
@@ -347,7 +347,7 @@ class Simulation:
     def create_road(self, **kw):
         """Créer une route."""
         start, end, vdstart, vdend, v_max, car_factory, color, w, obj_id = kw.get("start", (0, 0)), kw.get("end", (0, 0)), kw.get("vdstart"), kw.get("vdend"), kw.get("v_max", s.V_MAX), kw.get("car_factory"), kw.get("color", s.ROAD_COLOR), kw.get("width", s.ROAD_WIDTH), kw.get("id")
-        start, end, vdstart, vdend = self.rc_to_sc(start), self.rc_to_sc(end), self.rc_to_sc(vdstart), self.rc_to_sc(vdend)
+        start, end, vdstart, vdend = self.rc_to_sc(start), self.rc_to_sc(end), self.rc_to_sc(vdstart, True), self.rc_to_sc(vdend, True)
         v_max *= s.SCALE  # mise à l'échelle de v_max
         if isinstance(start, int):  # si l'argument start est un id de route
             rstart = get_by_id(start)
@@ -363,7 +363,7 @@ class Simulation:
                         car_factory=car_factory, traffic_light=traffic_light, sensors=sensors, obj_id=obj_id)
         else:  # si on crée une route courbée
             n = kw.get("n", s.ARCROAD_NUM_OF_SROAD)
-            road = ArcRoad(start=start, end=end, vdstart=vdstart, vdend=vdend, n=n, v_max=v_max, width=w, color=color,
+            road = ArcRoad(start=start, end=end, vdstart=npa(vdstart), vdend=npa(vdend), n=n, v_max=v_max, width=w, color=color,
                            car_factory=car_factory, obj_id=obj_id)
         self.roads.append(road)
         self.road_graph[road.id] = None
@@ -373,15 +373,16 @@ class Simulation:
         """Créer des routes, renvoie la liste des routes.
 
         Les éléments de ``road_list`` sont des dictionnaires de la forme :\n
-        - pour une route droite, ``{"id": int (optionnel), "type": "road", "start": (float, float) | int, "end": (float, float) | int, "v_max": float (optionnel), "car_factory": CarFactory (optionnel), "traffic_light": TrafficLight (optionnel), "sensors": Sensor (optionnel), "with_arrows": bool (optionnel)}``
-        - pour une route courbée, ``{"id": int (optionnel), "type": "arcroad", "start": (float, float) | int, "vdstart": (float, float), "end": (float, float) | int, "vdend": (float, float), "v_max": float (optionnel), "n": int (optionnel), "car_factory": CarFactory (optionnel)}``
+        - pour une route droite, ``{"id": int (optionnel), "type": "road", "start": (float, float) | int, "end": (float, float) | int, "car_factory": CarFactory (optionnel), "v_max": float (optionnel), "traffic_light": TrafficLight (optionnel), "sensors": Sensor (optionnel), "color": (int, int, int) (optionnel), "with_arrows": bool (optionnel)}``
+        - pour une route courbée, ``{"id": int (optionnel), "type": "arcroad", "start": (float, float) | int, "vdstart": (float, float), "end": (float, float) | int, "vdend": (float, float), "car_factory": CarFactory (optionnel), "v_max": float (optionnel), "color": (int, int, int) (optionnel), "n": int (optionnel)}``
 
         avec :\n
         - ``id`` l'éventuel l'identifiant de la route
         - ``start`` les coordonnées du début de la route (éventuellement négatives), ou l'identifiant d'une route déjà définie dont la fin servira de début
         - ``end`` les coordonnées de la fin de la route (éventuellement négatives), ou l'identifiant d'une route déjà définie dont le début servira de fin
-        - ``v_max`` l'éventuelle limite de vitesse (en m/s) de la route, par défaut ``V_MAX``
         - ``car_factory`` l'éventuel CarFactory
+        - ``v_max`` l'éventuelle limite de vitesse (en m/s) de la route, ``V_MAX`` par défaut
+        - ``color`` la couleur de la route, ``ROAD_COLOR`` par défaut
         - ``vdstart`` pour arcroad, si ``start`` est un couple de coordonnées, vecteur directeur du début
         - ``vdend`` pour arcroad, si ``end`` est un couple de coordonnées, vecteur directeur de la fin
         - ``n`` pour arcroad, l'éventuel nombre de routes droites la composant, par défaut ``N_ARCROAD``
@@ -409,14 +410,18 @@ class Simulation:
                     self.road_graph[-(road.n * road.id + i)] = -(road.n * road.id + i + 1)
                 self.road_graph[-(road.n * (road.id + 1) - 1)] = self.road_graph[road.id]
 
-    def get_leaders(self, road: Road, avg: bool):
+    def get_leaders(self, road: Road, avg: bool, rec_depth: int = 0):
         """
-        Renvoie les éventuels leaders de la première voiture de la route, dans une liste de la forme ``[(car, distance, importance), ...]``.
+        Renvoie les éventuels leaders de la première voiture de la route, dans une liste de la forme ``[(car, distance, importance), ...]``, par un parcours en profondeur.
 
         :param road: route en question
         :param avg: méthode de recherche : si True, renvoie les dernières voitures des prochaines routes, coefficientées par la probabilité que la première voiture aille sur ces routes. Sinon, renvoie celles de la dernière voiture de la prochaine route de la première voiture de la route.
+        :param rec_depth: niveau de récursion atteint
         """
-        if avg:  # si GET_LEADER_COORDS_METHOD_AVG est True
+        if rec_depth > s.GET_LEADERS_MAX_REC_DEPTH:
+            return []
+
+        if avg:
             next_roads_probs = self.road_graph[road.id]  # récupération des prochaines routes et de leurs probas
 
             if next_roads_probs is None:  # si pas de prochaine route
@@ -435,13 +440,13 @@ class Simulation:
                     next_car = next_road.cars[-1]
                     leaders.append((next_car, next_car.d - next_car.length / 2, prob * s.CAR_LEADERS_COEFF_NEXT_ROAD_CAR))
                 else:  # sinon, on cherche plus loin
-                    next_leaders = self.get_leaders(next_road, avg=True)
+                    next_leaders = self.get_leaders(next_road, avg=True, rec_depth=rec_depth + 1)
                     leaders += [(next_car, next_road.length + d, prob * next_prob) for next_car, d, next_prob in
                                 next_leaders]
 
             return leaders
 
-        else:  # si GET_LEADER_COORDS_METHOD_AVG est False
+        else:
 
             if not road.cars:
                 return None
@@ -452,12 +457,12 @@ class Simulation:
                 next_road = next_road.sroads[0]
 
             if next_road is None:  # dans le rare cas où la première voiture n'a pas encore de prochaine route
-                return self.get_leaders(road, avg=True)
+                return self.get_leaders(road, avg=True, rec_depth=rec_depth + 1)
             elif next_road.cars:  # si elle en a une et qu'elle contient des voitures
                 next_car = next_road.cars[-1]
                 return [(next_car, next_car.d, s.CAR_LEADERS_COEFF_NEXT_ROAD_CAR)]
             else:  # si elle en a une mais qui ne contient pas de voiture
-                next_leaders = self.get_leaders(next_road, avg=True)
+                next_leaders = self.get_leaders(next_road, avg=True, rec_depth=rec_depth + 1)
                 return [(next_car, next_road.length + d, next_prob) for next_car, d, next_prob in next_leaders]
 
     def get_bumping_cars(self, car: Car):
