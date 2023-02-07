@@ -61,8 +61,8 @@ def draw_circle(surface: pygame.Surface, color: Couleur, center: Vecteur, radius
     :param off_set: décalage par rapport à l'origine
     """
     x, y = center + off_set
-    gfx.filled_circle(surface, round(x), round(y), radius, color)
-    gfx.aacircle(surface, round(x), round(y), radius, color)
+    gfx.filled_circle(surface, round(x), round(y), round(radius), color)
+    gfx.aacircle(surface, round(x), round(y), round(radius), color)
 
 
 def draw_text(surface: pygame.Surface, color: Couleur, up_left_corner: Vecteur, text: str, font: pygame.font.Font,

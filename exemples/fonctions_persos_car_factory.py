@@ -1,3 +1,7 @@
+"""Exemple de simulation d'une route droite avec des fonctions personnalisées : une voiture dont la composante en bleu
+de sa couleur dépend du temps sera créée à chaque fois que le nombre de seconde depuis le début de la simualtion est un
+carré parfait."""
+
 from traffsimpy import Simulation, CarFactory, Car
 
 
@@ -7,7 +11,8 @@ def freq_func(t):
 
 
 def crea_func(t):
-    """Fonction de création personnalisée pour CarFactory. Renvoie une voiture dont la composante en bleu est une fonction affine du temps."""
+    """Fonction de création personnalisée pour CarFactory. Renvoie une voiture dont la composante en bleu est une
+    fonction affine du temps."""
     r, g, b = 120, 120, (8 * t) % 255
     return Car(color=(r, g, b))
 

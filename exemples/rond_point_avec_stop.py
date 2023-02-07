@@ -1,6 +1,7 @@
-"""Exemple de simulation d'un rond-point où quatres doubles voies se rejoignent."""
+"""Exemple de simulation d'un rond-point où quatres doubles voies se rejoignent. Des panneaux stop sont placés à chaque
+entrée du rond-point."""
 
-from traffsimpy import Simulation, CarFactory
+from traffsimpy import Simulation, CarFactory, StopSign
 
 
 w, h = 1440, 840  # taille de la fenêtre
@@ -29,19 +30,19 @@ sim = Simulation("Rond-point", w, h)
 
 road_list = [
     {"id": 1, "type": "road", "start": (-marg, h / 2 - ec), "end": (x_ouest, h / 2 - ec),  # routes de gauche
-     "car_factory": CarFactory(**car_factory_settings)},
+     "car_factory": CarFactory(**car_factory_settings), "sign": StopSign()},
     {"id": 2, "type": "road", "start": (x_ouest, h / 2 + ec), "end": (-marg, h / 2 + ec)},
 
     {"id": 3, "type": "road", "start": (w + marg, h / 2 + ec), "end": (x_est, h / 2 + ec),  # routes de droite
-     "car_factory": CarFactory(**car_factory_settings)},
+     "car_factory": CarFactory(**car_factory_settings), "sign": StopSign()},
     {"id": 4, "type": "road", "start": (x_est, h / 2 - ec), "end": (w + marg, h / 2 - ec)},
 
     {"id": 5, "type": "road", "start": (w / 2 + ec, -marg), "end": (w / 2 + ec, y_sud),  # routes du bas
-     "car_factory": CarFactory(**car_factory_settings)},
+     "car_factory": CarFactory(**car_factory_settings), "sign": StopSign()},
     {"id": 6, "type": "road", "start": (w / 2 - ec, y_sud), "end": (w / 2 - ec, -marg)},
 
     {"id": 7, "type": "road", "start": (w / 2 - ec, h + marg), "end": (w / 2 - ec, y_nord),  # routes du haut
-     "car_factory": CarFactory(**car_factory_settings)},
+     "car_factory": CarFactory(**car_factory_settings), "sign": StopSign()},
     {"id": 8, "type": "road", "start": (w / 2 + ec, y_nord), "end": (w / 2 + ec, h + marg)},
 
     {"id": 9, "type": "arcroad", "start": 1, "end": sud_ouest, "vdend": vd_sud_ouest},  # routes du rond-point
@@ -69,6 +70,6 @@ road_graph = {
 
 sim.create_roads(road_list)
 sim.set_road_graph(road_graph)
-sim.set_bumping_zone()
+sim.set_bumping_zone(radius=s)
 
 sim.start()

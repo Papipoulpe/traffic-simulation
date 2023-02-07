@@ -43,12 +43,10 @@ class Car:
         self.side_bumper_hurtbox = npz((4, 2))  # coordonnées des coins du rectangle sur les côtés et l'arrière de la voiture, pour détecter les collisions
 
         self.leaders = []  # leaders de la voitures
+        self.bumping_cars = []  # voitures en collision avec la voiture
 
     def __repr__(self):
-        return f"Car(id={self.id}, pos={self.pos}, d={self.d}, v={self.v}, a={self.a}, coins={rec_round(self.corners)}, virtual_leader={self.virtual_leader}, leaders={self.leaders}, next_road={self.next_road}, color={closest_color(self.color)})"
-
-    def __eq__(self, other):
-        return self.id == other.id
+        return f"Car(id={self.id}, pos={self.pos}, d={self.d}, v={self.v}, a={self.a}, coins={rec_round(self.corners)}, virtual_leader={self.virtual_leader}, bumping_cars={self.bumping_cars}, leaders={self.leaders}, next_road={self.next_road}, color={closest_color(self.color)})"
 
     @property
     def d(self):
@@ -86,7 +84,7 @@ class Car:
         c4 = self.pos + vn_w + vd_l  # devant droit
         self.corners = c1, c2, c3, c4
 
-        # coins de la zone de collision de devant
+        # coins de la zone de collision devant
         c1 = self.pos + vn_w + vd_l + vd_ddmp  # devant droit
         c2 = self.pos - vn_w + vd_l + vd_ddmp  # devant gauche
         c3 = self.pos - vn_w - vn_ddm + vd_l  # derrière gauche
@@ -108,39 +106,52 @@ class Car:
         """
         leader_coords = self.virtual_leader
 
-        self.a = iidm(self, leader_coords)
+        if s.USE_IDM:
+            self.a = iidm(self, leader_coords)
 
-        update_taylor_protected(self, dt)
+        update_taylor_protected2(self, dt, self.road.slow_curve_coeff)
 
         self.v_t[round(self.simulation.t, 4)] = self.a/s.SCALE
         self.a_t[round(self.simulation.t, 4)] = self.v/s.SCALE
 
     def is_bumping_with(self, other_car: "Car"):
-        """Renvoie si la voiture **percute** ``other_car``, c'est-à-dire si un des coins de
-        ``car.front_bumper_hitbox`` est à l'intérieur de ``other_car.side_bumper_hurtbox``."""
-        if not is_inside_circle(other_car.pos, (self.pos, self.delta_d_min + self.v + self.t_react)):
+        """Renvoie si la voiture **percute** ``other_car``, c'est-à-dire si ``car.front_bumper_hitbox``  et
+        ``other_car.side_bumper_hurtbox`` se superposent."""
+        if not is_inside_circle(other_car.pos, (self.pos, 2 * self.length + self.delta_d_min + self.v + self.t_react)):
             return False
 
         for c in self.front_bumper_hitbox:
             if is_inside_rectangle(c, other_car.side_bumper_hurtbox):
                 return True
 
+        dvd, dvg, drg, drd = self.front_bumper_hitbox
+
+        if is_inside_rectangle((dvd + drd)/2, other_car.side_bumper_hurtbox):
+            return True
+
+        if is_inside_rectangle((dvg + drg)/2, other_car.side_bumper_hurtbox):
+            return True
+
         return False
 
     @property
     def virtual_leader(self):
         """Renvoie la distance au et la vitesse du leader virtuel de la voiture, qui prend en compte les prochaines voitures et les voitures avec lesquelle elle est en collision."""
-        if not self.leaders:
+        if self.bumping_cars:
+            leader_coords = npz(2)
+            for other_car in self.bumping_cars:
+                d = max(distance(self.pos, other_car.pos) - self.length / 2 - other_car.length / 2, 0)
+                leader_coords += npa([d, other_car.v])
+            return leader_coords / len(self.bumping_cars)
+
+        elif self.leaders:
+            leader_coords = npz(2)
+            for other_car, d in self.leaders:
+                leader_coords += npa([d, other_car.v])
+            return leader_coords / len(self.leaders)
+
+        else:
             return None
-
-        leader_coords = npz(2)
-        total_imp = 0
-
-        for other_car, d, importance in self.leaders:
-            leader_coords += npa([d, other_car.v]) * importance
-            total_imp += importance
-
-        return leader_coords / total_imp
 
 
 class CarFactory:
@@ -171,7 +182,7 @@ class CarFactory:
                 a = arg
 
             def fact_func(t, last_car):
-                space_available = last_car is None or last_car.d > last_car.distance + s.DELTA_D_MIN  # s'il y a de la place disponible ou non
+                space_available = last_car is None or last_car.d > last_car.length + s.DELTA_D_MIN  # s'il y a de la place disponible ou non
                 right_time = round(t, 2) % a == 0
                 return right_time and (space_available or s.CAR_FACT_FORCE_CREA)
 
@@ -244,7 +255,7 @@ class CarSorter:
         """
         self.id = new_id(self, obj_id)
 
-        if isinstance(method, dict):  # si la méthode est un dictionnaire associant une proba à une route
+        if isinstance(method, dict) and method:  # si la méthode est un dictionnaire non vide associant une proba à une route
             self.method = "probs"
             probs, roads = [], []
             for p in method:
@@ -254,7 +265,7 @@ class CarSorter:
             def sort_func():
                 return get_by_id(np.random.choice(roads, p=probs))
 
-        else:  # si la méthode est None, les voitures seront supprimées
+        else:  # si la méthode est None ou un disctionnaire vide, les voitures seront supprimées
             self.method = None
             sort_func = empty_function
 
@@ -271,8 +282,8 @@ class TrafficLight:
     def __init__(self, state_init: int, static=False, obj_id: int = None):
         """Feux de signalisation."""
         self.id = new_id(self, obj_id)
-        self.road: Road = ...  # route auquelle le feu est rattaché
-        self._pos = npz(2)
+        self._road: Road = ...  # route auquelle le feu est rattaché
+        self.pos = npz(2)
         self.coins = npz((4, 2))  # coins pour affichage
         self.width = s.TL_WIDTH
 
@@ -285,22 +296,24 @@ class TrafficLight:
         return f"TrafficLight(id={self.id}, state={self.state}, state_init={self.state_init}, static={self.static})"
 
     @property
-    def pos(self):
-        return self._pos
+    def road(self):
+        return self._road
 
-    @pos.setter
-    def pos(self, pos):
-        self._pos = pos
+    @road.setter
+    def road(self, road):
+        self._road = road
+
+        self.pos = road.dist_to_pos(road.length - self.width/2)
 
         vd = self.road.vd * s.TL_WIDTH / 2
         vn = normal_vector(vd, self.road.width / 2)
-        self.coins = pos - vd + vn, pos - vd - vn, pos + vd - vn, pos + vd + vn
+        self.coins = self.pos - vd + vn, self.pos - vd - vn, self.pos + vd - vn, self.pos + vd + vn
 
         dummy_car_red = Car(0, 0, 0, 0, (0, 0, 0), None)
         dummy_car_orange = Car(0, 0, 0, 0, (0, 0, 0), None)
         dummy_car_red._d = self.road.length  # contourne car.d.setter
         dummy_car_orange._d = self.road.length + s.DELTA_D_MIN / s.TL_ORANGE_SLOW_DOWN_COEFF
-        dummy_car_red._pos = dummy_car_orange._pos = pos  # contourne car.pos.setter
+        dummy_car_red._pos = dummy_car_orange._pos = self.pos  # contourne car.pos.setter
         self.dummy_cars = {0: dummy_car_red, 1: dummy_car_orange}
 
     def update(self, t):
@@ -322,6 +335,37 @@ class TrafficLight:
     def dummy_car(self):
         """Renvoie une fausse voiture, qui fera ralentir la première voiture de la route selon la couleur du feu."""
         return self.dummy_cars.get(self.state)
+
+
+class StopSign:
+    def __init__(self, obj_id: int = None):
+        """Panneau de signalisation Stop."""
+        self.id = new_id(self, obj_id)
+        self.pos = npz(2)
+        self.coins = npz((4, 2))
+        self._road = ...
+        self.dummy_car = ...
+
+    def __repr__(self):
+        return f"StopSign(id={self.id})"
+
+    @property
+    def road(self):
+        return self._road
+
+    @road.setter
+    def road(self, road):
+        self._road = road
+        self.pos = road.dist_to_pos(road.length)
+
+        dummy_car = Car(0, 0)
+        dummy_car._d = road.length + 2.5 * s.DELTA_D_MIN
+        dummy_car._pos = self.pos
+        self.dummy_car = dummy_car
+
+        vd = self.road.vd * s.SS_WIDTH / 2
+        vn = normal_vector(vd, self.road.width / 2)
+        self.coins = self.pos - vd, self.pos - vn, self.pos + vd, self.pos + vn
 
 
 class Sensor:
@@ -378,7 +422,7 @@ class Sensor:
 
     @property
     def df(self):
-        atm_with_units = [f"{attr} ({UNITS_OF_CAR_ATTR[attr]})" for attr in self.attributes_to_monitor]
+        atm_with_units = [f"{attr} ({UNITS_OF_ATTR[attr]})" for attr in self.attributes_to_monitor]
 
         if self.data_is_vals:
             return pd.DataFrame(data=self.data, columns=["t (s)", "car_id"] + atm_with_units)
@@ -413,7 +457,7 @@ class Sensor:
         for attr in self.attributes_to_monitor:
             real_attr = {"d(t)": "d_t", "v(t)": "v_t", "a(t)": "a_t"}.get(attr, attr)
             val = car.__getattribute__(real_attr)
-            if "m" in UNITS_OF_CAR_ATTR[attr] and isinstance(val, float):
+            if "m" in UNITS_OF_ATTR[attr] and isinstance(val, (int, float)):
                 val /= s.SCALE  # si l'attribut a une longueur dans ses unités, on la remet à l'échelle
             data_row.append(val)
         self.data.append(data_row)
@@ -434,13 +478,18 @@ class Sensor:
         else:
             self.df.to_excel(file_path, sheet_name)
 
-    def plot(self, x=None):
+    def plot(self, x="t"):
+        if x == "t" and not self.data_is_vals:
+            x = None
+        if isinstance(x, str):
+            x += f" ({UNITS_OF_ATTR.get(x, '')})"
+
         df = self.df
         df.loc[:, df.columns != "car_id"].plot(x=x)
 
 
 class Road:
-    def __init__(self, start, end, width, color, v_max, with_arrows, car_factory, traffic_light, sensors, obj_id):
+    def __init__(self, start, end, width, color, v_max, with_arrows, car_factory, sign, sensors, obj_id):
         """
         Route droite.
 
@@ -451,7 +500,7 @@ class Road:
         :param v_max: limite de vitesse de la route
         :param with_arrows: si des flèches seront affichées sur la route ou non
         :param car_factory: éventuelle CarFactory
-        :param traffic_light: éventuel feu de signalisation
+        :param sign: éventuel élément de signalisation : feu de signalisation ou panneau stop
         :param obj_id: éventuel identifiant
         """
         self.id = new_id(self, obj_id)
@@ -468,18 +517,16 @@ class Road:
 
         self.cars: list[Car] = []  # liste des voitures appartenant à la route
         self.v_max = v_max  # vitesse limite de la route
+        self.slow_curve_coeff = 1
 
         self.car_sorter = CarSorter()
         self.car_factory = self.init_car_factory(car_factory)
         self.arrows_coords = self.init_arrows_coords()
-        self.traffic_light = self.init_traffic_light(traffic_light)
+        self.sign = self.init_sign(sign)
         self.sensors = self.init_sensors(sensors)
 
     def __repr__(self):
         return f"Road(id={self.id}, start={self.start}, end={self.end}, length={self.length}, vd={self.vd}, color={closest_color(self.color)})"
-
-    def __eq__(self, other):
-        return self.id == other.id
 
     def init_arrows_coords(self):
         """Renvoie les coordonnées des flèches de la route."""
@@ -500,14 +547,13 @@ class Road:
         else:
             return car_factory
 
-    def init_traffic_light(self, traffic_light):
-        """Initialise le feu de signalisation de la route."""
-        if traffic_light is None:
+    def init_sign(self, sign):
+        """Initialise l'élément de signalisation de la route."""
+        if sign is None:
             return TrafficLight(state_init=2, static=True)
         else:
-            traffic_light.road = self
-            traffic_light.pos = self.dist_to_pos(self.length - traffic_light.width/2)
-            return traffic_light
+            sign.road = self  # sign.road.setter gère tout
+            return sign
 
     def init_sensors(self, sensors):
         if isinstance(sensors, Sensor):
@@ -532,15 +578,17 @@ class Road:
         :param dt: durée du mouvement
         :param leaders: voitures leaders de la première voiture de la route
         """
+        sign_car = self.sign.dummy_car  # on récupère la fausse voiture du feu/stop de la route
+
         for index, car in enumerate(self.cars):
             if index > 0:  # pour toutes les voitures sauf la première, donner la voiture devant
                 leading_car = self.cars[index - 1]
-                car.leaders += [(leading_car, leading_car.d - leading_car.length/2 - car.d - car.length/2, s.CAR_LEADERS_COEFF_IN_FRONT_CAR)]
-            elif self.traffic_light.dummy_car:  # si le feu est rouge, donner la fake_car du feu
-                leading_car = self.traffic_light.dummy_car
-                car.leaders += [(leading_car, leading_car.d - leading_car.length/2 - car.d - car.length/2, s.CAR_LEADERS_COEFF_IN_FRONT_CAR)]
-            elif leaders:  # sinon pour la première voiture, donner la prochaine voiture
-                car.leaders += [(leader, self.length - car.d - car.length/2 + d, importance) for leader, d, importance in leaders]
+                car.leaders = [(leading_car, leading_car.d - leading_car.length/2 - car.d - car.length/2)]
+            elif sign_car is not None:  # si la fausse voiture n'est pas None, on l'utilise pour la première voiture
+                leading_car = sign_car
+                car.leaders = [(leading_car, leading_car.d - leading_car.length/2 - car.d - car.length/2)]
+            else:  # sinon pour la première voiture, donner la prochaine voiture
+                car.leaders = [(leader, self.length - car.d - car.length/2 + d) for leader, d in leaders]
 
             # mise à jour des vecteurs du mouvement
             car.update(dt)
@@ -552,16 +600,16 @@ class Road:
                 car.d -= self.length  # on initialise le prochain d
                 if car.next_road is not None:
                     car.next_road.new_car(car)  # on l'ajoute à la prochaine route si elle existe
-                self.cars.remove(
-                    car)  # on retire la voiture de la liste des voitures (pas d'impact sur la boucle avec enumerate)
+                self.cars.remove(car)  # on retire la voiture de la liste des voitures (pas d'impact sur la boucle avec enumerate)
 
     def update_sensors(self, t):
         for sensor in self.sensors:
             sensor.watch_road(t)
 
-    def update_traffic_light(self, t):
-        if self.traffic_light is not None:
-            self.traffic_light.update(t)
+    def update_sign(self, t):
+        """Met à jour la signalétique de la route (feu/stop) si besoin."""
+        if isinstance(self.sign, TrafficLight):
+            self.sign.update(t)
 
     def new_car(self, car: Car):
         """Ajoute une voiture à la route, qui conservera son ``car.d``."""
@@ -574,15 +622,19 @@ class Road:
 
 
 class SRoad(Road):
-    def __init__(self, start, end, width, color, v_max, obj_id):
+    def __init__(self, start, end, width, color, v_max, slow_curve_coeff, obj_id):
         """Sous-route droite composant ArcRoad, dérivant de Road."""
-        super().__init__(start, end, width, color, v_max, False, None, None, None, obj_id)
+        super().__init__(start, end, width, color, v_max * slow_curve_coeff, False, None, None, None, obj_id)
+        self.slow_curve_coeff = slow_curve_coeff
+
+    def __repr__(self):
+        return "S" + super().__repr__()
 
 
 class ArcRoad:
     def __init__(self, start, end, vdstart, vdend, v_max, n, width, color, car_factory, obj_id):
         """
-        Route courbée.
+        Route courbée, composée de multiples routes droites.
 
         :param start: coordonnées du début
         :param end: coordonnées de la fin
@@ -602,21 +654,23 @@ class ArcRoad:
         self.n = n
 
         self.car_factory = self.init_car_factory(car_factory)
-        self.traffic_light, self.update_traffic_light = None, empty_function
+        self.sign, self.update_sign = None, empty_function
         self.sensors, self.update_sensors = [], empty_function
 
-        intersec = intersection_droites(start, vdstart, end, vdend)
-        self.points = bezier_curve(self.start, intersec, self.end, n)
-        sroad_length = distance(self.points[0], self.points[1])
-        self.length = sroad_length * n
+        intersec = lines_intersection(start, vdstart, end, vdend)
+        self.points = bezier_curve(self.start, intersec, self.end, n + 1)  # n + 1 points pour n routes
+        self.length = sum(distance(self.points[i], self.points[i + 1]) for i in range(n))
+
+        # parce qu'un développement de Taylor est encore moins précis pour une route courbée, les voitures vont trop
+        # vite dans les virages et doivent être artificiellement ralenties avec un coefficient
+        self.slow_curve_coeff = s.ARCROAD_SLOW_COEFF
 
         self.sroads = []
         self.sroad_end_to_arcroad_end = {}
-        angle_coeff = self.length / distance(start, end)
         for i in range(n):
             rstart = self.points[i]
             rend = self.points[i + 1]
-            sroad = SRoad(rstart, rend, width, color, v_max * s.ARCROAD_V_MAX_COEFF * angle_coeff, -(n * self.id + i))
+            sroad = SRoad(rstart, rend, width, color, v_max, self.slow_curve_coeff, -(n * self.id + i))
             self.sroads.append(sroad)
 
         for index, sroad in enumerate(self.sroads):
@@ -624,7 +678,7 @@ class ArcRoad:
                 sroad.car_sorter = CarSorter(method={self.sroads[index + 1].id: 1})
 
     def __repr__(self):
-        return f"ArcRoad(id={self.id}, start={self.start}, end={self.end}, color={closest_color(self.color)}, length={self.length}, sroads={self.sroads})"
+        return f"ArcRoad(id={self.id}, start={self.start}, end={self.end}, color={closest_color(self.color)}, length={self.length}, slow_curve_coeff={self.slow_curve_coeff}, sroads={self.sroads})"
 
     def __eq__(self, other):
         return self.id == other.id
@@ -648,7 +702,7 @@ class ArcRoad:
             if leaders is None:
                 sroad.update_cars(dt, None)
             else:
-                nleaders = [(leader, d + (self.n - index) * sroad.length, i) for leader, d, i in leaders]
+                nleaders = [(leader, d + (self.n - index) * sroad.length) for leader, d in leaders]
                 sroad.update_cars(dt, nleaders)
 
     @property

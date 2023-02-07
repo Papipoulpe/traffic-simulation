@@ -1,8 +1,10 @@
+"""Exemple de simulation de carrefour de deux doubles voies, avec des feux de signalisation aux entrées du carrefour."""
+
 from traffsimpy import Simulation, CarFactory, TrafficLight
 
 
 w, h = 1440, 840  # taille de la fenêtre
-s = 70  # taille du carrefour
+s = 80  # taille du carrefour
 ec = 20  # écart entre les routes
 marg = 60  # marge en dehors de la fenêtre
 
@@ -17,19 +19,19 @@ sim = Simulation("Carrefour", w, h)
 
 road_list = [
     {"id": 1, "type": "road", "start": (-marg, h / 2 - ec), "end": (x_ouest, h / 2 - ec),  # routes de gauche
-     "car_factory": CarFactory(**car_factory_settings), "traffic_light": TrafficLight(0)},
+     "car_factory": CarFactory(**car_factory_settings), "sign": TrafficLight(0)},
     {"id": 2, "type": "road", "start": (x_ouest, h / 2 + ec), "end": (-marg, h / 2 + ec)},
 
     {"id": 3, "type": "road", "start": (w + marg, h / 2 + ec), "end": (x_est, h / 2 + ec),  # routes de droite
-     "car_factory": CarFactory(**car_factory_settings), "traffic_light": TrafficLight(0)},
+     "car_factory": CarFactory(**car_factory_settings), "sign": TrafficLight(0)},
     {"id": 4, "type": "road", "start": (x_est, h / 2 - ec), "end": (w + marg, h / 2 - ec)},
 
     {"id": 5, "type": "road", "start": (w / 2 + ec, -marg), "end": (w / 2 + ec, y_sud),  # routes du bas
-     "car_factory": CarFactory(**car_factory_settings), "traffic_light": TrafficLight(2)},
+     "car_factory": CarFactory(**car_factory_settings), "sign": TrafficLight(2)},
     {"id": 6, "type": "road", "start": (w / 2 - ec, y_sud), "end": (w / 2 - ec, -marg)},
 
     {"id": 7, "type": "road", "start": (w / 2 - ec, h + marg), "end": (w / 2 - ec, y_nord),  # routes du haut
-     "car_factory": CarFactory(**car_factory_settings), "traffic_light": TrafficLight(2)},
+     "car_factory": CarFactory(**car_factory_settings), "sign": TrafficLight(2)},
     {"id": 8, "type": "road", "start": (w / 2 + ec, y_nord), "end": (w / 2 + ec, h + marg)},
 
     {"id": 14, "type": "road", "start": 1, "end": 4, "with_arrows": False},  # routes du carrefour
@@ -56,5 +58,6 @@ road_graph = {
 
 sim.create_roads(road_list)
 sim.set_road_graph(road_graph)
+sim.set_bumping_zone(radius=1.5*s)
 
 sim.start()

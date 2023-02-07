@@ -1,5 +1,11 @@
 from .constants import *
 
+
+# Paramètres rapides
+
+DEBUG = False  # Si True, PRINT_DETAILED_LOGS, CAR_SHOW_BUMPING_BOXES, CAR_SHOW_LEADER_LINKS, CAR_SHOW_ID, CAR_SHOW_SPEED_KMH = True
+USE_IDM = True  # Si False, USE_BUMPING_BOXES = False, GET_LEADERS_MAX_REC_DEPTH = 0
+
 # Affichage
 
 PRINT_DETAILED_LOGS = False  # si on affiche les détails de la simulation quand l'utilisateur met en pause ou quand le programme s'arrête
@@ -13,10 +19,10 @@ SHOW_BUMPING_ZONE = True  # si on affiche les zones où les collisions sont dét
 
 FPS = 60  # Hz, nombre d'images par seconde initial de la simulation
 SPEED = 1  # vitesse initiale de la simulation
-MAX_SPEED = 4  # vitesse maximum possible, peu d'effets au delà de 4 pour un processeur classique
+MAX_SPEED = 4  # vitesse maximum possible, peu d'effets au delà de 4 pour un processeur classique, doit être une puissance de deux
 SCALE = 10  # pixels/m, échelle de la simulation
 GET_LEADERS_METHOD_AVG = False  # méthode pour déterminer le leader de la première voiture d'une route. True = dernières voitures des prochaines routes, coefficientées par la probabilité que la voiture aille sur ces routes. False = dernière voiture de la prochaine route de la voiture.
-GET_LEADERS_MAX_REC_DEPTH = 4  # niveau maximum de récursion du parcours en profondeur
+GET_LEADERS_MAX_REC_DEPTH = 100  # niveau maximum de récursion du parcours en profondeur
 USE_BUMPING_BOXES = True  # si la simulation utlise les hitbox et hurtbox des voitures pour éviter les collisions
 
 # Ressources
@@ -32,7 +38,7 @@ ROAD_WIDTH = 3  # m, largeur des routes
 ROAD_COLOR = BLUE_ROAD  # couleur des routes
 ROAD_ARROW_PERIOD = 100  # pixels, période spatiale des flèches
 ARCROAD_NUM_OF_SROAD = 20  # nombre de routes droites pour les routes courbées
-ARCROAD_V_MAX_COEFF = 0.6  # coefficient de ralentissement pour les routes courbées, facteur de V_MAX et d'un coefficient de courbure
+ARCROAD_SLOW_COEFF = 0.7  # coefficient de ralentissement pour les routes courbées
 CAR_FACT_FORCE_CREA = False  # si les CarFactory continuent de rajouter des voitures sur les routes déjà pleines (/!\ peut énormément ralentir la simulation)
 
 # Voitures
@@ -48,12 +54,8 @@ CAR_SHOW_BUMPING_BOXES = False  # si on affiche les zones de collision (hitbox, 
 CAR_SHOW_LEADER_LINKS = False  # si on affiche les liens entre la voitures et ses leaders
 CAR_SHOW_ARROW = False  # si on affiche la direction de chaque voiture sur son toit
 CAR_SHOW_ID = False  # si on affiche l'id de chaque voiture sur son toit
-CAR_SHOW_SPEED_MS = True  # si on affiche la vitesse de chaque voiture sur son toit en m/s
-CAR_SHOW_SPEED_KMH = False  # si on affiche la vitesse de chaque voiture sur son toit en km/h
-
-CAR_LEADERS_COEFF_BUMPING_CARS = 20  # coefficient d'importances des voitures en collisions dans le calcul du leader
-CAR_LEADERS_COEFF_IN_FRONT_CAR = 8  # coefficient d'importances de la voiture de devant dans le calcul du leader
-CAR_LEADERS_COEFF_NEXT_ROAD_CAR = 5  # coefficient d'importances de la première voiture de la prochaine route dans le calcul du leader
+CAR_SHOW_SPEED_MS = False  # si on affiche la vitesse de chaque voiture sur son toit en m/s
+CAR_SHOW_SPEED_KMH = True  # si on affiche la vitesse de chaque voiture sur son toit en km/h
 
 CAR_RAND_COLOR_MIN = 70  # minimum de r, g et b pour les couleurs aléatoires des voitures
 CAR_RAND_COLOR_MAX = 180  # maximum de r, g et b pour les couleurs aléatoires des voitures
@@ -72,26 +74,36 @@ A_MIN_CONF = 10  # m/s², décélération confortable d'une voiture
 A_EXP = 4  # exposant de l'accéleration, contrôle la "douceur"
 T_REACT = 1  # s, temps de réaction du conducteur
 
-# Traffic Lights
+# Feu de signalisation et panneau stop
 
 TL_RED_DELAY = 30  # s, durée du feu rouge
 TL_ORANGE_DELAY = 4  # s, durée du feu orange, éventuellement nulle
 TL_GREEN_DELAY = TL_RED_DELAY - TL_ORANGE_DELAY  # s, durée du feu vert
-TL_WIDTH = 5  # pixels, largeur du trait du feu
+TL_WIDTH = 5  # pixels, largeur du trait représentant un feu
 TL_RED = RED_TL  # couleur du feu rouge
 TL_ORANGE = ORANGE_TL  # couleur du feu orange
 TL_GREEN = GREEN_TL  # couleur du feu vert
 TL_ORANGE_SLOW_DOWN_COEFF = 0.5  # coefficient de ralentissement du feu orange, un coefficient plus grand ralentit plus
+
+SS_WIDTH = 8  # pixels, largeur du losange représentant un panneau stop
+SS_COLOR = RED_SS  # couleur du panneau stop
 
 # Capteurs
 
 SENSOR_EXPORTS_DIRECTORY = ""
 SENSOR_PRINT_RES_AT_PAUSE = False  # si les capteurs affichent leurs résulats à chaque mise en pause
 SENSOR_EXPORT_RES_AT_PAUSE = False  # si les capteurs exportent leurs résulats à chaque mise en pause
-SENSOR_COLOR = SENSOR_PURPLE  # couleur du trait représentant un capteur
+SENSOR_COLOR = PURPLE_SENSOR  # couleur du trait représentant un capteur
 SENSOR_WIDTH = 3  # largeur du trait représentant un capteur
 
 # Mise à l'échelle et finitions
+
+if DEBUG:
+    PRINT_DETAILED_LOGS, CAR_SHOW_BUMPING_BOXES, CAR_SHOW_LEADER_LINKS, CAR_SHOW_ID, CAR_SHOW_SPEED_KMH = True, True, True, True, True
+
+if not USE_IDM:
+    USE_BUMPING_BOXES = False
+    GET_LEADERS_MAX_REC_DEPTH = 0
 
 ROAD_WIDTH, CAR_A, CAR_WIDTH, CAR_LENGTH, CAR_RAND_WIDTH_MAX, CAR_RAND_WIDTH_MIN, CAR_RAND_LENGTH_MAX, CAR_RAND_LENGTH_MIN, DELTA_D_MIN, A_MAX, A_MIN = ROAD_WIDTH * SCALE, CAR_A * SCALE, CAR_WIDTH * SCALE, CAR_LENGTH * SCALE, CAR_RAND_WIDTH_MAX * SCALE, CAR_RAND_WIDTH_MIN * SCALE, CAR_RAND_LENGTH_MAX * SCALE, CAR_RAND_LENGTH_MIN * SCALE, DELTA_D_MIN * SCALE, A_MAX * SCALE, A_MIN * SCALE
 

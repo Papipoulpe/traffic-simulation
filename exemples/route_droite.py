@@ -1,3 +1,6 @@
+"""Exemple d'une simple route droite, où des voitures arrivent toutes les deux secondes et où la vitesse est limitée à
+13.9 m/s = 50 km/h."""
+
 from traffsimpy import Simulation, CarFactory
 
 sim = Simulation("Route droite", 1440, 820)

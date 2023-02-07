@@ -8,7 +8,7 @@ import traffsimpy.settings as s
 from .constants import *
 
 
-np.seterr("raise")  # change la gestion des erreurs de maths (division par zéro, racine de réel négatif...)
+np.seterr(all="raise", under="ignore")  # change la gestion des erreurs de maths (division par zéro, racine de réel négatif...)
 
 ids = {}  # dictionnaire des identifiants d'objet
 
@@ -86,26 +86,31 @@ def parse(string: str) -> dict:
     return json.loads(string.replace("'", '"'))
 
 
-def update_taylor(car, dt: float):
-    """Calcule les vecteurs du mouvement avec des séries de Taylor"""
+def update_taylor(car, dt: float, slow_curve_coeff: int = 1):
+    """Calcule les vecteurs du mouvement avec des séries de Taylor."""
     car.v = car.v + car.a * dt  # dev de taylor ordre 1
-    car.d = car.d + car.v * dt + 1 / 2 * car.a * dt * dt  # dev de taylor ordre 2
+    car.d = car.d + (car.v * dt + 1 / 2 * car.a * dt * dt) * slow_curve_coeff  # dev de taylor ordre 2
 
 
-def update_taylor_protected(car, dt: float):
-    """Calcule les vecteurs du mouvement avec des séries de Taylor, en évitant v < 0"""
+def update_taylor_protected(car, dt: float, slow_curve_coeff: int = 1):
+    """Calcule les vecteurs du mouvement avec des séries de Taylor, en évitant v < 0."""
     car.v = max(car.v + car.a * dt, 0)  # dev de taylor ordre 1, protégé
-    car.d = car.d + max(0, car.v * dt + 1 / 2 * car.a * dt * dt)  # dev de taylor ordre 2, protégé
+    car.d = car.d + max(0, car.v * dt + 1 / 2 * car.a * dt * dt) * slow_curve_coeff  # dev de taylor ordre 2, protégé
 
 
-def idm(car, leader_coords: Optional[Vecteur]):
-    """Intelligent Driver Model."""
+def update_taylor_protected2(car, dt: float, slow_curve_coeff: int = 1):
+    """Calcule les vecteurs du mouvement avec des séries de Taylor, en évitant v < 0 plus intelligement."""
+    if car.v + car.a * dt < 0:  # si le prochain v est négatif
+        car.d -= 1 / 2 * car.v * car.v / car.a * slow_curve_coeff
+        car.v = 0
+    else:
+        update_taylor(car, dt, slow_curve_coeff)
+
+
+def idm(car, leader_coords: Optional[Vecteur]) -> float:
+    """Calcul l'accélération d'une voiture d'après l'*Intelligent Driver Model*."""
     if leader_coords is not None:  # si on a un leader
         delta_d, lead_v = leader_coords
-
-        if delta_d <= 0:  # si la voiture est en avance, la faire attendre et ralentir
-            car.d, car.v, car.a = car.d, 0, car.a
-            return
 
         delta_v = car.v - lead_v
 
@@ -120,8 +125,8 @@ def idm(car, leader_coords: Optional[Vecteur]):
     return a_idm
 
 
-def iidm(car, leader_coords: Optional[Vecteur]):
-    """Improved Intelligent Driver Model."""
+def iidm(car, leader_coords: Optional[Vecteur]) -> float:
+    """Calcul l'accélération d'une voiture d'après l'*Improved Intelligent Driver Model*."""
     if car.v <= car.road.v_max:
         a_free_road = car.a_max * (1 - (car.v/car.road.v_max) ** car.a_exp)
 
@@ -160,7 +165,7 @@ def iidm(car, leader_coords: Optional[Vecteur]):
     return a_iidm
 
 
-def intersection_droites(p1: Vecteur, vd1: Vecteur, p2: Vecteur, vd2: Vecteur) -> Vecteur:
+def lines_intersection(p1: Vecteur, vd1: Vecteur, p2: Vecteur, vd2: Vecteur) -> Vecteur:
     """Renvoie le point d'intersections de deux droites grâce à un de leurs points et leurs vecteurs directeurs."""
     x1, y1 = p1
     x2, y2 = p2
@@ -173,8 +178,8 @@ def intersection_droites(p1: Vecteur, vd1: Vecteur, p2: Vecteur, vd2: Vecteur) -
 def bezier_curve(p1: Vecteur, p2: Vecteur, p3: Vecteur, n: int) -> list[Vecteur]:
     """Renvoie ``n`` points de la courbe de Bézier définie par les points de contrôle ``p1``, ``p2`` et ``p3``."""
     points = []
-    for i in range(n + 1):
-        t = i / n
+    for i in range(n):
+        t = i / (n - 1)
         point = (1 - t) * (1 - t) * p1 + 2 * (1 - t) * t * p2 + t * t * p3
         points.append(point)
     return points
