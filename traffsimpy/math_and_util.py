@@ -8,32 +8,37 @@ import traffsimpy.settings as s
 from .constants import *
 
 
-np.seterr(all="raise", under="ignore")  # change la gestion des erreurs de maths (division par zéro, racine de réel négatif...)
+np.seterr(all="raise", under="ignore")  # change la gestion des erreurs de maths (division par zéro, racine de négatif...)
+npa = np.array  # raccourcis pour les fonctions numpy de base
+npz = np.zeros
 
 ids = {}  # dictionnaire des identifiants d'objet
 
-Vecteur: TypeAlias = NDArray[np.float64]  # définiton du type Vecteur = (a, b)
+Vecteur: TypeAlias = NDArray[np.float64]  # définiton du type Vecteur = (x, y)
 Couleur: TypeAlias = tuple[int, int, int]  # définiton du type Couleur = (r, g, b)
 
 
 def empty_function(*_, **__): ...  # fonction qui à tout associe rien
 
 
-def new_id(obj, obj_id: Optional[int] = None) -> int:
+def new_id(obj, obj_id: Optional[int] = None, pos: bool = False) -> int:
     """Créer un identifiant d'objet."""
-    if obj_id is None:  # si aucun identifiant fourni, prendre celui après le max
-        obj_id = max(ids.keys()) + 1
-    ids[obj_id] = obj
+    if obj_id is None:
+        if pos:  # si aucun identifiant fourni
+            obj_id = max(ids.keys()) + 1
+        else:
+            obj_id = min(ids.keys()) - 1
+    elif obj_id in ids:  # s'il est déjà pris, on grogne
+        raise ValueError(f"L'identifiant {obj_id} est déjà utilisé.")
+    elif not isinstance(obj_id, int) or obj_id < 0:  # s'il convient pas, idem
+        raise ValueError(f"Un identifiant doit être un entier positif, pas {obj_id}.")
+    ids[obj_id] = obj  # on associe l'objet à son identifiant
     return obj_id
 
 
 def get_by_id(obj_id: int) -> Any:
     """Renvoie l'objet associé à l'identifiant donné."""
     return ids[obj_id]
-
-
-npa = np.array
-npz = np.zeros
 
 
 def norm(v: Vecteur):
@@ -86,25 +91,19 @@ def parse(string: str) -> dict:
     return json.loads(string.replace("'", '"'))
 
 
-def update_taylor(car, dt: float, slow_curve_coeff: int = 1):
-    """Calcule les vecteurs du mouvement avec des séries de Taylor."""
-    car.v = car.v + car.a * dt  # dev de taylor ordre 1
-    car.d = car.d + (car.v * dt + 1 / 2 * car.a * dt * dt) * slow_curve_coeff  # dev de taylor ordre 2
+def update_taylor(car, dt: float):
+    """
+    Calcule les vecteurs du mouvement de la voiture avec des séries de Taylor, en évitant v < 0.
 
-
-def update_taylor_protected(car, dt: float, slow_curve_coeff: int = 1):
-    """Calcule les vecteurs du mouvement avec des séries de Taylor, en évitant v < 0."""
-    car.v = max(car.v + car.a * dt, 0)  # dev de taylor ordre 1, protégé
-    car.d = car.d + max(0, car.v * dt + 1 / 2 * car.a * dt * dt) * slow_curve_coeff  # dev de taylor ordre 2, protégé
-
-
-def update_taylor_protected2(car, dt: float, slow_curve_coeff: int = 1):
-    """Calcule les vecteurs du mouvement avec des séries de Taylor, en évitant v < 0 plus intelligement."""
+    :param car: voiture dont la vitesse et la distance doivent être mis à jour
+    :param dt: durée du mouvement
+    """
     if car.v + car.a * dt < 0:  # si le prochain v est négatif
-        car.d -= 1 / 2 * car.v * car.v / car.a * slow_curve_coeff
+        car.d -= 1 / 2 * car.v * car.v / car.a
         car.v = 0
     else:
-        update_taylor(car, dt, slow_curve_coeff)
+        car.v += car.a * dt  # dev de taylor ordre 1
+        car.d += car.v * dt + 1 / 2 * car.a * dt * dt  # dev de taylor ordre 2
 
 
 def idm(car, leader_coords: Optional[Vecteur]) -> float:
@@ -119,7 +118,7 @@ def idm(car, leader_coords: Optional[Vecteur]) -> float:
     else:
         a_interaction = 0
 
-    a_free_road = 1 - np.float_power((car.v / car.road.v_max), car.a_exp)
+    a_free_road = 1 - np.float_power((car.v / car.v_max), car.a_exp)
     a_idm = car.a_max * (a_free_road - a_interaction)
 
     return a_idm
@@ -127,8 +126,8 @@ def idm(car, leader_coords: Optional[Vecteur]) -> float:
 
 def iidm(car, leader_coords: Optional[Vecteur]) -> float:
     """Calcul l'accélération d'une voiture d'après l'*Improved Intelligent Driver Model*."""
-    if car.v <= car.road.v_max:
-        a_free_road = car.a_max * (1 - (car.v/car.road.v_max) ** car.a_exp)
+    if car.v <= car.v_max:
+        a_free_road = car.a_max * (1 - (car.v/car.v_max) ** car.a_exp)
 
         if leader_coords is None:
             a_iidm = a_free_road
@@ -147,7 +146,7 @@ def iidm(car, leader_coords: Optional[Vecteur]) -> float:
                     a_iidm = 0
 
     else:
-        a_free_road = - s.A_MIN_CONF * (1 - np.float_power(car.road.v_max/car.v, car.a_max * car.a_max / s.A_MIN_CONF))
+        a_free_road = - s.A_MIN_CONF * (1 - np.float_power(car.v_max/car.v, car.a_max * car.a_max / s.A_MIN_CONF))
 
         if leader_coords is None:
             a_iidm = a_free_road

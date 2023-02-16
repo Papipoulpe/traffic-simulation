@@ -1,5 +1,5 @@
-"""Exemple de simulation utilisant un capteur. Pendant 60 secondes, le capteur enregistrera les vitesse, accélération
-et taille des voitures qui lui passent devant puis affiche ces données à la fin de la simulation."""
+"""Exemple de simulation utilisant un capteur. Pendant 60 secondes, le capteur enregistrera les vitesses, accélérations
+et tailles des voitures qui lui passent devant, puis affiche ces données à la fin de la simulation."""
 
 from traffsimpy import Simulation, CarFactory, TrafficLight, Sensor
 

@@ -26,7 +26,7 @@ class Simulation:
             width = monitor_info.current_w
         if height is None:
             height = monitor_info.current_h
-        self.size = npa((width, height))  # taille de la fenêtre
+        self.size = width, height  # taille de la fenêtre
         self.t = 0.0  # suivi du temps
         self.FPS = s.FPS  # images par seconde
         self.dt = 1 / s.FPS  # pas de temps
@@ -100,29 +100,30 @@ class Simulation:
                 self.clock.tick(self.FPS)  # pause d'une durée dt
                 continue  # saute la suite de la boucle et passe à l'itération suivante
 
+            # on actualise la simulation route par route
             for road in self.roads:
+                # affichage des voitures de la route et mise à jour des prévisions de collision
                 for car in road.cars:
-                    self.show_car(car)  # affichage des voitures de la route
+                    self.show_car(car)
                     car.bumping_cars = self.get_bumping_cars(car)
 
-                # affichage des capteurs
+                # affichage des capteurs de la route
                 for sensor in road.sensors:
                     self.show_sensor(sensor)
 
-                # affichage de l'élément de signalisation du feu
+                # affichage de l'élément de signalisation (feu/panneau stop) de la route
                 self.show_sign(road.sign)
 
-                # actualisation des coordonnées des voitures de la route, des capteur et du feu
+                # actualisation des coordonnées des voitures de la route, des capteurs et du panneau
                 road_leaders = self.get_leaders(road, avg=s.GET_LEADERS_METHOD_AVG)
                 road.update_cars(self.dt, road_leaders)
                 road.update_sensors(self.t)
                 road.update_sign(self.t)
 
                 # éventuelle création d'une nouvelle voiture au début de la route
-                args_fact = {"t": self.t, "last_car": road.cars[-1] if road.cars else None}
-                args_crea = {"t": self.t}
-                new_car = road.car_factory.factory(args_fact, args_crea)
-                road.new_car(new_car)
+                if road.car_factory.freq_func is not None:
+                    new_car = road.car_factory.factory({"t": self.t}, {"t": self.t})
+                    road.new_car(new_car)
 
             self.t += self.dt  # actualisation du suivi du temps
             self.show_info(self.info_to_show)  # affiche les informations
@@ -136,8 +137,10 @@ class Simulation:
             starting_time = time()
             self.start_loop(duration)
             real_duration = time() - starting_time
-            simulation_speed = round(real_duration / duration, 2)
-            print(f"Simulation {tbold(self.title)} terminée au bout de {real_duration}s{(', soit ' + str(simulation_speed) + ' fois la durée réelle') if simulation_speed > 0 else ''}.\n")
+            if duration == INF:
+                duration = self.t
+            simulation_speed = real_duration / duration
+            print(f"Simulation {tbold(self.title)} terminée au bout de {real_duration:.4f}s, soit {simulation_speed:.4f}× la durée réelle.\n")
         except Exception as exception:
             self.print_errors(exception)
         finally:
@@ -164,9 +167,10 @@ class Simulation:
 
     def show_info(self, info: str):
         """Affiche des informations en haut à gauche de la fenêtre et l'échelle si besoin."""
-        text_width, text_height = self.FONT.size(info)
-        draw_rect(self.surface, s.INFO_BACKGROUND_COLOR, npz(2), text_width + 30, text_height + 20)
-        draw_text(self.surface, s.FONT_COLOR, npa((10, 10)), info, self.FONT)
+        if s.SHOW_INFOS:
+            text_width, text_height = self.FONT.size(info)
+            draw_rect(self.surface, s.INFO_BACKGROUND_COLOR, npz(2), text_width + 30, text_height + 20)
+            draw_text(self.surface, s.FONT_COLOR, npa((10, 10)), info, self.FONT)
 
         if s.SHOW_SCALE:
             self.show_scale()
@@ -219,6 +223,10 @@ class Simulation:
             elif event.key == pygame.K_RETURN:
                 # si l'utilisateur appuie sur entrer, recentrer la fenêtre
                 self.off_set = (0, 0)
+            elif event.key == pygame.K_s:
+                # si l'utilisateur appuie sur S, enregistrer la fenêtre
+                filename = f"screenshot_{self.title}_{self.t}.jpg"
+                pygame.image.save(self.surface, filename)
 
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             # si l'utilisateur clique
@@ -370,8 +378,8 @@ class Simulation:
                         car_factory=car_factory, sign=sign, sensors=sensors, obj_id=obj_id)
         else:  # si on crée une route courbée
             n = kw.get("n", s.ARCROAD_NUM_OF_SROAD)
-            road = ArcRoad(start=start, end=end, vdstart=npa(vdstart), vdend=npa(vdend), n=n, v_max=v_max, width=w, color=color,
-                           car_factory=car_factory, obj_id=obj_id)
+            road = ArcRoad(start=start, end=end, vdstart=npa(vdstart), vdend=npa(vdend), n=n, v_max=v_max, width=w,
+                           color=color, car_factory=car_factory, obj_id=obj_id)
         self.roads.append(road)
         self.road_graph[road.id] = None
         return road
@@ -410,14 +418,14 @@ class Simulation:
         for road in self.roads:
             next_roads = graph.get(road.id, {})
             if isinstance(next_roads, int):
-                road.car_sorter = CarSorter(method={next_roads: 1})
+                road.car_sorter = CarSorter({next_roads: 1})
             else:
-                road.car_sorter = CarSorter(method=next_roads)
+                road.car_sorter = CarSorter(next_roads)
 
             if isinstance(road, ArcRoad):
                 for i in range(road.n - 1):
-                    self.road_graph[-(road.n * road.id + i)] = -(road.n * road.id + i + 1)
-                self.road_graph[-(road.n * (road.id + 1) - 1)] = self.road_graph[road.id]
+                    self.road_graph[road.sroads[i].id] = road.sroads[i + 1].id
+                self.road_graph[road.sroads[-1].id] = self.road_graph.get(road.id)
 
     def get_leaders(self, road: Road, avg: bool, rec_depth: int = 0):
         """
@@ -431,7 +439,7 @@ class Simulation:
             return []
 
         if avg:
-            next_roads_probs = self.road_graph[road.id]  # récupération des prochaines routes et de leurs probas
+            next_roads_probs = self.road_graph.get(road.id)  # récupération des prochaines routes et de leurs probas
 
             if next_roads_probs is None:  # si pas de prochaine route
                 return []
@@ -443,6 +451,9 @@ class Simulation:
 
             for next_road_id in next_roads_probs:  # pour chaque prochaine route
                 next_road = get_by_id(next_road_id)
+
+                if isinstance(next_road, ArcRoad):
+                    next_road = next_road.sroads[0]
 
                 if next_road.cars:  # si elle contient des voitures, on prend les coordonnées de la première
                     next_car = next_road.cars[-1]
@@ -503,7 +514,7 @@ class Simulation:
         s.USE_BUMPING_BOXES = True
 
         if center is None:
-            center = self.size / 2
+            center = self.size[0] / 2, self.size[1] / 2
 
         self.bumping_zone = (npa(self.rc_to_sc(center)), radius)
 

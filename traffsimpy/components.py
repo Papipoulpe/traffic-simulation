@@ -4,7 +4,7 @@ from .math_and_util import *
 
 
 class Car:
-    def __init__(self, v: float = s.CAR_V, a: float = s.CAR_A, length: float = s.CAR_LENGTH, width: float = s.CAR_WIDTH, color: Couleur = s.CAR_COLOR, obj_id: Optional[int] = None):
+    def __init__(self, v: float = s.CAR_V, a: float = s.CAR_A, length: float = s.CAR_LENGTH, width: float = s.CAR_WIDTH, delta_d_min: float = s.DELTA_D_MIN, a_max: float = s.A_MAX, a_min: float = s.A_MIN, t_react: float = s.T_REACT, color: Couleur = s.CAR_COLOR, obj_id: Optional[int] = None):
         """
         Voiture.
 
@@ -15,7 +15,7 @@ class Car:
         :param color: couleur
         :param obj_id: éventuel identifiant
         """
-        self.id = new_id(self, obj_id)
+        self.id = new_id(self, obj_id, pos=True)
         self.color = color
         self.length, self.width = length, width
         self.road = None
@@ -32,11 +32,13 @@ class Car:
         self.v_t = {}
         self.a_t = {}
 
-        self.delta_d_min = s.DELTA_D_MIN  # pour l'IDM
-        self.a_max = s.A_MAX  # pour l'IDM
-        self.a_min = s.A_MIN  # pour l'IDM
-        self.a_exp = s.A_EXP  # pour l'IDM
-        self.t_react = s.T_REACT  # pour l'IDM
+        # paramètres de l'IDM
+        self.delta_d_min = delta_d_min
+        self.a_max = a_max
+        self.a_min = a_min
+        self.a_exp = s.A_EXP  # commun à tous les véhicules
+        self.t_react = t_react
+        self.v_max = ...  # défini par la route dans road.new_car()
 
         self.corners = npz((4, 2))  # coordonnées des coins du rectangle représentant la voiture, pour affichage
         self.front_bumper_hitbox = npz((4, 2))  # coordonnées des coins du rectangle à l'avant de la voiture, pour détecter les collisions
@@ -46,7 +48,7 @@ class Car:
         self.bumping_cars = []  # voitures en collision avec la voiture
 
     def __repr__(self):
-        return f"Car(id={self.id}, pos={self.pos}, d={self.d}, v={self.v}, a={self.a}, coins={rec_round(self.corners)}, virtual_leader={self.virtual_leader}, bumping_cars={self.bumping_cars}, leaders={self.leaders}, next_road={self.next_road}, color={closest_color(self.color)})"
+        return f"Car(id={self.id}, road.id={self.road.id}, pos={self.pos}, d={self.d}, v={self.v}, a={self.a}, v_max={self.v_max}, coins={rec_round(self.corners)}, virtual_leader={self.virtual_leader}, bumping_cars={self.bumping_cars}, leaders={self.leaders}, next_road={self.next_road}, color={closest_color(self.color)})"
 
     @property
     def d(self):
@@ -56,7 +58,7 @@ class Car:
     def d(self, d):
         self.total_d += d - self._d
         self._d = d
-        self.d_t[round(self.simulation.t, 4)] = d/s.SCALE
+        self.d_t[round(self.simulation.t, 4)] = self.total_d/s.SCALE
 
     @property
     def pos(self):
@@ -109,7 +111,7 @@ class Car:
         if s.USE_IDM:
             self.a = iidm(self, leader_coords)
 
-        update_taylor_protected2(self, dt, self.road.slow_curve_coeff)
+        update_taylor(self, dt)
 
         self.v_t[round(self.simulation.t, 4)] = self.a/s.SCALE
         self.a_t[round(self.simulation.t, 4)] = self.v/s.SCALE
@@ -164,10 +166,11 @@ class CarFactory:
         """
         self.id = new_id(self, obj_id)
 
+        self.road = ...
         self.next_t = 0  # éventuelement utilisé pour fréquence aléatoire
 
-        self.fact_func = self.init_freqfunc(freq)  # on génère une fonction de fréquence de création
-        self.crea_func = self.init_creafunc(crea)  # on génère une fonction de création
+        self.freq_func = self.init_freqfunc(freq)  # définit dans road.init_car_factory()
+        self.crea_func = self.init_creafunc(crea)  # définit dans road.init_car_factory()
 
     def __repr__(self):
         return f"CarFactory(id={self.id})"
@@ -181,28 +184,37 @@ class CarFactory:
             else:
                 a = arg
 
-            def fact_func(t, last_car):
-                space_available = last_car is None or last_car.d > last_car.length + s.DELTA_D_MIN  # s'il y a de la place disponible ou non
+            def freq_func(t):
                 right_time = round(t, 2) % a == 0
-                return right_time and (space_available or s.CAR_FACT_FORCE_CREA)
+                if self.road.cars and not s.CAR_FACT_FORCE_CREA:
+                    last_car = self.road.cars[-1]
+                    space_available = last_car.d > last_car.length + s.DELTA_D_MIN  # s'il y a de la place disponible ou non
+                    return right_time and space_available
+                else:
+                    return right_time
 
-            return fact_func
+            return freq_func
+
         elif isinstance(arg, (tuple, list)):
             # si de type [a, b], attendre aléatoirement entre a et b secondes
-            def fact_func(t, last_car):
+            def freq_func(t):
                 if t >= self.next_t:
                     delay = np.random.uniform(arg[0], arg[1])
                     self.next_t = t + delay
-                    space_available = last_car is None or last_car.d > last_car.length + s.DELTA_D_MIN  # s'il y a de la place disponible ou non
-                    return space_available or s.CAR_FACT_FORCE_CREA
+                    if self.road.cars and not s.CAR_FACT_FORCE_CREA:
+                        last_car = self.road.cars[-1]
+                        space_available = last_car.d > last_car.length + s.DELTA_D_MIN  # s'il y a de la place disponible ou non
+                        return space_available
+                    else:
+                        return True
                 else:
                     return False
 
-            return fact_func
+            return freq_func
         elif arg is None:
-            return arg
+            return None
         else:  # si une fonction du temps est fournie
-            return lambda t, last_car: arg(t)
+            return lambda t: arg(t)
 
     @staticmethod
     def init_creafunc(arg):
@@ -213,7 +225,8 @@ class CarFactory:
         if isinstance(arg, str):
             arg = [arg]
 
-        attrs = {"v": s.CAR_V, "a": s.CAR_A, "color": s.CAR_COLOR, "width": s.CAR_WIDTH, "length": s.CAR_LENGTH, "obj_id": None}
+        attrs = {"v": s.CAR_V, "a": s.CAR_A, "color": s.CAR_COLOR, "width": s.CAR_WIDTH, "length": s.CAR_LENGTH,
+                 "obj_id": None}
 
         def crea_func(*_, **__):
             if arg is None:
@@ -235,15 +248,17 @@ class CarFactory:
 
         return crea_func
 
-    def factory(self, args_fact, args_crea):
+    def factory(self, args_fact: dict, args_crea: dict):
         """
         Renvoie une voiture générée par la fonction de création si la fonction de fréquence de création l'autorise.
 
-        :param args_fact: arguments pour la fonction de fréquence de création
-        :param args_crea: arguments pour la fonction de création
+        :param args_fact: dictionnaire d'arguments pour la fonction de fréquence de création
+        :param args_crea: dictionnaire d'arguments pour la fonction de création
         """
-        if self.fact_func and self.fact_func(**args_fact):  # si une fonction de fréquence est définie et qu'elle autorise la création
-            return self.crea_func(**args_crea)  # on renvoie la voiture créée par la fonction de création
+        # si une fonction de fréquence de création est définie et qu'elle autorise la création
+        if self.freq_func is not None and self.freq_func(**args_fact):
+            # on renvoie la voiture créée par la fonction de création
+            return self.crea_func(**args_crea)
 
 
 class CarSorter:
@@ -255,12 +270,13 @@ class CarSorter:
         """
         self.id = new_id(self, obj_id)
 
-        if isinstance(method, dict) and method:  # si la méthode est un dictionnaire non vide associant une proba à une route
+        # si la méthode est un dictionnaire non vide associant une route à une proba
+        if isinstance(method, dict) and method:
             self.method = "probs"
             probs, roads = [], []
-            for p in method:
-                probs.append(method[p])
-                roads.append(p)
+            for road in method:
+                probs.append(method[road])
+                roads.append(road)
 
             def sort_func():
                 return get_by_id(np.random.choice(roads, p=probs))
@@ -309,8 +325,8 @@ class TrafficLight:
         vn = normal_vector(vd, self.road.width / 2)
         self.coins = self.pos - vd + vn, self.pos - vd - vn, self.pos + vd - vn, self.pos + vd + vn
 
-        dummy_car_red = Car(0, 0, 0, 0, (0, 0, 0), None)
-        dummy_car_orange = Car(0, 0, 0, 0, (0, 0, 0), None)
+        dummy_car_red = Car(v=0, a=0, length=0, width=0)
+        dummy_car_orange = Car(v=0, a=0, length=0, width=0)
         dummy_car_red._d = self.road.length  # contourne car.d.setter
         dummy_car_orange._d = self.road.length + s.DELTA_D_MIN / s.TL_ORANGE_SLOW_DOWN_COEFF
         dummy_car_red._pos = dummy_car_orange._pos = self.pos  # contourne car.pos.setter
@@ -517,7 +533,6 @@ class Road:
 
         self.cars: list[Car] = []  # liste des voitures appartenant à la route
         self.v_max = v_max  # vitesse limite de la route
-        self.slow_curve_coeff = 1
 
         self.car_sorter = CarSorter()
         self.car_factory = self.init_car_factory(car_factory)
@@ -540,11 +555,13 @@ class Road:
             arrows.append((x, y, self.angle))
         return arrows
 
-    @staticmethod
-    def init_car_factory(car_factory):
+    def init_car_factory(self, car_factory):
         if car_factory is None:
-            return CarFactory()
+            cf = CarFactory()
+            cf.road = self
+            return cf
         else:
+            car_factory.road = self
             return car_factory
 
     def init_sign(self, sign):
@@ -593,10 +610,13 @@ class Road:
             # mise à jour des vecteurs du mouvement
             car.update(dt)
 
+            # transition douce du v_max avec celui de la prochaine route
+            car.v_max = self.v_max_transition(car)
+
             # mise à jour de la position et des coins d'affichage
             car.pos = self.dist_to_pos(car.d)
 
-            if car.d >= self.length:  # si la voiture sort de la route
+            if car.d > self.length:  # si la voiture sort de la route
                 car.d -= self.length  # on initialise le prochain d
                 if car.next_road is not None:
                     car.next_road.new_car(car)  # on l'ajoute à la prochaine route si elle existe
@@ -615,17 +635,35 @@ class Road:
         """Ajoute une voiture à la route, qui conservera son ``car.d``."""
         if car is None:
             return
+        car.next_road = self.car_sorter.sorter()  # récupération de la prochaine route de la voiture
+        if car.d > self.length:  # si la voiture sort (déjà !) de la route
+            car.d -= self.length  # on initialise le prochain d
+            if car.next_road is not None:
+                car.next_road.new_car(car)  # on l'ajoute à la prochaine route si elle existe
+            return
         car.road = self
-        car.next_road = self.car_sorter.sorter()
+        car.v_max = self.v_max
         car.pos = self.dist_to_pos(car.d)
         self.cars.append(car)
 
+    def v_max_transition(self, car: Car):
+        if isinstance(self, SRoad):
+            return car.v_max
+
+        elif car.next_road is not None and car.d >= self.length * (1 - s.ROAD_TRANSITION_SIZE):
+            alpha = (car.d - self.length * (1 - s.ROAD_TRANSITION_SIZE)) / (self.length * s.ROAD_TRANSITION_SIZE)
+            v_max1 = self.v_max
+            v_max2 = car.next_road.v_max
+            return alpha * v_max2 + (1 - alpha) * v_max1
+
+        else:
+            return car.v_max
+
 
 class SRoad(Road):
-    def __init__(self, start, end, width, color, v_max, slow_curve_coeff, obj_id):
+    def __init__(self, start, end, width, color, v_max, obj_id):
         """Sous-route droite composant ArcRoad, dérivant de Road."""
-        super().__init__(start, end, width, color, v_max * slow_curve_coeff, False, None, None, None, obj_id)
-        self.slow_curve_coeff = slow_curve_coeff
+        super().__init__(start, end, width, color, v_max, False, None, None, None, obj_id)
 
     def __repr__(self):
         return "S" + super().__repr__()
@@ -652,6 +690,7 @@ class ArcRoad:
         self.color = color
         self.length = 0
         self.n = n
+        self.v_max = v_max*s.ARCROAD_SLOW_COEFF
 
         self.car_factory = self.init_car_factory(car_factory)
         self.sign, self.update_sign = None, empty_function
@@ -661,16 +700,12 @@ class ArcRoad:
         self.points = bezier_curve(self.start, intersec, self.end, n + 1)  # n + 1 points pour n routes
         self.length = sum(distance(self.points[i], self.points[i + 1]) for i in range(n))
 
-        # parce qu'un développement de Taylor est encore moins précis pour une route courbée, les voitures vont trop
-        # vite dans les virages et doivent être artificiellement ralenties avec un coefficient
-        self.slow_curve_coeff = s.ARCROAD_SLOW_COEFF
-
         self.sroads = []
         self.sroad_end_to_arcroad_end = {}
         for i in range(n):
             rstart = self.points[i]
             rend = self.points[i + 1]
-            sroad = SRoad(rstart, rend, width, color, v_max, self.slow_curve_coeff, -(n * self.id + i))
+            sroad = SRoad(rstart, rend, width, color, self.v_max, None)
             self.sroads.append(sroad)
 
         for index, sroad in enumerate(self.sroads):
@@ -678,7 +713,7 @@ class ArcRoad:
                 sroad.car_sorter = CarSorter(method={self.sroads[index + 1].id: 1})
 
     def __repr__(self):
-        return f"ArcRoad(id={self.id}, start={self.start}, end={self.end}, color={closest_color(self.color)}, length={self.length}, slow_curve_coeff={self.slow_curve_coeff}, sroads={self.sroads})"
+        return f"ArcRoad(id={self.id}, start={self.start}, end={self.end}, color={closest_color(self.color)}, length={self.length}, sroads={self.sroads})"
 
     def __eq__(self, other):
         return self.id == other.id
@@ -698,12 +733,15 @@ class ArcRoad:
         return car_list
 
     def update_cars(self, dt, leaders):
-        for index, sroad in enumerate(self.sroads):
+        # parcours des sroads à l'envers pour ne pas actualiser une même voiture plusieurs fois
+        for i in range(self.n - 1, -1, -1):
             if leaders is None:
-                sroad.update_cars(dt, None)
+                # s'il n'y a pas de voitures après la route
+                self.sroads[i].update_cars(dt, None)
             else:
-                nleaders = [(leader, d + (self.n - index) * sroad.length) for leader, d in leaders]
-                sroad.update_cars(dt, nleaders)
+                # s'il en a, on les donne avec le bon d pour chaque route
+                d_ajusted_leaders = [(leader, d + (i + 1) * self.sroads[i].length) for leader, d in leaders]
+                self.sroads[i].update_cars(dt, d_ajusted_leaders)
 
     @property
     def car_sorter(self):

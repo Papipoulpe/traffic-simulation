@@ -3,8 +3,9 @@ from .constants import *
 
 # Paramètres rapides
 
-DEBUG = False  # Si True, PRINT_DETAILED_LOGS, CAR_SHOW_BUMPING_BOXES, CAR_SHOW_LEADER_LINKS, CAR_SHOW_ID, CAR_SHOW_SPEED_KMH = True
+DEBUG = False   # Si True, PRINT_DETAILED_LOGS = CAR_SHOW_BUMPING_BOXES = CAR_SHOW_LEADER_LINKS = CAR_SHOW_ID = CAR_SHOW_SPEED_KMH = True
 USE_IDM = True  # Si False, USE_BUMPING_BOXES = False, GET_LEADERS_MAX_REC_DEPTH = 0
+PRESENTATION_MODE = False  # Si True, SHOW_INFOS = SHOW_SCALE = CAR_SHOW_... = False
 
 # Affichage
 
@@ -12,6 +13,7 @@ PRINT_DETAILED_LOGS = False  # si on affiche les détails de la simulation quand
 PRINT_ERRORS = True  # si on affiche les erreurs quand le programme se plante
 BACKGROUND_COLOR = BLUE_BG  # couleur de l'arrière plan de la fenêtre
 INFO_BACKGROUND_COLOR = BLUE_TXT_BG  # couleur de l'arrière plan du texte
+SHOW_INFOS = True  # si on affiche le suivi du temps, la vitesse et l'état de la simulation
 SHOW_SCALE = True  # si on affiche l'échelle des distances
 SHOW_BUMPING_ZONE = True  # si on affiche les zones où les collisions sont détectées
 
@@ -22,7 +24,7 @@ SPEED = 1  # vitesse initiale de la simulation
 MAX_SPEED = 4  # vitesse maximum possible, peu d'effets au delà de 4 pour un processeur classique, doit être une puissance de deux
 SCALE = 10  # pixels/m, échelle de la simulation
 GET_LEADERS_METHOD_AVG = False  # méthode pour déterminer le leader de la première voiture d'une route. True = dernières voitures des prochaines routes, coefficientées par la probabilité que la voiture aille sur ces routes. False = dernière voiture de la prochaine route de la voiture.
-GET_LEADERS_MAX_REC_DEPTH = 100  # niveau maximum de récursion du parcours en profondeur
+GET_LEADERS_MAX_REC_DEPTH = 50  # niveau maximum de récursion du parcours en profondeur
 USE_BUMPING_BOXES = True  # si la simulation utlise les hitbox et hurtbox des voitures pour éviter les collisions
 
 # Ressources
@@ -37,8 +39,9 @@ ARROW_PATH = DEF_ARROW_PATH  # chemin à l'image de flèche
 ROAD_WIDTH = 3  # m, largeur des routes
 ROAD_COLOR = BLUE_ROAD  # couleur des routes
 ROAD_ARROW_PERIOD = 100  # pixels, période spatiale des flèches
+ROAD_TRANSITION_SIZE = 1/3  # proportion de la route où le v_max des voitures varie continuement vers celui de la prochaine route
 ARCROAD_NUM_OF_SROAD = 20  # nombre de routes droites pour les routes courbées
-ARCROAD_SLOW_COEFF = 0.7  # coefficient de ralentissement pour les routes courbées
+ARCROAD_SLOW_COEFF = 0.7  # coefficient de ralentissement pour les routes courbées, facteur de la limite de vitesse
 CAR_FACT_FORCE_CREA = False  # si les CarFactory continuent de rajouter des voitures sur les routes déjà pleines (/!\ peut énormément ralentir la simulation)
 
 # Voitures
@@ -99,11 +102,21 @@ SENSOR_WIDTH = 3  # largeur du trait représentant un capteur
 # Mise à l'échelle et finitions
 
 if DEBUG:
-    PRINT_DETAILED_LOGS, CAR_SHOW_BUMPING_BOXES, CAR_SHOW_LEADER_LINKS, CAR_SHOW_ID, CAR_SHOW_SPEED_KMH = True, True, True, True, True
+    PRINT_DETAILED_LOGS = CAR_SHOW_BUMPING_BOXES = CAR_SHOW_LEADER_LINKS = CAR_SHOW_ID = CAR_SHOW_SPEED_KMH = True
 
 if not USE_IDM:
     USE_BUMPING_BOXES = False
     GET_LEADERS_MAX_REC_DEPTH = 0
+
+if PRESENTATION_MODE:
+    SHOW_INFOS = False
+    SHOW_SCALE = False
+    CAR_SHOW_BUMPING_BOXES = False
+    CAR_SHOW_LEADER_LINKS = False
+    CAR_SHOW_ARROW = False
+    CAR_SHOW_ID = False
+    CAR_SHOW_SPEED_MS = False
+    CAR_SHOW_SPEED_KMH = False
 
 ROAD_WIDTH, CAR_A, CAR_WIDTH, CAR_LENGTH, CAR_RAND_WIDTH_MAX, CAR_RAND_WIDTH_MIN, CAR_RAND_LENGTH_MAX, CAR_RAND_LENGTH_MIN, DELTA_D_MIN, A_MAX, A_MIN = ROAD_WIDTH * SCALE, CAR_A * SCALE, CAR_WIDTH * SCALE, CAR_LENGTH * SCALE, CAR_RAND_WIDTH_MAX * SCALE, CAR_RAND_WIDTH_MIN * SCALE, CAR_RAND_LENGTH_MAX * SCALE, CAR_RAND_LENGTH_MIN * SCALE, DELTA_D_MIN * SCALE, A_MAX * SCALE, A_MIN * SCALE
 
