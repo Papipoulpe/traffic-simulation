@@ -1,4 +1,3 @@
-import traceback
 from time import time, strftime
 import pygame.event
 from matplotlib import pyplot as plt
@@ -115,7 +114,7 @@ class Simulation:
                 self.show_sign(road.sign)
 
                 # actualisation des coordonnées des voitures de la route, des capteurs et du panneau
-                road_leaders = self.get_leaders(road, avg=s.GET_LEADERS_METHOD_AVG)
+                road_leaders = self.get_road_leaders(road, avg=s.GET_LEADERS_METHOD_AVG)
                 road.update_cars(self.dt, road_leaders)
                 road.update_sensors(self.t)
                 road.update_sign(self.t)
@@ -140,9 +139,9 @@ class Simulation:
             if duration == INF:
                 duration = self.t
             simulation_speed = real_duration / duration
-            print(f"Simulation {tbold(self.title)} terminée au bout de {real_duration:.4f}s, soit {simulation_speed:.4f}× la durée réelle.\n")
+            print(f"Simulation {tbold(self.title)} terminée au bout de {real_duration:.4f}s (durée réelle) / {duration:.4f}s (durée de simulation), soit {simulation_speed:.4f}× la durée réelle.\n")
         except Exception as exception:
-            self.print_errors(exception)
+            print_errors(exception)
         finally:
             self.print_simulation_info()
 
@@ -159,34 +158,6 @@ class Simulation:
                     print(f"        {sensor}")
                 print(f"    CarFactory : {road.car_factory}\n    CarSorter : {road.car_sorter}\n\n")
 
-    @staticmethod
-    def print_errors(exception):
-        """Affiche la dernière erreur dans la sortie standard."""
-        if s.PRINT_ERRORS:
-            print(tred(f"\n*** Erreur : {exception} ***\n\n{traceback.format_exc()}"))
-
-    def show_info(self, info: str):
-        """Affiche des informations en haut à gauche de la fenêtre et l'échelle si besoin."""
-        if s.SHOW_INFOS:
-            text_width, text_height = self.FONT.size(info)
-            draw_rect(self.surface, s.INFO_BACKGROUND_COLOR, npz(2), text_width + 30, text_height + 20)
-            draw_text(self.surface, s.FONT_COLOR, npa((10, 10)), info, self.FONT)
-
-        if s.SHOW_SCALE:
-            self.show_scale()
-
-    def show_scale(self):
-        """Affiche l'échelle en bas à gauche de la fenêtre."""
-        _, h = self.size
-        n = 10
-        x, y = 30, h - 40
-        text = f"{n * s.SCALE}px = {n}m"
-        tw, th = self.FONT.size(text)
-        draw_rect(self.surface, BLACK, npa((x, y)), n * s.SCALE, 10)  # affiche la barre de n*SCALE pixels
-        for i in range(1, n, 2):  # affiche les graduations
-            draw_rect(self.surface, self.bg_color, npa((x + i * s.SCALE, y + 1)), s.SCALE - 2 / n, 8)
-        draw_text(self.surface, BLACK, npa((x + (n * s.SCALE - tw) / 2, y - th - 2)), text, self.FONT)  # affiche la description
-
     @property
     def info_to_show(self):
         """Renvoie les informations à afficher sur la fenêtre : horloge, vitesse, en pause ou non."""
@@ -195,7 +166,7 @@ class Simulation:
         return f"t = {round(self.t, 2):<7} = {int(self.t // 60):>02}m{int(self.t) % 60:02}s{duration_perc} | vitesse = ×{str_speed:<4} | {'en pause' if self.paused else 'en cours'}"
 
     def manage_event(self, event):
-        """Gère les conséquences en cas d'un certain évenement pygame, c'est-à-dire une action de l'utilisateur (pause, changement de vitesse, déplacement...)."""
+        """Gère les conséquences en cas d'un certain évènement pygame, c'est-à-dire une action de l'utilisateur (pause, changement de vitesse, déplacement...)."""
         if event.type == pygame.QUIT:  # arrêter la boucle quand la fenêtre est fermée
             self.over = True
 
@@ -241,6 +212,28 @@ class Simulation:
             # si l'utilisateur ne clique plus
             self.dragging = False
 
+    def show_info(self, info: str):
+        """Affiche des informations en haut à gauche de la fenêtre et l'échelle si besoin."""
+        if s.SHOW_INFOS:
+            text_width, text_height = self.FONT.size(info)
+            draw_rect(self.surface, s.INFO_BACKGROUND_COLOR, npz(2), text_width + 30, text_height + 20)
+            draw_text(self.surface, s.FONT_COLOR, npa((10, 10)), info, self.FONT)
+
+        if s.SHOW_SCALE:
+            self.show_scale()
+
+    def show_scale(self):
+        """Affiche l'échelle en bas à gauche de la fenêtre."""
+        _, h = self.size
+        n = 10
+        x, y = 30, h - 40
+        text = f"{n * s.SCALE}px = {n}m"
+        tw, th = self.FONT.size(text)
+        draw_rect(self.surface, BLACK, npa((x, y)), n * s.SCALE, 10)  # affiche la barre de n*SCALE pixels
+        for i in range(1, n, 2):  # affiche les graduations
+            draw_rect(self.surface, self.bg_color, npa((x + i * s.SCALE, y + 1)), s.SCALE - 2 / n, 8)
+        draw_text(self.surface, BLACK, npa((x + (n * s.SCALE - tw) / 2, y - th - 2)), text, self.FONT)  # affiche la description
+
     def show_car(self, car: Car):
         """Affiche une voiture."""
         if s.CAR_SHOW_BUMPING_BOXES:  # si on affiche les zones de collision
@@ -265,7 +258,7 @@ class Simulation:
         else:
             car_color = car.color
 
-        draw_polygon(self.surface, car_color, car.corners,
+        draw_polygon(self.surface, car_color, car.vertices,
                      self.off_set)  # affiche le rectangle qui représente la voiture
 
         if s.CAR_SHOW_ARROW:  # si on affiche la direction de la voiture
@@ -304,7 +297,7 @@ class Simulation:
                 self.show_roads(road.sroads)
 
     def show_sign(self, sign: TrafficLight | StopSign):
-        """Affiche un feu ou panneau stop."""
+        """Affiche un élément de signalisation."""
         if isinstance(sign, TrafficLight) and not sign.static:
             color = {0: s.TL_RED, 1: s.TL_ORANGE, 2: s.TL_GREEN}[sign.state]
             draw_polygon(self.surface, color, sign.coins, self.off_set)
@@ -312,14 +305,25 @@ class Simulation:
             draw_polygon(self.surface, s.SS_COLOR, sign.coins, self.off_set)
 
     def show_sensor(self, sensor: Sensor):
+        """Affiche un capteur."""
         draw_polygon(self.surface, s.SENSOR_COLOR, sensor.corners, self.off_set)
 
+    def show_bumping_zone(self):
+        """Affiche la zone où les collisions sont gérées."""
+        center, radius = self.bumping_zone
+        if s.SHOW_BUMPING_ZONE and radius < INF:
+            da = lambda color: int(color * 0.93)
+            r, g, b = self.bg_color
+            draw_circle(self.surface, (da(r), da(g), da(b)), center, radius, self.off_set)
+
     def print_sensor_results(self, sensor: Sensor):
+        """Affiche les résulats d'un capteur dans la sortie standard."""
         if sensor.results.strip():
             text = tbold(f"Résulats à t={round(self.t, 2)}s de {sensor} sur Road(id={sensor.road.id}) :\n") + sensor.results + "\n"
             print(text)
 
     def print_sensors_results(self, *sensors_id):
+        """Affiche les résulats de capteurs dans la sortie standard."""
         if not sensors_id:
             for road in self.roads:
                 for sensor in road.sensors:
@@ -330,11 +334,13 @@ class Simulation:
                 self.print_sensor_results(sensor)
 
     def export_sensor_results(self, sensor: Sensor, describe: bool):
+        """Exporte les résultats d'un capteur dans un fichier Excel .xlsx."""
         file_name = f"{self.title}_capteur{sensor.id}_{strftime('%H%M%S_%d%m%y')}.xlsx"
         sheet_name = f"{self.title} ({round(self.t, 2)}s) capteur {sensor.id}"
         sensor.export(file_path=s.SENSOR_EXPORTS_DIRECTORY + file_name, sheet_name=sheet_name, describe=describe)
 
     def export_sensors_results(self, *sensors_id, describe: bool = True):
+        """Exporte les résultats de capteurs dans des fichiers Excel .xlsx."""
         if not sensors_id:
             for road in self.roads:
                 for sensor in road.sensors:
@@ -345,6 +351,7 @@ class Simulation:
                 self.export_sensor_results(sensor, describe)
 
     def plot_sensors_results(self, *sensors_id):
+        """Affiche les résulats de capteurs sous forme d'un graphe."""
         if not sensors_id:
             for road in self.roads:
                 for sensor in road.sensors:
@@ -427,7 +434,7 @@ class Simulation:
                     self.road_graph[road.sroads[i].id] = road.sroads[i + 1].id
                 self.road_graph[road.sroads[-1].id] = self.road_graph.get(road.id)
 
-    def get_leaders(self, road: Road, avg: bool, rec_depth: int = 0):
+    def get_road_leaders(self, road: Road, avg: bool, rec_depth: int = 0):
         """
         Renvoie les éventuels leaders de la première voiture de la route, dans une liste de la forme ``[(car, distance, importance), ...]``, par un parcours en profondeur.
 
@@ -458,8 +465,10 @@ class Simulation:
                 if next_road.cars:  # si elle contient des voitures, on prend les coordonnées de la première
                     next_car = next_road.cars[-1]
                     leaders.append((next_car, next_car.d - next_car.length / 2))
+                elif next_road.sign.dummy_car is not None:  # si elle a un élément de signalisation actif, on le prend lui
+                    leaders.append((next_road.sign.dummy_car, next_road.length))
                 else:  # sinon, on cherche plus loin
-                    next_leaders = self.get_leaders(next_road, avg=True, rec_depth=rec_depth + 1)
+                    next_leaders = self.get_road_leaders(next_road, avg=True, rec_depth=rec_depth + 1)
                     leaders += [(next_car, next_road.length + d) for next_car, d in next_leaders]
 
         else:
@@ -472,13 +481,15 @@ class Simulation:
             if isinstance(next_road, ArcRoad):
                 next_road = next_road.sroads[0]
 
-            if next_road is None:  # dans le rare cas où la première voiture n'a pas encore de prochaine route
-                leaders = self.get_leaders(road, avg=True, rec_depth=rec_depth + 1)
+            if next_road is None:  # dans le cas où la première voiture n'a pas encore de prochaine route
+                leaders = self.get_road_leaders(road, avg=True, rec_depth=rec_depth + 1)
             elif next_road.cars:  # si elle en a une et qu'elle contient des voitures
                 next_car = next_road.cars[-1]
                 leaders = [(next_car, next_car.d)]
+            elif next_road.sign.dummy_car is not None:  # si elle a un élément de signalisation actif
+                leaders = [(next_road.sign.dummy_car, next_road.length)]
             else:  # si elle en a une mais qui ne contient pas de voiture
-                next_leaders = self.get_leaders(next_road, avg=True, rec_depth=rec_depth + 1)
+                next_leaders = self.get_road_leaders(next_road, avg=True, rec_depth=rec_depth + 1)
                 leaders = [(next_car, next_road.length + d) for next_car, d in next_leaders]
 
         return leaders
@@ -517,10 +528,3 @@ class Simulation:
             center = self.size[0] / 2, self.size[1] / 2
 
         self.bumping_zone = (npa(self.rc_to_sc(center)), radius)
-
-    def show_bumping_zone(self):
-        center, radius = self.bumping_zone
-        if s.SHOW_BUMPING_ZONE and radius < INF:
-            da = lambda color: int(color * 0.93)
-            r, g, b = self.bg_color
-            draw_circle(self.surface, (da(r), da(g), da(b)), center, radius, self.off_set)

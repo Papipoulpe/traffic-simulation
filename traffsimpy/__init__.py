@@ -14,6 +14,7 @@ FLÈCHE GAUCHE/BAS : ralentir
 DRAG : bouger
 ENTRER : recentrer
 S : faire une capture de la fenêtre
+ESC : terminer la simulation
 """
 
 print(greetings)

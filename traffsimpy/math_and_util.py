@@ -1,4 +1,5 @@
 import json
+import traceback
 from typing import *
 from numpy.typing import NDArray
 import numpy as np
@@ -126,42 +127,36 @@ def idm(car, leader_coords: Optional[Vecteur]) -> float:
 
 def iidm(car, leader_coords: Optional[Vecteur]) -> float:
     """Calcul l'accélération d'une voiture d'après l'*Improved Intelligent Driver Model*."""
-    if car.v <= car.v_max:
-        a_free_road = car.a_max * (1 - (car.v/car.v_max) ** car.a_exp)
-
-        if leader_coords is None:
-            a_iidm = a_free_road
+    if leader_coords is None:  # si pas de leader
+        if car.v <= car.v_max:
+            return car.a_max * (1 - (car.v/car.v_max) ** car.a_exp)
         else:
-            delta_d, lead_v = leader_coords
-            delta_v = car.v - lead_v
-            dd_parfait = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * s.A_MIN_CONF * car.a_max))
-            z = dd_parfait/delta_d if delta_d > 0 else INF
-
-            if z >= 1:
-                a_iidm = car.a_max * (1 - z*z)
-            else:
-                if a_free_road > 0:
-                    a_iidm = a_free_road * (1 - np.float_power(z, 2 * car.a_max / a_free_road))
-                else:
-                    a_iidm = 0
+            return s.A_MIN_CONF * (1 - np.float_power(car.v_max/car.v, car.a_max * car.a_max / s.A_MIN_CONF))
 
     else:
-        a_free_road = - s.A_MIN_CONF * (1 - np.float_power(car.v_max/car.v, car.a_max * car.a_max / s.A_MIN_CONF))
+        delta_d, lead_v = leader_coords
+        delta_v = car.v - lead_v
+        perfect_delta_d = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * s.A_MIN_CONF * car.a_max))
+        z = perfect_delta_d / delta_d if delta_d > 0 else INF
 
-        if leader_coords is None:
-            a_iidm = a_free_road
-        else:
-            delta_d, lead_v = leader_coords
-            delta_v = car.v - lead_v
-            dd_parfait = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * s.A_MIN_CONF * car.a_max))
-            z = dd_parfait/delta_d if delta_d > 0 else INF
+        if car.v <= car.v_max:
+            a_free_road = car.a_max * (1 - (car.v / car.v_max) ** car.a_exp)
 
             if z >= 1:
-                a_iidm = a_free_road + car.a_max * (1 - z*z)
+                return car.a_max * (1 - z * z)
             else:
-                a_iidm = a_free_road
+                if a_free_road > 0:
+                    return a_free_road * (1 - np.float_power(z, 2 * car.a_max / a_free_road))
+                else:
+                    return 0
 
-    return a_iidm
+        else:
+            a_free_road = - s.A_MIN_CONF * (1 - np.float_power(car.v_max / car.v, car.a_max * car.a_max / s.A_MIN_CONF))
+
+            if z >= 1:
+                return a_free_road + car.a_max * (1 - z * z)
+            else:
+                return a_free_road
 
 
 def lines_intersection(p1: Vecteur, vd1: Vecteur, p2: Vecteur, vd2: Vecteur) -> Vecteur:
@@ -233,3 +228,9 @@ def tbold(text):
 def tred(text):
     """Renvoie le texte formatté en rouge pour la sortie standard."""
     return TXT_RED + str(text) + TXT_RESET
+
+
+def print_errors(exception):
+    """Affiche la dernière erreur dans la sortie standard."""
+    if s.PRINT_ERRORS:
+        print(tred(f"\n*** Erreur : {exception} ***\n\n{traceback.format_exc()}"))

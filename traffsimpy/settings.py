@@ -70,7 +70,7 @@ CAR_RAND_WIDTH_MAX = 2.4  # m, maximum pour les largeurs aléatoires des voiture
 # Intelligent Driver Model
 
 DELTA_D_MIN = 2  # m, distance minimum entre deux voitures
-V_MAX = 13.9  # m/s, limite de vitesse par défaut des routes droites (50 km/h = 13.9 m/s, 30 km/h = 8.3 m/s)
+V_MAX = 13.9  # m/s, limite de vitesse des routes droites (50 km/h = 13.9 m/s, 30 km/h = 8.3 m/s)
 A_MAX = 1  # m/s², accéleration maximum d'une voiture
 A_MIN = -2.5  # m/s², décélération minimum d'une voiture
 A_MIN_CONF = 10  # m/s², décélération confortable d'une voiture
@@ -118,9 +118,4 @@ if PRESENTATION_MODE:
     CAR_SHOW_SPEED_MS = False
     CAR_SHOW_SPEED_KMH = False
 
-ROAD_WIDTH, CAR_A, CAR_WIDTH, CAR_LENGTH, CAR_RAND_WIDTH_MAX, CAR_RAND_WIDTH_MIN, CAR_RAND_LENGTH_MAX, CAR_RAND_LENGTH_MIN, DELTA_D_MIN, A_MAX, A_MIN = ROAD_WIDTH * SCALE, CAR_A * SCALE, CAR_WIDTH * SCALE, CAR_LENGTH * SCALE, CAR_RAND_WIDTH_MAX * SCALE, CAR_RAND_WIDTH_MIN * SCALE, CAR_RAND_LENGTH_MAX * SCALE, CAR_RAND_LENGTH_MIN * SCALE, DELTA_D_MIN * SCALE, A_MAX * SCALE, A_MIN * SCALE
-
-if CAR_V is not None:
-    CAR_V *= SCALE
-else:
-    CAR_V = V_MAX * SCALE
+ROAD_WIDTH = ROAD_WIDTH * SCALE
