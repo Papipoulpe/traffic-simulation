@@ -15,31 +15,40 @@ npz = np.zeros
 
 ids = {}  # dictionnaire des identifiants d'objet
 
-Vecteur: TypeAlias = NDArray[np.float64]  # définiton du type Vecteur = (x, y)
-Couleur: TypeAlias = tuple[int, int, int]  # définiton du type Couleur = (r, g, b)
+Vecteur: TypeAlias = NDArray[np.float64]  # définition du type Vecteur = (x, y)
+Couleur: TypeAlias = tuple[int, int, int]  # définition du type Couleur = (r, g, b)
+
+_sentinel = object()  # sentinel pour get_by_id
 
 
 def empty_function(*_, **__): ...  # fonction qui à tout associe rien
 
 
-def new_id(obj, obj_id: Optional[int] = None, pos: bool = False) -> int:
-    """Créer un identifiant d'objet."""
-    if obj_id is None:
-        if pos:  # si aucun identifiant fourni
-            obj_id = max(ids.keys()) + 1
-        else:
-            obj_id = min(ids.keys()) - 1
-    elif obj_id in ids:  # s'il est déjà pris, on grogne
+def new_id(obj, obj_id: Optional[int] = None, pos=False) -> int:
+    """Crée et renvoie un identifiant d'objet."""
+    if obj_id in ids:  # si l'identifiant est déjà pris, on grogne
         raise ValueError(f"L'identifiant {obj_id} est déjà utilisé.")
-    elif not isinstance(obj_id, int) or obj_id < 0:  # s'il convient pas, idem
-        raise ValueError(f"Un identifiant doit être un entier positif, pas {obj_id}.")
+
+    if not ids:  # s'il convient pas, idem
+        raise Exception("Vous devez d'abord créer une simulation avant de définir tout autre objet.")
+
+    if obj_id is not None and not (isinstance(obj_id, int) and obj_id > 0):
+        raise ValueError(f"Un identifiant doit être un entier strictement positif, pas {obj_id}.")
+
+    if obj_id is None:  # si aucun identifiant fourni
+        if pos:  # s'il est demandé que l'identifiant soit positif
+            obj_id = max(ids.keys()) + 1  # on prend celui après le plus grand
+        else:
+            obj_id = min(ids.keys()) - 1  # sinon, on prend celui avant le plus petit
+
     ids[obj_id] = obj  # on associe l'objet à son identifiant
+
     return obj_id
 
 
-def get_by_id(obj_id: int) -> Any:
+def get_by_id(obj_id: int, default=_sentinel) -> Any:
     """Renvoie l'objet associé à l'identifiant donné."""
-    return ids[obj_id]
+    return ids.get(obj_id, default) if default != _sentinel else ids[obj_id]
 
 
 def norm(v: Vecteur):
@@ -72,19 +81,6 @@ def angle_of_vect(v: Vecteur) -> float:
     """Angle du vecteur ``v`` avec l'axe des abscisses, en degrés."""
     u = npa((1, -1j))
     return np.angle(u @ v, deg=True)
-
-
-def rec_round(obj: Iterable | float, prec: Optional[int] = None) -> Iterable | float:
-    """Arrondi récursif."""
-    if isinstance(obj, float):
-        return round(obj, prec)
-    else:
-        res = []
-        for e in obj:
-            res.append(rec_round(e, prec))
-        if isinstance(obj, tuple):
-            res = tuple(res)
-        return res
 
 
 def parse(string: str) -> dict:

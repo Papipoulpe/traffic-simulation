@@ -3,7 +3,7 @@ from .constants import *
 
 # Paramètres rapides
 
-DEBUG = False   # Si True, PRINT_DETAILED_LOGS = CAR_SHOW_BUMPING_BOXES = CAR_SHOW_LEADER_LINKS = CAR_SHOW_ID = CAR_SHOW_SPEED_KMH = True
+DEBUG = True   # Si True, PRINT_DETAILED_LOGS = CAR_SHOW_BUMPING_BOXES = CAR_SHOW_LEADER_LINKS = CAR_SHOW_ID = CAR_SHOW_SPEED_KMH = True
 USE_IDM = True  # Si False, USE_BUMPING_BOXES = False, GET_LEADERS_MAX_REC_DEPTH = 0
 PRESENTATION_MODE = False  # Si True, SHOW_INFOS = SHOW_SCALE = CAR_SHOW_... = False
 
@@ -40,7 +40,7 @@ ROAD_WIDTH = 3  # m, largeur des routes
 ROAD_COLOR = BLUE_ROAD  # couleur des routes
 ROAD_ARROW_PERIOD = 100  # pixels, période spatiale des flèches
 ROAD_TRANSITION_SIZE = 1/3  # proportion de la route où le v_max des voitures varie continuement vers celui de la prochaine route
-ARCROAD_NUM_OF_SROAD = 20  # nombre de routes droites pour les routes courbées
+ARCROAD_NUM_OF_SROAD = 30  # nombre de routes droites pour les routes courbées
 ARCROAD_SLOW_COEFF = 0.7  # coefficient de ralentissement pour les routes courbées, facteur de la limite de vitesse
 CAR_FACT_FORCE_CREA = False  # si les CarFactory continuent de rajouter des voitures sur les routes déjà pleines (/!\ peut énormément ralentir la simulation)
 
@@ -99,7 +99,7 @@ SENSOR_EXPORT_RES_AT_PAUSE = False  # si les capteurs exportent leurs résulats 
 SENSOR_COLOR = PURPLE_SENSOR  # couleur du trait représentant un capteur
 SENSOR_WIDTH = 3  # largeur du trait représentant un capteur
 
-# Mise à l'échelle et finitions
+# Finitions
 
 if DEBUG:
     PRINT_DETAILED_LOGS = CAR_SHOW_BUMPING_BOXES = CAR_SHOW_LEADER_LINKS = CAR_SHOW_ID = CAR_SHOW_SPEED_KMH = True
@@ -117,5 +117,3 @@ if PRESENTATION_MODE:
     CAR_SHOW_ID = False
     CAR_SHOW_SPEED_MS = False
     CAR_SHOW_SPEED_KMH = False
-
-ROAD_WIDTH = ROAD_WIDTH * SCALE
