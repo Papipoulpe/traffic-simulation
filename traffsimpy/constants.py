@@ -1,9 +1,10 @@
 from colorama import Fore, Style
+from importlib.resources import files
 
 INF = float("+inf")
 
-DEF_FONT_PATH = "./ressources/jbmono.ttf"
-DEF_ARROW_PATH = "./ressources/arrow.png"
+DEF_FONT_PATH = files("traffsimpy.resources").joinpath("jbmono.ttf")
+DEF_ARROW_PATH = files("traffsimpy.resources").joinpath("arrow.png")
 
 TXT_RED = Fore.RED
 TXT_BOLD = Style.BRIGHT

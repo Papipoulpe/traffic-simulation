@@ -72,7 +72,7 @@ def direction_vector(p1: Vecteur, p2: Vecteur) -> Vecteur:
 
 
 def normal_vector(v: Vecteur, new_norm: float = 1) -> Vecteur:
-    """Vecteur normal au vecteur ``v``, éventuellement renormé."""
+    """Renvoie un vecteur normal au vecteur ``v``, éventuellement renormé."""
     a, b = v
     return normed(npa((-b, a)), new_norm)
 
@@ -84,7 +84,7 @@ def angle_of_vect(v: Vecteur) -> float:
 
 
 def parse(string: str) -> dict:
-    """Chaîne de caractères -> dictionnaire."""
+    """Renvoie un dictionnaire à partir d'une chaîne de caratère JSON."""
     return json.loads(string.replace("'", '"'))
 
 
@@ -127,7 +127,7 @@ def iidm(car, leader_coords: Optional[Vecteur]) -> float:
         if car.v <= car.v_max:
             return car.a_max * (1 - (car.v/car.v_max) ** car.a_exp)
         else:
-            return s.A_MIN_CONF * (1 - np.float_power(car.v_max/car.v, car.a_max * car.a_max / s.A_MIN_CONF))
+            return - s.A_MIN_CONF * (1 - np.float_power(car.v_max/car.v, car.a_max * car.a_max / s.A_MIN_CONF))
 
     else:
         delta_d, lead_v = leader_coords
@@ -196,8 +196,8 @@ def get_color_name(requested_color: Couleur) -> str:
     return closest_name
 
 
-def is_inside_rectangle(m: Vecteur, rectangle: np.ndarray) -> bool:
-    """Renvoie si le point ``m`` est à l'intérieur du rectangle, défini par ses quatres sommets."""
+def is_inside_rectangle(m: Vecteur, rectangle: Sequence[Vecteur]) -> bool:
+    """Renvoie si le point ``m`` est à l'intérieur du rectangle, pas nécessairement , défini par ses quatres sommets."""
     a, b, c, d = rectangle
     am = m - a
     ab = b - a
@@ -212,7 +212,44 @@ def is_inside_circle(m: Vecteur, circle: tuple[Vecteur, float]) -> bool:
     return (m - center) @ (m - center) <= radius*radius
 
 
+def do_polygons_intersect(polygon1: Sequence[Vecteur], polygon2: Sequence[Vecteur]):
+    """Détermine si deux polygones convexes sont d'intersection vide ou non, en utilisant le théorème de séparation des
+    polygones convexes."""
+    for polygon in (polygon1, polygon2):
+        # pour chaque polygone, on regarde si une de leurs arêtes les sépare
+        n = len(polygon)
+        for i in range(n):
+            # on prend deux sommets successifs pour regarder une arête
+            vertice1 = polygon[i]
+            vertice2 = polygon[(i + 1) % n]
+
+            # on prend un vecteur normal à cette arête
+            normal = normal_vector(vertice2 - vertice1)
+
+            # on les projette selon ce vecteur normal et on regarde si les segments obtenus s'intersectent
+            min_proj_p1 = min(v @ normal for v in polygon1)
+            max_proj_p2 = max(v @ normal for v in polygon2)
+
+            if min_proj_p1 >= max_proj_p2:
+                return False
+
+            min_proj_p2 = min(v @ normal for v in polygon2)
+            max_proj_p1 = max(v @ normal for v in polygon1)
+
+            if min_proj_p2 >= max_proj_p1:
+                return False
+
+    # si aucune arête ne sépare les polygones, alors ils s'intersectent
+    return True
+
+
 def blue_red_gradient(shade: float):
+    """Renvoie une couleur entre bleu et route selon la valeur de ``shade``, avec environ
+    0 -> rouge,
+    0.25 -> orange,
+    0.5 -> jaune,
+    0.75 -> vert,
+    1 -> bleu."""
     return s.ROGB_GRADIENT[max(min(round(shade * (len(s.ROGB_GRADIENT) - 1)), len(s.ROGB_GRADIENT) - 1), 0)]
 
 

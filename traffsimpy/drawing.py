@@ -18,6 +18,19 @@ def draw_polygon(surface: pygame.Surface, color: Couleur, points: tuple[Vecteur,
     gfx.aapolygon(surface, points_with_off_set, color)
 
 
+def draw_empty_polygon(surface: pygame.Surface, color: Couleur, points: tuple[Vecteur, ...], off_set: Vecteur = npz(2)):
+    """
+    Dessine un polygône vide.
+
+    :param surface: surface sur laquelle dessiner
+    :param color: couleur du trait
+    :param points: coordonnées des points
+    :param off_set: décalage par rapport à l'origine
+    """
+    points_with_off_set = [p + off_set for p in points]
+    gfx.aapolygon(surface, points_with_off_set, color)
+
+
 def draw_line(surface: pygame.Surface, color: Couleur, start: Vecteur, end: Vecteur, off_set: Vecteur = npz(2)):
     """
     Dessine un segment.

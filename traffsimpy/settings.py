@@ -3,9 +3,9 @@ from .constants import *
 
 # Paramètres rapides
 
-DEBUG = True   # Si True, PRINT_DETAILED_LOGS = CAR_SHOW_BUMPING_BOXES = CAR_SHOW_LEADER_LINKS = CAR_SHOW_ID = CAR_SHOW_SPEED_KMH = True
 USE_IDM = True  # Si False, USE_BUMPING_BOXES = False, GET_LEADERS_MAX_REC_DEPTH = 0
 PRESENTATION_MODE = False  # Si True, SHOW_INFOS = SHOW_SCALE = CAR_SHOW_... = False
+DEBUG_MODE = False   # Si True, PRINT_DETAILED_LOGS = CAR_SHOW_BUMPING_BOXES = CAR_SHOW_BOUNDING_BOXES = CAR_SHOW_LEADER_LINKS = CAR_SHOW_ID = CAR_SHOW_SPEED_KMH = True
 
 # Affichage
 
@@ -15,7 +15,7 @@ BACKGROUND_COLOR = BLUE_BG  # couleur de l'arrière plan de la fenêtre
 INFO_BACKGROUND_COLOR = BLUE_TXT_BG  # couleur de l'arrière plan du texte
 SHOW_INFOS = True  # si on affiche le suivi du temps, la vitesse et l'état de la simulation
 SHOW_SCALE = True  # si on affiche l'échelle des distances
-SHOW_BUMPING_ZONE = True  # si on affiche les zones où les collisions sont détectées
+SHOW_HEAVY_TRAFFIC_AREA = True  # si on affiche les zones où les collisions sont détectées
 
 # Simulation
 
@@ -25,7 +25,7 @@ MAX_SPEED = 4  # vitesse maximum possible, peu d'effets au delà de 4 pour un pr
 SCALE = 10  # pixels/m, échelle de la simulation
 GET_LEADERS_METHOD_AVG = False  # méthode pour déterminer le leader de la première voiture d'une route. True = dernières voitures des prochaines routes, coefficientées par la probabilité que la voiture aille sur ces routes. False = dernière voiture de la prochaine route de la voiture.
 GET_LEADERS_MAX_REC_DEPTH = 50  # niveau maximum de récursion du parcours en profondeur
-USE_BUMPING_BOXES = True  # si la simulation utlise les hitbox et hurtbox des voitures pour éviter les collisions
+USE_HITBOXES = True  # si la simulation utlise les hitbox et hurtbox des voitures pour éviter les collisions
 
 # Ressources
 
@@ -54,16 +54,17 @@ CAR_COLOR = BLUE_GREEN_CAR  # couleur par défaut des voitures
 CAR_SPEED_CODED_COLOR = True  # si la couleur des voitures représente leurs vitesses (de rouge = lent à bleu = rapide)
 
 CAR_SHOW_BUMPING_BOXES = False  # si on affiche les zones de collision (hitbox, hurtbox) des voitures
+CAR_SHOW_BOUNDING_BOXES = False  # si on affiches les boites englobantes des voitures
 CAR_SHOW_LEADER_LINKS = False  # si on affiche les liens entre la voitures et ses leaders
-CAR_SHOW_ARROW = False  # si on affiche la direction de chaque voiture sur son toit
+CAR_SHOW_DIRECTION = True  # si on affiche la direction de chaque voiture sur son toit
 CAR_SHOW_ID = False  # si on affiche l'id de chaque voiture sur son toit
 CAR_SHOW_SPEED_MS = False  # si on affiche la vitesse de chaque voiture sur son toit en m/s
 CAR_SHOW_SPEED_KMH = True  # si on affiche la vitesse de chaque voiture sur son toit en km/h
 
 CAR_RAND_COLOR_MIN = 70  # minimum de r, g et b pour les couleurs aléatoires des voitures
 CAR_RAND_COLOR_MAX = 180  # maximum de r, g et b pour les couleurs aléatoires des voitures
-CAR_RAND_LENGTH_MIN = 2  # m, minimum pour les longueurs aléatoires des voitures
-CAR_RAND_LENGTH_MAX = 4.5  # m, maximum pour les longueurs aléatoires des voitures
+CAR_RAND_LENGTH_MIN = 2.7  # m, minimum pour les longueurs aléatoires des voitures
+CAR_RAND_LENGTH_MAX = 7  # m, maximum pour les longueurs aléatoires des voitures
 CAR_RAND_WIDTH_MIN = 1.8  # m, minimum pour les largeurs aléatoires des voitures
 CAR_RAND_WIDTH_MAX = 2.4  # m, maximum pour les largeurs aléatoires des voitures
 
@@ -101,11 +102,11 @@ SENSOR_WIDTH = 3  # largeur du trait représentant un capteur
 
 # Finitions
 
-if DEBUG:
-    PRINT_DETAILED_LOGS = CAR_SHOW_BUMPING_BOXES = CAR_SHOW_LEADER_LINKS = CAR_SHOW_ID = CAR_SHOW_SPEED_KMH = True
+if DEBUG_MODE:
+    PRINT_DETAILED_LOGS = CAR_SHOW_BUMPING_BOXES = CAR_SHOW_BOUNDING_BOXES = CAR_SHOW_LEADER_LINKS = CAR_SHOW_ID = CAR_SHOW_SPEED_KMH = True
 
 if not USE_IDM:
-    USE_BUMPING_BOXES = False
+    USE_HITBOXES = False
     GET_LEADERS_MAX_REC_DEPTH = 0
 
 if PRESENTATION_MODE:
@@ -113,7 +114,7 @@ if PRESENTATION_MODE:
     SHOW_SCALE = False
     CAR_SHOW_BUMPING_BOXES = False
     CAR_SHOW_LEADER_LINKS = False
-    CAR_SHOW_ARROW = False
+    CAR_SHOW_DIRECTION = False
     CAR_SHOW_ID = False
     CAR_SHOW_SPEED_MS = False
     CAR_SHOW_SPEED_KMH = False
