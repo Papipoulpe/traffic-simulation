@@ -1,11 +1,10 @@
-import json
 import traceback
 from typing import *
 from numpy.typing import NDArray
 import numpy as np
 import webcolors
 
-import traffsimpy.settings as s
+from .settings import simulation_configuration as sc
 from .constants import *
 
 
@@ -83,11 +82,6 @@ def angle_of_vect(v: Vecteur) -> float:
     return np.angle(u @ v, deg=True)
 
 
-def parse(string: str) -> dict:
-    """Renvoie un dictionnaire à partir d'une chaîne de caratère JSON."""
-    return json.loads(string.replace("'", '"'))
-
-
 def update_taylor(car, dt: float):
     """
     Calcule les vecteurs du mouvement de la voiture avec des séries de Taylor, en évitant v < 0.
@@ -110,7 +104,7 @@ def idm(car, leader_coords: Optional[Vecteur]) -> float:
 
         delta_v = car.v - lead_v
 
-        dd_parfait = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * s.A_MIN_CONF * car.a_max))
+        dd_parfait = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * sc.a_min_conf * car.a_max))
         a_interaction = (temp := (dd_parfait / delta_d)) * temp
     else:
         a_interaction = 0
@@ -127,12 +121,12 @@ def iidm(car, leader_coords: Optional[Vecteur]) -> float:
         if car.v <= car.v_max:
             return car.a_max * (1 - (car.v/car.v_max) ** car.a_exp)
         else:
-            return - s.A_MIN_CONF * (1 - np.float_power(car.v_max/car.v, car.a_max * car.a_max / s.A_MIN_CONF))
+            return - sc.a_min_conf * (1 - np.float_power(car.v_max / car.v, car.a_max * car.a_max / sc.a_min_conf))
 
     else:
         delta_d, lead_v = leader_coords
         delta_v = car.v - lead_v
-        perfect_delta_d = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * s.A_MIN_CONF * car.a_max))
+        perfect_delta_d = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * sc.a_min_conf * car.a_max))
         z = perfect_delta_d / delta_d if delta_d > 0 else INF
 
         if car.v <= car.v_max:
@@ -147,7 +141,7 @@ def iidm(car, leader_coords: Optional[Vecteur]) -> float:
                     return 0
 
         else:
-            a_free_road = - s.A_MIN_CONF * (1 - np.float_power(car.v_max / car.v, car.a_max * car.a_max / s.A_MIN_CONF))
+            a_free_road = - sc.a_min_conf * (1 - np.float_power(car.v_max / car.v, car.a_max * car.a_max / sc.a_min_conf))
 
             if z >= 1:
                 return a_free_road + car.a_max * (1 - z * z)
@@ -196,16 +190,6 @@ def get_color_name(requested_color: Couleur) -> str:
     return closest_name
 
 
-def is_inside_rectangle(m: Vecteur, rectangle: Sequence[Vecteur]) -> bool:
-    """Renvoie si le point ``m`` est à l'intérieur du rectangle, pas nécessairement , défini par ses quatres sommets."""
-    a, b, c, d = rectangle
-    am = m - a
-    ab = b - a
-    ad = d - a
-    # M est dans ABCD ssi (0 < AM⋅AB < AB⋅AB) et (0 < AM⋅AD < AD⋅AD)
-    return 0 <= am @ ab <= ab @ ab and 0 <= am @ ad <= ad @ ad
-
-
 def is_inside_circle(m: Vecteur, circle: tuple[Vecteur, float]) -> bool:
     """Renvoie si le point ``m`` appartient au disque, défini par son centre et son rayon."""
     center, radius = circle
@@ -243,14 +227,14 @@ def do_polygons_intersect(polygon1: Sequence[Vecteur], polygon2: Sequence[Vecteu
     return True
 
 
-def blue_red_gradient(shade: float):
+def red_to_blue_gradient(shade: float):
     """Renvoie une couleur entre bleu et route selon la valeur de ``shade``, avec environ
     0 -> rouge,
     0.25 -> orange,
     0.5 -> jaune,
     0.75 -> vert,
     1 -> bleu."""
-    return s.ROGB_GRADIENT[max(min(round(shade * (len(s.ROGB_GRADIENT) - 1)), len(s.ROGB_GRADIENT) - 1), 0)]
+    return ROGB_GRADIENT[max(min(round(shade * (len(ROGB_GRADIENT) - 1)), len(ROGB_GRADIENT) - 1), 0)]
 
 
 def tbold(text):
@@ -265,5 +249,5 @@ def tred(text):
 
 def print_errors(exception):
     """Affiche la dernière erreur dans la sortie standard."""
-    if s.PRINT_ERRORS:
+    if sc.print_errors:
         print(tred(f"\n*** Erreur : {exception} ***\n\n{traceback.format_exc()}"))

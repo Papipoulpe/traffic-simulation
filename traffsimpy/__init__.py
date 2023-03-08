@@ -1,5 +1,6 @@
 from .simulation import Simulation
 from .components import CarFactory, TrafficLight, Sensor, Car, StopSign
+from .settings import simulation_configuration
 
 greetings = """
 Bienvenue sur TraffSimPy !
