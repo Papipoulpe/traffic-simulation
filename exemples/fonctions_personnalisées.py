@@ -21,7 +21,8 @@ def crea_func(**_):
 
 def sort_func(t):
     """Fonction de tri personnalisée pour le graphe des routes. Renvoie l'identifiant de route 12 ou 13 en changeant
-    toutes les 10 secondes."""
+    toutes les 10 secondes.
+    """
     if t % 20 <= 10:
         return 12
     else:
@@ -41,4 +42,4 @@ road_graph = {1: sort_func, 12: 2, 13: 3}
 
 sim.create_roads(road_list)
 sim.set_road_graph(road_graph)
-sim.start()
+sim.run()

@@ -11,16 +11,15 @@ class SimulationConfiguration:
         self.background_color = BLUE_BG  # couleur de l'arrière plan de la fenêtre
         self.info_background_color = BLUE_TXT_BG  # couleur de l'arrière plan du texte
         self.show_infos = True  # si on affiche le suivi du temps, la vitesse et l'état de la simulation
-        self.show_scale = True  # si on affiche l'échelle des distances
+        self.show_scale = True  # si on affiche l'échelle de l'espace
         self.show_heavy_traffic_area = True  # si on affiche les zones où les collisions sont détectées
 
         # Simulation
         self.fps = 60  # Hz, nombre d'images par seconde initial de la simulation
         self.speed = 1  # vitesse initiale de la simulation
-        self.max_speed = 4  # vitesse maximum possible, peu d'effets au delà de 4 pour un processeur classique, doit être une puissance de deux
+        self.max_speed = 4  # vitesse maximum possible, peu d'effets au-delà de 4 pour un processeur classique
         self.scale = 10  # pixels/m, échelle de la simulation
-        self.get_leaders_method_avg = False  # méthode pour déterminer le leader de la première voiture d'une route. True = dernières voitures des prochaines routes, coefficientées par la probabilité que la voiture aille sur ces routes. False = dernière voiture de la prochaine route de la voiture.
-        self.get_leaders_max_rec_depth = 50  # niveau maximum de récursion du parcours en profondeur
+        self.get_road_leaders_method_avg = False  # méthode pour déterminer le leader de la première voiture d'une route. True = dernières voitures des prochaines routes, coefficientées par la probabilité que la voiture aille sur ces routes. False = dernière voiture de la prochaine route de la voiture.
         self.use_hitboxes = True  # si la simulation utilise les hitbox et hurtbox des voitures pour éviter les collisions
 
         # Ressources
@@ -34,35 +33,37 @@ class SimulationConfiguration:
         self.road_color = BLUE_ROAD  # couleur des routes
         self.road_arrow_period = 100  # pixels, période spatiale des flèches
         self.road_transition_size = 1 / 3  # proportion de la route où le v_max des voitures varie continuement vers celui de la prochaine route
+
         self.arcroad_num_of_sroads = 30  # nombre de routes droites pour les routes courbées
-        self.arcroad_slow_coeff = 0.7  # coefficient de ralentissement pour les routes courbées, facteur de la limite de vitesse
+        self.arcroad_deceleration_coeff = 0.7  # coefficient de ralentissement pour les routes courbées, facteur de la limite de vitesse
+
+        # CarFactories
         self.car_fact_force_crea = False  # si les CarFactory continuent de rajouter des voitures sur les routes déjà pleines (/!\ peut énormément ralentir la simulation)
+        self.car_fact_rand_color_min = 70  # minimum de r, g et b pour les couleurs aléatoires des voitures
+        self.car_fact_rand_color_max = 180  # maximum de r, g et b pour les couleurs aléatoires des voitures
+        self.car_fact_rand_length_min = 2.7  # m, minimum pour les longueurs aléatoires des voitures
+        self.car_fact_rand_length_max = 7.0  # m, maximum pour les longueurs aléatoires des voitures
+        self.car_fact_rand_width_min = 1.8  # m, minimum pour les largeurs aléatoires des voitures
+        self.car_fact_rand_width_max = 2.4  # m, maximum pour les largeurs aléatoires des voitures
 
         # Voitures
         self.car_a = 0  # m/s², accéleration par défaut des voitures
-        self.car_v = None  # m/s, vitesse par défaut des voitures (50 km/h = 13.9 m/s, 30 km/h = 8.3 m/s), None pour V_MAX de la route
+        self.car_v = None  # m/s, vitesse par défaut des voitures (50 km/h = 13.9 m/s, 30 km/h = 8.3 m/s), None pour v_max de la route
         self.car_width = 1.8  # m, largeur par défaut des voitures
         self.car_length = 3  # m, longueur par défaut des voitures
         self.car_color = BLUE_GREEN_CAR  # couleur par défaut des voitures
         self.car_speed_coded_color = True  # si la couleur des voitures représente leurs vitesses (de rouge = lent à bleu = rapide)
 
-        self.car_show_bumping_boxes = False  # si on affiche les zones de collision (hitbox, hurtbox) des voitures
-        self.car_show_bounding_boxes = False  # si on affiches les boites englobantes des voitures
-        self.car_show_leader_links = False  # si on affiche les liens entre la voitures et ses leaders
+        self.car_show_hitboxes = False  # si on affiche les zones de collision (hitbox, hurtbox) des voitures
+        self.car_show_bounding_boxes = False  # si on affiche les boites englobantes des voitures
+        self.car_show_leader_links = False  # si on affiche les liens entre la voiture et ses leaders
         self.car_show_direction = False  # si on affiche la direction de chaque voiture sur son toit
         self.car_show_id = False  # si on affiche l'id de chaque voiture sur son toit
         self.car_show_speed_ms = False  # si on affiche la vitesse de chaque voiture sur son toit en m/s
         self.car_show_speed_kmh = True  # si on affiche la vitesse de chaque voiture sur son toit en km/h
 
-        self.car_rand_color_min = 70  # minimum de r, g et b pour les couleurs aléatoires des voitures
-        self.car_rand_color_max = 180  # maximum de r, g et b pour les couleurs aléatoires des voitures
-        self.car_rand_length_min = 2.7  # m, minimum pour les longueurs aléatoires des voitures
-        self.car_rand_length_max = 7  # m, maximum pour les longueurs aléatoires des voitures
-        self.car_rand_width_min = 1.8  # m, minimum pour les largeurs aléatoires des voitures
-        self.car_rand_width_max = 2.4  # m, maximum pour les largeurs aléatoires des voitures
-
         # Intelligent Driver Model
-        self.delta_d_min = 2  # m, distance minimum entre deux voitures
+        self.delta_d_min = 2  # m, distance minimum entre deux voitures successives d'une même route
         self.v_max = 13.9  # m/s, limite de vitesse des routes droites (50 km/h = 13.9 m/s, 30 km/h = 8.3 m/s)
         self.a_max = 1  # m/s², accéleration maximum d'une voiture
         self.a_min = -2.5  # m/s², décélération minimum d'une voiture
@@ -78,13 +79,13 @@ class SimulationConfiguration:
         self.tl_red = RED_TL  # couleur du feu rouge
         self.tl_orange = ORANGE_TL  # couleur du feu orange
         self.tl_green = GREEN_TL  # couleur du feu vert
-        self.tl_orange_slow_down_coeff = 0.5  # coefficient de ralentissement du feu orange, un coefficient plus grand ralentit plus
+        self.tl_orange_deceleration_coeff = 0.5  # coefficient de ralentissement du feu orange
 
         self.ss_width = 8  # pixels, largeur du losange représentant un panneau stop
+        self.ss_deceleration_coeff = 0.15  # coefficient de ralentissement des panneaux stop
         self.ss_color = RED_SS  # couleur du panneau stop
 
         # Capteurs
-        self.sensor_exports_directory = ""  # chemin du dossier de sauvegarde des tableurs des capteurs
         self.sensor_print_res_at_pause = False  # si les capteurs affichent leurs résulats à chaque mise en pause
         self.sensor_export_res_at_pause = False  # si les capteurs exportent leurs résulats à chaque mise en pause
         self.sensor_color = PURPLE_SENSOR  # couleur du trait représentant un capteur
@@ -107,13 +108,13 @@ class SimulationConfiguration:
 
     @debug.setter
     def debug(self, debug):
+        self._debug = debug
         self.print_detailed_logs = debug
-        self.car_show_bumping_boxes = debug
+        self.car_show_hitboxes = debug
         self.car_show_bounding_boxes = debug
         self.car_show_leader_links = debug
         self.car_show_id = debug
         self.car_show_speed_kmh = debug
-        self._debug = debug
 
     @property
     def use_idm(self):
@@ -121,8 +122,8 @@ class SimulationConfiguration:
 
     @use_idm.setter
     def use_idm(self, use_idm):
+        self._use_idm = use_idm
         self.use_hitboxes = use_idm
-        self.get_leaders_max_rec_depth = 0 if use_idm else self.def_settings["get_leaders_max_rec_depth"]
 
     @property
     def presentation_mode(self):
@@ -130,6 +131,7 @@ class SimulationConfiguration:
 
     @presentation_mode.setter
     def presentation_mode(self, presentation_mode):
+        self._presentation_mode = presentation_mode
         self.show_infos = not presentation_mode
         self.show_scale = not presentation_mode
 

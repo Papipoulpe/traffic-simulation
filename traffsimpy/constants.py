@@ -4,7 +4,7 @@ from importlib.resources import files
 INF = float("+inf")
 
 DEF_FONT_PATH = files("traffsimpy.resources").joinpath("jbmono.ttf")
-DEF_ARROW_PATH = files("traffsimpy.resources").joinpath("arrow.png")
+DEF_ARROW_PATH = files("traffsimpy.resources").joinpath("chevron.svg")
 
 TXT_RED = Fore.RED
 TXT_BOLD = Style.BRIGHT

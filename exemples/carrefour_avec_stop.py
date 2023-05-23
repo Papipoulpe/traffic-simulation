@@ -58,6 +58,6 @@ road_graph = {
 
 sim.create_roads(road_list)
 sim.set_road_graph(road_graph)
-sim.set_bumping_zone(radius=1.5*s)
+sim.set_heavy_traffic_area(radius=1.5 * s)
 
-sim.start()
+sim.run()

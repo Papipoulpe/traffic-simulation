@@ -9,4 +9,4 @@ road_list = [{"id": 1, "type": "road", "start": (-60, 410), "end": (720, 410), "
 
 sim.create_roads(road_list)
 sim.set_road_graph({1: 2, 2: None})
-sim.start()
+sim.run()

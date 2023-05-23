@@ -14,8 +14,8 @@ npz = np.zeros
 
 ids = {}  # dictionnaire des identifiants d'objet
 
-Vecteur: TypeAlias = NDArray[np.float64]  # définition du type Vecteur = (x, y)
-Couleur: TypeAlias = tuple[int, int, int]  # définition du type Couleur = (r, g, b)
+Coordinates: TypeAlias = NDArray[np.float64]  # définition du type Coordinates = (x, y)
+Color: TypeAlias = tuple[int, int, int]  # définition du type Color = (r, g, b)
 
 _sentinel = object()  # sentinel pour get_by_id
 
@@ -50,44 +50,45 @@ def get_by_id(obj_id: int, default=_sentinel) -> Any:
     return ids.get(obj_id, default) if default != _sentinel else ids[obj_id]
 
 
-def norm(v: Vecteur):
+def norm(v: Coordinates):
     """Renvoie la norme ``||v||``."""
     return np.sqrt(v @ v)
 
 
-def normed(v: Vecteur, new_norm: float = 1) -> Vecteur:
+def normed(v: Coordinates, new_norm: float = 1) -> Coordinates:
     """Renvoie ``new_norm * v / ||v||``."""
     return new_norm * v / norm(v)
 
 
-def distance(p1: Vecteur, p2: Vecteur) -> float:
+def distance(p1: Coordinates, p2: Coordinates) -> float:
     """Renvoie la longueur du segment ``[p1p2]``."""
     return norm(p2 - p1)
 
 
-def direction_vector(p1: Vecteur, p2: Vecteur) -> Vecteur:
+def direction_vector(p1: Coordinates, p2: Coordinates) -> Coordinates:
     """Renvoie le vecteur directeur normé de la droite ``(p1p2)``."""
     return normed(p2 - p1)
 
 
-def normal_vector(v: Vecteur, new_norm: float = 1) -> Vecteur:
+def normal_vector(v: Coordinates, new_norm: float = 1) -> Coordinates:
     """Renvoie un vecteur normal au vecteur ``v``, éventuellement renormé."""
     a, b = v
     return normed(npa((-b, a)), new_norm)
 
 
-def angle_of_vect(v: Vecteur) -> float:
+def angle_of_vect(v: Coordinates) -> float:
     """Angle du vecteur ``v`` avec l'axe des abscisses, en degrés."""
     u = npa((1, -1j))
     return np.angle(u @ v, deg=True)
 
 
 def update_taylor(car, dt: float):
-    """
-    Calcule les vecteurs du mouvement de la voiture avec des séries de Taylor, en évitant v < 0.
+    """Calcule les vecteurs du mouvement de la voiture avec des séries de Taylor, en évitant v < 0.
 
-    :param car: voiture dont la vitesse et la distance doivent être mis à jour
-    :param dt: durée du mouvement
+    Args:
+        car: voiture dont la vitesse et la distance doivent être mis à
+            jour
+        dt: durée du mouvement
     """
     if car.v + car.a * dt < 0:  # si le prochain v est négatif
         car.d -= 1 / 2 * car.v * car.v / car.a
@@ -97,7 +98,7 @@ def update_taylor(car, dt: float):
         car.d += car.v * dt + 1 / 2 * car.a * dt * dt  # dev de taylor ordre 2
 
 
-def idm(car, leader_coords: Optional[Vecteur]) -> float:
+def idm(car, leader_coords: Optional[tuple[float, float]]) -> float:
     """Calcul l'accélération d'une voiture d'après l'*Intelligent Driver Model*."""
     if leader_coords is not None:  # si on a un leader
         delta_d, lead_v = leader_coords
@@ -105,6 +106,8 @@ def idm(car, leader_coords: Optional[Vecteur]) -> float:
         delta_v = car.v - lead_v
 
         dd_parfait = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * sc.a_min_conf * car.a_max))
+        if delta_d == 0:
+            delta_d = 1e-4
         a_interaction = (temp := (dd_parfait / delta_d)) * temp
     else:
         a_interaction = 0
@@ -115,7 +118,7 @@ def idm(car, leader_coords: Optional[Vecteur]) -> float:
     return a_idm
 
 
-def iidm(car, leader_coords: Optional[Vecteur]) -> float:
+def iidm(car, leader_coords: Optional[tuple[float, float]]) -> float:
     """Calcul l'accélération d'une voiture d'après l'*Improved Intelligent Driver Model*."""
     if leader_coords is None:  # si pas de leader
         if car.v <= car.v_max:
@@ -149,7 +152,7 @@ def iidm(car, leader_coords: Optional[Vecteur]) -> float:
                 return a_free_road
 
 
-def lines_intersection(p1: Vecteur, vd1: Vecteur, p2: Vecteur, vd2: Vecteur) -> Vecteur:
+def lines_intersection(p1: Coordinates, vd1: Coordinates, p2: Coordinates, vd2: Coordinates) -> Coordinates:
     """Renvoie le point d'intersections de deux droites grâce à un de leurs points et leurs vecteurs directeurs."""
     x1, y1 = p1
     x2, y2 = p2
@@ -159,7 +162,7 @@ def lines_intersection(p1: Vecteur, vd1: Vecteur, p2: Vecteur, vd2: Vecteur) -> 
     return p1 + vd1 * t
 
 
-def bezier_curve(p1: Vecteur, p2: Vecteur, p3: Vecteur, n: int) -> list[Vecteur]:
+def bezier_curve(p1: Coordinates, p2: Coordinates, p3: Coordinates, n: int) -> list[Coordinates]:
     """Renvoie ``n`` points de la courbe de Bézier définie par les points de contrôle ``p1``, ``p2`` et ``p3``."""
     points = []
     for i in range(n):
@@ -169,7 +172,7 @@ def bezier_curve(p1: Vecteur, p2: Vecteur, p3: Vecteur, n: int) -> list[Vecteur]
     return points
 
 
-def closest_color(requested_color: Couleur) -> str:
+def closest_color(requested_color: Color) -> str:
     """Renvoie le nom anglais de la couleur correspondante."""
     min_colours = {}
     for key, name in webcolors.CSS3_HEX_TO_NAMES.items():
@@ -181,7 +184,7 @@ def closest_color(requested_color: Couleur) -> str:
     return min_colours[min(min_colours.keys())]
 
 
-def get_color_name(requested_color: Couleur) -> str:
+def get_color_name(requested_color: Color) -> str:
     """Renvoie le nom anglais de la couleur la plus proche."""
     try:
         closest_name = webcolors.rgb_to_name(requested_color)
@@ -190,15 +193,16 @@ def get_color_name(requested_color: Couleur) -> str:
     return closest_name
 
 
-def is_inside_circle(m: Vecteur, circle: tuple[Vecteur, float]) -> bool:
+def is_inside_circle(m: Coordinates, circle: tuple[Coordinates, float]) -> bool:
     """Renvoie si le point ``m`` appartient au disque, défini par son centre et son rayon."""
     center, radius = circle
     return (m - center) @ (m - center) <= radius*radius
 
 
-def do_polygons_intersect(polygon1: Sequence[Vecteur], polygon2: Sequence[Vecteur]):
+def do_polygons_intersect(polygon1: Sequence[Coordinates], polygon2: Sequence[Coordinates]):
     """Détermine si deux polygones convexes sont d'intersection vide ou non, en utilisant le théorème de séparation des
-    polygones convexes."""
+    polygones convexes.
+    """
     for polygon in (polygon1, polygon2):
         # pour chaque polygone, on regarde si une de leurs arêtes les sépare
         n = len(polygon)
@@ -233,7 +237,8 @@ def red_to_blue_gradient(shade: float):
     0.25 -> orange,
     0.5 -> jaune,
     0.75 -> vert,
-    1 -> bleu."""
+    1 -> bleu.
+    """
     return ROGB_GRADIENT[max(min(round(shade * (len(ROGB_GRADIENT) - 1)), len(ROGB_GRADIENT) - 1), 0)]
 
 

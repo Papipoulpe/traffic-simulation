@@ -34,21 +34,21 @@ road_list = [
      "car_factory": CarFactory(**car_factory_settings), "sign": TrafficLight(2)},
     {"id": 8, "type": "road", "start": (w / 2 + ec, y_nord), "end": (w / 2 + ec, h + marg)},
 
-    {"id": 14, "type": "road", "start": 1, "end": 4, "with_arrows": False},  # routes du carrefour
+    {"id": 14, "type": "road", "start": 1, "end": 4, "with_arrows": False, "priority": 1},  # routes du carrefour
     {"id": 16, "type": "arcroad", "start": 1, "end": 6},
     {"id": 18, "type": "arcroad", "start": 1, "end": 8},
 
-    {"id": 32, "type": "road", "start": 3, "end": 2, "with_arrows": False},
+    {"id": 32, "type": "road", "start": 3, "end": 2, "with_arrows": False, "priority": 1},
     {"id": 36, "type": "arcroad", "start": 3, "end": 6},
     {"id": 38, "type": "arcroad", "start": 3, "end": 8},
 
     {"id": 52, "type": "arcroad", "start": 5, "end": 2},
     {"id": 54, "type": "arcroad", "start": 5, "end": 4},
-    {"id": 58, "type": "road", "start": 5, "end": 8, "with_arrows": False},
+    {"id": 58, "type": "road", "start": 5, "end": 8, "with_arrows": False, "priority": 1},
 
     {"id": 72, "type": "arcroad", "start": 7, "end": 2},
     {"id": 74, "type": "arcroad", "start": 7, "end": 4},
-    {"id": 76, "type": "road", "start": 7, "end": 6, "with_arrows": False}]
+    {"id": 76, "type": "road", "start": 7, "end": 6, "with_arrows": False, "priority": 1}]
 
 road_graph = {
     1: {14: 0.3, 16: 0.4, 18: 0.3}, 14: 4, 16: 6, 18: 8, 2: None,
@@ -58,6 +58,6 @@ road_graph = {
 
 sim.create_roads(road_list)
 sim.set_road_graph(road_graph)
-sim.set_bumping_zone(radius=1.5*s)
+sim.set_heavy_traffic_area(radius=1.5 * s)
 
-sim.start()
+sim.run()

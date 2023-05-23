@@ -59,4 +59,4 @@ road_graph = {
 sim.create_roads(road_list)
 sim.set_road_graph(road_graph)
 
-sim.start()
+sim.run()

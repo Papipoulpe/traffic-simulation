@@ -9,12 +9,16 @@ from .drawing import *
 
 class Simulation:
     def __init__(self, title: str = "TraffSimPy", width: Optional[int] = None, height: Optional[int] = None):
-        """
-        Simulation du trafic.
+        """Simulation du trafic.
 
-        :param title: titre de la fenêtre
-        :param width: largeur de la fenêtre, en pixels. Détectée automatiquement si non fourni, puis récupérable avec Simulation.size[0].
-        :param height: hauteur de la fenêtre, en pixels. Détectée automatiquement si non fourni, puis récupérable avec Simulation.size[1].
+        Args:
+            title: titre de la fenêtre
+            width: largeur de la fenêtre, en pixels. Détectée
+                automatiquement si non fourni, puis récupérable avec
+                Simulation.size[0].
+            height: hauteur de la fenêtre, en pixels. Détectée
+                automatiquement si non fourni, puis récupérable avec
+                Simulation.size[1].
         """
         self.id = 0
         ids[0] = self
@@ -55,15 +59,16 @@ class Simulation:
 
         # générer l'image de flèche avec l'angle de la route est très long, on le fera qu'une fois au début de
         # start_loop() et on la stockera sous deux tailles dans ce dictionnaire
-        self.road_rotated_arrows = {}
+        self.roads_rotated_arrows = {}
 
         self.off_set = npz(2)  # décalage par rapport à l'origine, pour bouger la simulation
         self.dragging = False  # si l'utilisateur est en train de bouger la simulation
         self.mouse_last = npz(2)  # dernières coordonnées de la souris
 
-    def rc_to_sc(self, coordinates: Vecteur | None, is_vect: bool = False):
+    def rc_to_sc(self, coordinates: Coordinates | None, is_vect: bool = False):
         """Convertie des coordonnées naturelles (abscisses vers la droite, ordonnées vers le haut) en coordonnées
-        de la simulation (abscisses vers la droite, ordonnées vers le bas), et en nparray."""
+        de la simulation (abscisses vers la droite, ordonnées vers le bas), et en nparray.
+        """
         if isinstance(coordinates, (float, int, type(None))):
             return coordinates
 
@@ -76,24 +81,31 @@ class Simulation:
 
     def start_loop(self, duration: float):
         """Lance la boucle de la simulation, en actualisant chaque élément et en les affichant ``FPS`` fois par
-        seconde, pendant une durée ``duration``."""
+        seconde, pendant une durée ``duration``.
+        """
         self.duration = duration
 
         # initialisation des images de flèches orientées dans le sens des routes
         for road in self.roads:
-            if isinstance(road, Road):
-                arrow_width = road.width * 0.7
-                arrow = pygame.transform.smoothscale(self.ARROW_IMG, (arrow_width, arrow_width))
-                road_arrows = {"s": pygame.transform.rotate(self.SMALL_ARROW, road.angle),
-                               "l": pygame.transform.rotate(arrow, road.angle)}
-                self.road_rotated_arrows[road.id] = road_arrows
-            elif isinstance(road, ArcRoad):
-                for sroad in road.sroads:
-                    arrow_width = road.width * 0.7
-                    arrow = pygame.transform.smoothscale(self.ARROW_IMG, (arrow_width, arrow_width))
-                    sroad_arrows = {"s": pygame.transform.rotate(self.SMALL_ARROW, sroad.angle),
-                                    "l": pygame.transform.rotate(arrow, sroad.angle)}
-                    self.road_rotated_arrows[sroad.id] = sroad_arrows
+            arrow_width = road.width * 0.7
+            arrow = pygame.transform.smoothscale(self.ARROW_IMG, (arrow_width, arrow_width))
+
+            if road.with_arrows:
+                period = sc.road_arrow_period  # période spatiale des flèches
+                n = round(road.length / period)  # nombre de flèches pour la route
+                coordinates = []
+
+                for i in range(n):
+                    arrow_coord = road.dist_to_pos((i + 0.5) * period)  # "+ O.5" pour centrer les flèches sur la longueur
+                    coordinates.append(arrow_coord)
+            else:
+                coordinates = []
+
+            road_arrows = {"small_arrow": pygame.transform.rotate(self.SMALL_ARROW, road.angle),
+                           "large_arrow": pygame.transform.rotate(arrow, road.angle),
+                           "coordinates": coordinates}
+
+            self.roads_rotated_arrows[road.id] = road_arrows
 
         while not self.over:  # tant que la simulation n'est pas terminée
             for event in pygame.event.get():  # on regarde les dernières actions de l'utilisateur
@@ -135,7 +147,7 @@ class Simulation:
                 self.show_sign(road.sign)
 
                 # actualisation des objets de la route
-                road_leaders = self.get_road_leaders(road, avg=sc.get_leaders_method_avg)
+                road_leaders = self.get_road_leaders(road, avg=sc.get_road_leaders_method_avg)
                 road.update_cars(self.dt, road_leaders)
                 road.update_sensors(self.t)
                 road.update_sign(self.t)
@@ -263,8 +275,8 @@ class Simulation:
 
     def show_car(self, car: Car):
         """Affiche une voiture."""
-        if sc.car_show_bumping_boxes:  # si on affiche les zones de collision
-            brightness = 1.2 if is_inside_circle(car.pos, self.heavy_traffic_area) else 0.9
+        if sc.car_show_hitboxes:  # si on affiche les zones de collision
+            brightness = 1.1 if is_inside_circle(car.pos, self.heavy_traffic_area) else 0.9
             brighten = lambda color: min(int(color * brightness), 255)
 
             r, g, b = car.color
@@ -284,7 +296,7 @@ class Simulation:
                 for leader in car.soon_colliding_cars:
                     draw_line(self.surface, car.color, car.pos, leader.pos, self.off_set)
             else:
-                for leader, _ in car.leaders:
+                for leader, *_ in car.leaders:
                     draw_line(self.surface, car.color, car.pos, leader.pos, self.off_set)
 
         if sc.car_speed_coded_color:  # si la couleur de la voiture dépend de sa vitesse
@@ -296,7 +308,7 @@ class Simulation:
                      self.off_set)  # affiche le rectangle qui représente la voiture
 
         if sc.car_show_direction:  # si on affiche la direction de la voiture
-            rotated_arrow = self.road_rotated_arrows[car.road.id]["s"]
+            rotated_arrow = self.roads_rotated_arrows[car.road.id]["small_arrow"]
             draw_image(self.surface, rotated_arrow, car.road.dist_to_pos(car.d), self.off_set)
 
         roof_text = ""
@@ -318,20 +330,15 @@ class Simulation:
 
     def show_roads(self, road_list: Sequence[Road | ArcRoad]):
         """Affiche des routes."""
-        for road in road_list:  # on affiche d'abord les routes courbées
-            if isinstance(road, ArcRoad):
-                self.show_roads(road.sroads)
+        for road in road_list:  # on affiche d'abord les rectangles des routes
+            draw_polygon(self.surface, road.color, road.vertices, self.off_set)
 
-        for road in road_list:  # puis les routes droites
-            if isinstance(road, Road):
-                draw_polygon(self.surface, road.color, road.vertices, self.off_set)
+        for road in road_list:  # puis les flèches
+            if road.with_arrows:
+                rotated_arrows = self.roads_rotated_arrows[road.id]
 
-                if road.with_arrows:
-                    rotated_arrow = self.road_rotated_arrows[road.id]["l"]
-
-                    for arrow_coord in road.arrows_coords:
-                        x, y, _ = arrow_coord
-                        draw_image(self.surface, rotated_arrow, npa((x, y)), self.off_set)
+                for arrow_coord in rotated_arrows["coordinates"]:
+                    draw_image(self.surface, rotated_arrows["large_arrow"], arrow_coord, self.off_set)
 
     def show_sign(self, sign: TrafficLight | StopSign):
         """Affiche un élément de signalisation."""
@@ -375,7 +382,7 @@ class Simulation:
         """Exporte les résultats d'un capteur dans un fichier Excel .xlsx."""
         file_name = f"{self.title}_capteur{sensor.id}_{strftime('%H%M%S_%d%m%y')}.xlsx"
         sheet_name = f"{self.title} ({round(self.t, 2)}s) capteur {sensor.id}"
-        sensor.export_results(file_path=sc.sensor_exports_directory + file_name, sheet_name=sheet_name, describe=describe)
+        sensor.export_results(file_name, sheet_name, describe)
 
     def export_sensors_results(self, *sensors_id, describe: bool = True):
         """Exporte les résultats de capteurs dans des fichiers Excel .xlsx."""
@@ -411,17 +418,16 @@ class Simulation:
         end = kw.get("end", kw.get("e", self.size))  # end ou son alias e, par défaut (height, width) de la fenêtre
         v_max = kw.get("v_max", sc.v_max)  # v_max, par défaut sc.v_max
         color = kw.get("color", kw.get("c", sc.road_color))  # color ou son alias c, par défaut sc.road_color
-        width = kw.get("width", kw.get("w", sc.road_width))  # width ou son alias w, par défaut sc.width
+        with_arrows = kw.get("with_arrows", kw.get("wa", True))  # with_arrows ou son alias wa, par défaut True
         priority = kw.get("priority", kw.get("p", 0))  # priority ou son alias p, par défaut 0
-        car_factory = kw.get("car_factory", kw.get("cf"))  # car_factory ou son alias cf, par défaut None
+        heavily_traveled = kw.get("heavily_traveled", kw.get("ht", False))  # heavily_traveled ou son alias ht, par défaut False
         obj_id = kw.get("id")  # id, par défaut None
 
         # conversion des coordonnées classiques en coordonnées pygame (ne change pas les int et float)
         start, end = self.rc_to_sc(start), self.rc_to_sc(end)
 
-        # mises à l'échelle
+        # mise à l'échelle
         v_max *= sc.scale
-        width *= sc.scale
 
         if isinstance(start, int):  # si l'argument start est un id de route
             rstart = get_by_id(start, None)
@@ -444,20 +450,26 @@ class Simulation:
             vdend = self.rc_to_sc(vdend, is_vect=True)  # conversion en coordonnées pygame
 
         if kw.get("type", "road") in ["road", "r"]:  # si on crée une route droite
-            sign = kw.get("sign", kw.get("sg"))
-            with_arrows = kw.get("with_arrows", kw.get("wa", True))
-            sensors = kw.get("sensors", kw.get("srs"))
-            road = Road(start=start, end=end, width=width, color=color, v_max=v_max, with_arrows=with_arrows,
-                        priority=priority, car_factory=car_factory, sign=sign, sensors=sensors, obj_id=obj_id)
+            car_factory = kw.get("car_factory", kw.get("cf"))  # car_factory ou son alias cf, par défaut None
+            sign = kw.get("sign", kw.get("sg"))  # sign ou son alias sg, par défaut None
+            sensors = kw.get("sensors", kw.get("srs"))  # sensors ou son alias srs, par défaut None
+            road = Road(start=start, end=end, color=color, v_max=v_max, with_arrows=with_arrows, priority=priority,
+                        heavily_traveled=heavily_traveled, car_factory=car_factory, sign=sign, sensors=sensors,
+                        obj_id=obj_id)
+
+            self.roads.append(road)
 
         elif kw["type"] in ["arcroad", "arc", "a"]:  # si on crée une route courbée
-            n = kw.get("n", sc.arcroad_num_of_sroads)
-            road = ArcRoad(start=start, end=end, vdstart=vdstart, vdend=vdend, n=n, v_max=v_max, width=width,
-                           color=color, priority=priority, car_factory=car_factory, obj_id=obj_id)
+            n = kw.get("n", sc.arcroad_num_of_sroads)  # n, par défaut sc.arcroad_num_of_sroads
+            road = ArcRoad(start=start, end=end, vdstart=vdstart, vdend=vdend, n=n, v_max=v_max,
+                           with_arrows=with_arrows, heavily_traveled=heavily_traveled, color=color, priority=priority,
+                           obj_id=obj_id)
+
+            for sroad in road.sroads[::-1]:
+                self.roads.append(sroad)
+
         else:
             raise ValueError(f'Le type de route doit être parmi "", "road", "r", "arcroad", "arc" ou "a", pas "{kw["type"]}".')
-
-        self.roads.append(road)
 
         return road
 
@@ -485,8 +497,7 @@ class Simulation:
         return [self.create_road(**road) for road in road_list]
 
     def set_road_graph(self, graph: dict):
-        """
-        Définie le graphe des routes de la simulation. Prend en argument le graphe des routes, qui est un dictionnaire
+        """Définie le graphe des routes de la simulation. Prend en argument le graphe des routes, qui est un dictionnaire
         qui à l'identifiant d'une route associe une des choses suivantes :
 
         - l'identifiant d'une autre route
@@ -494,89 +505,128 @@ class Simulation:
         - une fonction f(t: float) -> int qui au temps **d'arrivée** de la voiture sur la route associe l'identifiant d'une autre route
         - None ou {} pour supprimer les voitures qui sortent de la route (ne pas inclure l'identifiant de la route dans le dictionnaire a le même effet)
 
-        :param graph: graphe des routes
+        Args:
+            graph: graphe des routes
         """
-        self.road_graph = graph  # on enregistre le graphe
+        processed_graph = {}
 
-        for road in self.roads:
-            road.car_sorter = CarSorter(graph.get(road.id))
+        def process_next_roads(nrs):
+            """Traite nrs pour retirer les dépendances en ArcRoad."""
+            if isinstance(nrs, int) and isinstance(next_road := get_by_id(nrs), ArcRoad):
+                return next_road.sroads[0].id
 
-            if road.car_sorter.method == "user func":
-                self.road_graph[road.id] = None
+            elif isinstance(next_roads, dict):
+                processed_next_roads = {}
+                for next_road_id in nrs:
+                    proba = nrs[next_road_id]
+                    if isinstance(next_road := get_by_id(next_road_id), ArcRoad):
+                        processed_next_roads[next_road.sroads[0].id] = proba
+                    else:
+                        processed_next_roads[next_road_id] = proba
+                return processed_next_roads
+
+            else:
+                return nrs
+
+        for road_id in graph:
+            road = get_by_id(road_id)
+            next_roads = graph[road_id]
 
             if isinstance(road, ArcRoad):
+                processed_graph[road.sroads[-1].id] = process_next_roads(next_roads)
                 for i in range(road.n - 1):
-                    self.road_graph[road.sroads[i].id] = road.sroads[i + 1].id
-                self.road_graph[road.sroads[-1].id] = self.road_graph.get(road.id)
+                    processed_graph[road.sroads[i].id] = road.sroads[i + 1].id
 
-    def get_road_leaders(self, road: Road, avg: bool, rec_depth: int = 0):
-        """
-        Renvoie les éventuels leaders de la première voiture de la route, dans une liste de la forme ``[(car, distance, importance), ...]``, par un parcours en profondeur.
+            processed_graph[road_id] = process_next_roads(next_roads)
 
-        :param road: route en question
-        :param avg: méthode de recherche : si True, renvoie les dernières voitures des prochaines routes, pondérées par la probabilité que la première voiture aille sur ces routes. Sinon, renvoie celles de la dernière voiture de la prochaine route de la première voiture de la route.
-        :param rec_depth: niveau de récursion atteint
+        for road_id in processed_graph:
+            road = get_by_id(road_id)
+            road.car_sorter = CarSorter(processed_graph[road_id])
+
+            if road.car_sorter.method == "user func":
+                processed_graph[road_id] = None
+
+            elif isinstance(processed_graph[road_id], int):
+                processed_graph[road_id] = {processed_graph[road_id]: 1}
+
+        self.road_graph = processed_graph
+
+    def get_road_leaders(self, road, avg=False):
+        """Renvoie les éventuels leaders de la première voiture de la route, dans une liste de tuples de la forme
+        ``(voiture, distance, proba)``.
+
+        Args:
+            road: route à traiter
+            avg: si le parcours se fait selon toutes les prochaines routes possibles ou selon la prochaine route de la
+                première voiture
         """
-        if rec_depth > sc.get_leaders_max_rec_depth:
+        if not road.cars:  # si la route n'a pas de voitures, le résultat du parcours ne sera pas utilisé
             return []
 
+        already_seen_roads_id = {}  # routes déjà vues
+        leaders = []  # résultat du parcours : liste de tuples (voiture, distance, proba)
+
+        def dfs(r: Road, d: float, p: float):
+            """Parcours en profondeur des routes de la simulation depuis la route r. Rempli la liste leaders lorsque
+            la route possède au moins une voiture ou un élément de signalisation actif, cherche plus loin sinon.
+
+            Args:
+                r: départ du parcours
+                d: distance déjà parcourue
+                p: probabilité d'arriver sur cette route
+            """
+            if r.id in already_seen_roads_id:
+                # si on est déjà passé sur la route, on fait rien
+                return
+            else:
+                # sinon on la marque comme déjà vue
+                already_seen_roads_id[r.id] = 1
+
+            if r.cars:
+                # si la route possède au moins une voiture, on prend la dernière
+                last_car = r.cars[-1]
+                leaders.append((last_car, d + last_car.d - last_car.length/2, p))
+            elif r.sign.dummy_car is not None:
+                # si elle a un élément de signalisation actif, on le prend lui
+                leaders.append((r.sign.dummy_car, d + r.length, p))
+            else:
+                # sinon, on cherche plus loin
+                next_rs_id = self.road_graph.get(r.id)
+                if next_rs_id is None:  # si pas de prochaine route, on s'arrête
+                    return
+                else:
+                    for next_r_id in next_rs_id:
+                        next_p = next_rs_id[next_r_id]
+                        dfs(get_by_id(next_r_id), d + r.length, p * next_p)
+
         if avg:
-            next_roads_probs = self.road_graph.get(road.id)  # récupération des prochaines routes et de leurs probabilités
+            next_roads_ids = self.road_graph.get(road.id)
 
-            if next_roads_probs is None:  # si pas de prochaine route
-                return []
-
-            if isinstance(next_roads_probs, int):  # si un seul choix de prochaine route
-                next_roads_probs = {next_roads_probs: 1}
-
-            leaders = []
-
-            for next_road_id in next_roads_probs:  # pour chaque prochaine route
-                next_road = get_by_id(next_road_id)
-
-                if isinstance(next_road, ArcRoad):
-                    next_road = next_road.sroads[0]
-
-                if next_road.cars:  # si elle contient des voitures, on prend les coordonnées de la première
-                    next_car = next_road.cars[-1]
-                    leaders.append((next_car, next_car.d - next_car.length / 2))
-                elif next_road.sign.dummy_car is not None:  # si elle a un élément de signalisation actif, on le prend lui
-                    leaders.append((next_road.sign.dummy_car, next_road.length))
-                else:  # sinon, on cherche plus loin
-                    next_leaders = self.get_road_leaders(next_road, avg=True, rec_depth=rec_depth + 1)
-                    leaders += [(next_car, next_road.length + d) for next_car, d in next_leaders]
+            if next_roads_ids is not None:
+                for next_road_id in next_roads_ids:
+                    proba = next_roads_ids[next_road_id]
+                    dfs(get_by_id(next_road_id), 0, proba)
 
         else:
+            first_car: Car = road.cars[0]
 
-            if not road.cars:
-                return []
-
-            next_road = road.cars[0].next_road
-
-            if isinstance(next_road, ArcRoad):
-                next_road = next_road.sroads[0]
-
-            if next_road is None:  # dans le cas où la première voiture n'a pas encore de prochaine route
-                leaders = self.get_road_leaders(road, avg=True, rec_depth=rec_depth + 1)
-            elif next_road.cars:  # si elle en a une et qu'elle contient des voitures
-                next_car = next_road.cars[-1]
-                leaders = [(next_car, next_car.d)]
-            elif next_road.sign.dummy_car is not None:  # si elle a un élément de signalisation actif
-                leaders = [(next_road.sign.dummy_car, next_road.length)]
-            else:  # si elle en a une mais qui ne contient pas de voiture
-                next_leaders = self.get_road_leaders(next_road, avg=True, rec_depth=rec_depth + 1)
-                leaders = [(next_car, next_road.length + d) for next_car, d in next_leaders]
+            if first_car.next_road is None:
+                leaders = self.get_road_leaders(road, True)
+            else:
+                dfs(first_car.next_road, 0, 1)
 
         return leaders
 
-    def set_heavy_traffic_area(self, center: tuple[float, float] | Vecteur = None, radius: float = INF):
-        """
-        Définie la zone circulaire où le trafic sera probablement dense et où la simulation utilisera les hitbox et
+    def set_heavy_traffic_area(self, center: tuple[float, float] | Coordinates = None, radius: float = INF):
+        """Définie la zone circulaire où le trafic sera probablement dense et où la simulation utilisera les hitbox et
         hurtbox des voitures pour éviter les collisions. La détection de collision sera automatiquement activée, même si
         ``USE_BUMPING_BOXES = False``.
 
-        :param center: centre du disque décrivant la zone, centre de la fenêtre par défaut
-        :param radius: rayon du disque décrivant la zone, en **pixels**, +inf par défaut
+        Args:
+            center: centre du disque décrivant la zone, centre de la
+                fenêtre par défaut
+            radius: rayon du disque décrivant la zone, en **pixels**,
+                +inf par défaut
         """
         sc.use_hitboxes = True
 
@@ -588,12 +638,13 @@ class Simulation:
     def pair_of_cars_maybe_interacting(self):
         """Renvoie la liste des couples de voitures en potentielle interaction (bientôt en collision, etc...), en
         utilisant des conditions nécessaires et peu coûteuses à calculer, mais pas suffisantes. Correspond à la phase
-        "broad" dans la détection de collisions."""
+        "broad" dans la détection de collisions.
+        """
         # construction de la liste des voitures de la simulation dans la zone de trafic dense
         cars = []
         for road in self.roads:
             for car in road.cars:
-                if is_inside_circle(car.pos, self.heavy_traffic_area):
+                if road.is_heavily_traveled or is_inside_circle(car.pos, self.heavy_traffic_area):
                     cars.append(car)
 
         # contruction des couples
@@ -639,6 +690,7 @@ class Simulation:
         collisions."""
         c1mcwc2 = car1.may_collide_with(car2)
         c2mcwc1 = car2.may_collide_with(car1)
+
         if c1mcwc2 and c2mcwc1:
             if car1.has_priority_over(car2):
                 car2.soon_colliding_cars.append(car1)

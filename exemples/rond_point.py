@@ -23,42 +23,42 @@ vd_nord_est = (-1, 1)
 nord_ouest = x_ouest + s * (1 - ex_coeff), y_nord - s * (1 - ex_coeff)
 vd_nord_ouest = (-1, -1)
 
-car_factory_settings = {"freq": [3, 7.5], "crea": "rand_color"}
+car_factory_settings = {"freq": [3, 8], "crea": "rand_color"}
 
 sim = Simulation("Rond-point", w, h)
 
 road_list = [
-    {"id": 1, "type": "road", "start": (-marg, h / 2 - ec), "end": (x_ouest, h / 2 - ec),  # routes de gauche
+    {"id": 1, "s": (-marg, h / 2 - ec), "e": (x_ouest, h / 2 - ec),  # routes de gauche
      "car_factory": CarFactory(**car_factory_settings)},
-    {"id": 2, "type": "road", "start": (x_ouest, h / 2 + ec), "end": (-marg, h / 2 + ec)},
+    {"id": 2, "s": (x_ouest, h / 2 + ec), "e": (-marg, h / 2 + ec)},
 
-    {"id": 3, "type": "road", "start": (w + marg, h / 2 + ec), "end": (x_est, h / 2 + ec),  # routes de droite
+    {"id": 3, "s": (w + marg, h / 2 + ec), "e": (x_est, h / 2 + ec),  # routes de droite
      "car_factory": CarFactory(**car_factory_settings)},
-    {"id": 4, "type": "road", "start": (x_est, h / 2 - ec), "end": (w + marg, h / 2 - ec)},
+    {"id": 4, "s": (x_est, h / 2 - ec), "e": (w + marg, h / 2 - ec)},
 
-    {"id": 5, "type": "road", "start": (w / 2 + ec, -marg), "end": (w / 2 + ec, y_sud),  # routes du bas
+    {"id": 5, "s": (w / 2 + ec, -marg), "e": (w / 2 + ec, y_sud),  # routes du bas
      "car_factory": CarFactory(**car_factory_settings)},
-    {"id": 6, "type": "road", "start": (w / 2 - ec, y_sud), "end": (w / 2 - ec, -marg)},
+    {"id": 6, "s": (w / 2 - ec, y_sud), "e": (w / 2 - ec, -marg)},
 
-    {"id": 7, "type": "road", "start": (w / 2 - ec, h + marg), "end": (w / 2 - ec, y_nord),  # routes du haut
+    {"id": 7, "s": (w / 2 - ec, h + marg), "e": (w / 2 - ec, y_nord),  # routes du haut
      "car_factory": CarFactory(**car_factory_settings)},
-    {"id": 8, "type": "road", "start": (w / 2 + ec, y_nord), "end": (w / 2 + ec, h + marg)},
+    {"id": 8, "s": (w / 2 + ec, y_nord), "e": (w / 2 + ec, h + marg)},
 
-    {"id": 9, "type": "arcroad", "start": 1, "end": sud_ouest, "vdend": vd_sud_ouest},  # routes du rond-point
-    {"id": 10, "type": "arcroad", "start": sud_ouest, "vdstart": vd_sud_ouest, "end": 6},
-    {"id": 11, "type": "arcroad", "start": sud_ouest, "vdstart": vd_sud_ouest, "end": sud_est, "vdend": vd_sud_est},
+    {"id": 9, "type": "a", "s": 1, "e": sud_ouest, "vde": vd_sud_ouest, "p": 1},  # routes du rond-point
+    {"id": 10, "type": "a", "s": sud_ouest, "vds": vd_sud_ouest, "e": 6},
+    {"id": 11, "type": "a", "s": sud_ouest, "vds": vd_sud_ouest, "e": sud_est, "vde": vd_sud_est, "p": 1},
 
-    {"id": 12, "type": "arcroad", "start": 5, "end": sud_est, "vdend": vd_sud_est},
-    {"id": 13, "type": "arcroad", "start": sud_est, "vdstart": vd_sud_est, "end": 4},
-    {"id": 14, "type": "arcroad", "start": sud_est, "vdstart": vd_sud_est, "end": nord_est, "vdend": vd_nord_est},
+    {"id": 12, "type": "a", "s": 5, "e": sud_est, "vde": vd_sud_est, "p": 1},
+    {"id": 13, "type": "a", "s": sud_est, "vds": vd_sud_est, "e": 4},
+    {"id": 14, "type": "a", "s": sud_est, "vds": vd_sud_est, "e": nord_est, "vde": vd_nord_est, "p": 1},
 
-    {"id": 15, "type": "arcroad", "start": 3, "end": nord_est, "vdend": vd_nord_est},
-    {"id": 16, "type": "arcroad", "start": nord_est, "vdstart": vd_nord_est, "end": 8},
-    {"id": 17, "type": "arcroad", "start": nord_est, "vdstart": vd_nord_est, "end": nord_ouest, "vdend": vd_nord_ouest},
+    {"id": 15, "type": "a", "s": 3, "e": nord_est, "vde": vd_nord_est, "p": 1},
+    {"id": 16, "type": "a", "s": nord_est, "vds": vd_nord_est, "e": 8},
+    {"id": 17, "type": "a", "s": nord_est, "vds": vd_nord_est, "e": nord_ouest, "vde": vd_nord_ouest, "p": 1},
 
-    {"id": 18, "type": "arcroad", "start": 7, "end": nord_ouest, "vdend": vd_nord_ouest},
-    {"id": 19, "type": "arcroad", "start": nord_ouest, "vdstart": vd_nord_ouest, "end": 2},
-    {"id": 20, "type": "arcroad", "start": nord_ouest, "vdstart": vd_nord_ouest, "end": sud_ouest, "vdend": vd_sud_ouest}]
+    {"id": 18, "type": "a", "s": 7, "e": nord_ouest, "vde": vd_nord_ouest, "p": 1},
+    {"id": 19, "type": "a", "s": nord_ouest, "vds": vd_nord_ouest, "e": 2},
+    {"id": 20, "type": "a", "s": nord_ouest, "vds": vd_nord_ouest, "e": sud_ouest, "vde": vd_sud_ouest, "p": 1}]
 
 road_graph = {
     1: 9, 5: 12, 3: 15, 7: 18,
@@ -69,6 +69,6 @@ road_graph = {
 
 sim.create_roads(road_list)
 sim.set_road_graph(road_graph)
-sim.set_bumping_zone(radius=150)
+sim.set_heavy_traffic_area(radius=150)
 
-sim.start()
+sim.run()

@@ -1,7 +1,10 @@
 """Exemple de simulation d'un rond-point où quatres doubles voies se rejoignent. Des panneaux stop sont placés à chaque
-entrée du rond-point."""
+entrée du rond-point.
+"""
 
-from traffsimpy import Simulation, CarFactory, StopSign
+from traffsimpy import Simulation, CarFactory, StopSign, simulation_configuration
+
+simulation_configuration.debug = True
 
 
 w, h = 1440, 840  # taille de la fenêtre
@@ -70,6 +73,6 @@ road_graph = {
 
 sim.create_roads(road_list)
 sim.set_road_graph(road_graph)
-sim.set_bumping_zone(radius=s)
+sim.set_heavy_traffic_area(radius=s)
 
-sim.start()
+sim.run()

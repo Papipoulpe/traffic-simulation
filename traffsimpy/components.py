@@ -4,39 +4,49 @@ from .math_and_util import *
 
 
 class Car:
-    def __init__(self, v: float = sc.car_v, a: float = sc.car_a, length: float = sc.car_length, width: float = sc.car_width,
-                 a_max: float = sc.a_max, a_min: float = sc.a_min, t_react: float = sc.t_react,
-                 color: Couleur = sc.car_color, obj_id: Optional[int] = None, **kwargs):
+    def __init__(self, v: float = sc.car_v, a: float = sc.car_a, length: float = sc.car_length,
+                 width: float = sc.car_width, a_max: float = sc.a_max, a_min: float = sc.a_min,
+                 t_react: float = sc.t_react, color: Color = sc.car_color, obj_id: Optional[int] = None, **kwargs):
         """
-        Voiture.
+        Objet voiture, ou plus largement tout véhicule de la simulation. Une voiture est toujours
+        rattachée à une route. Sa position est déterminée par la route auquelle elle est rattachée et la distance qu'
+        elle a parcourue depuis la début de cette route. Cette distance, ainsi que sa vitesse et son accélération, sont
+        éventuellement mis à jour à chaque image de la simulation.
 
-        :param v: vitesse, en m/s
-        :param a: accélération, en m/s²
-        :param length: longueur, en m
-        :param width: largeur, en m
-        :param a_max: accélération maximale, en m/s²
-        :param a_min: déccélération minimale, en m/s² (a priori négative)
-        :param t_react: temps de réaction du conducteur, en s
-        :param color: couleur
-        :param obj_id: éventuel identifiant
+        Ainsi, pour une voiture, une itération de la simulation se déroule généralement de la manière suivante :        \n
+        - la simulation détermine les autres voitures ayant un risque de collision avec la voiture
+        - la route de la voiture lui fournit son leader
+        - la voiture calcule son leader vituel équivalent puis met à jour son accélération, sa vitesse et sa distance
+          depuis le début de la route
+        - la route met à jour la position (x, y) de la voiture, ce qui actualise tous les attributs qui en dépendent
+          (rectangle d'affichage, zones de collision...)
+
+        Args:
+            v: vitesse initiale, en m/s
+            a: accélération initiale, en m/s²
+            length: longueur, en m
+            width: largeur, en m
+            a_max: accélération maximale, en m/s²
+            a_min: décélération minimale, en m/s² (négative, a priori)
+            t_react: temps de réaction du conducteur, en s
+            color: couleur
+            obj_id: éventuel identifiant
         """
+        # attributs constants
         self.id = new_id(self, obj_id, pos=kwargs.get("pos_id", True))
         self.color = color
         self.length = length * sc.scale
         self.width = width * sc.scale
-        self.road = ...  # actuelle route à laquelle le véhicule est rattaché, définie dans road.new_car()
-        self.next_road = ...  # prochaine route du véhicule, définie par le CarSorter de self.road
 
-        self._d = 0  # distance du centre du véhicule depuis le début de la route
-        self.total_d = 0  # distance totale parcourue par la voiture
+        # route et prochaine route de la voiture
+        self.road = ...  # définie dans road.new_car()
+        self.next_road = None  # définie par le CarSorter de self.road
+
+        # coordonnées, vitesse et accélération
+        self.d = 0  # distance du centre du véhicule jusqu'au début de la route
         self._pos = npz(2)  # position du centre du véhicule
-        self.v = v * sc.scale if v is not None else None  # vitesse
-        self.a = a * sc.scale  # acceleration
-
-        # historiques de la distance parcourue, vitesse et accélération de la voiture en fonction du temps
-        self.d_t = {}
-        self.v_t = {}
-        self.a_t = {}
+        self.v = v * sc.scale if v is not None else None  # vitesse, sera remplacée par self.road.v_max si None
+        self.a = a * sc.scale  # accélération
 
         # paramètres de l'IDM
         self.delta_d_min = sc.delta_d_min * sc.scale  # commun à tous les véhicules
@@ -58,23 +68,13 @@ class Car:
         # coordonnées des sommets inférieur gauche et supérieur droite de la boite englobante droite (AABB)
         self.aabb = npz((2, 2))
 
-        self.leaders = []  # leaders de la voiture
-        self.soon_colliding_cars = []  # voitures en potentielle collision avec la voiture
+        self.leaders = []  # leaders de la voiture : liste de couples (d, v) où d est la distance par la route à une autre voiture et v sa vitesse
+        self.soon_colliding_cars = []  # voitures en potentielle collision avec la voiture : liste de Car
 
     def __repr__(self):
-        return f"Car(id={self.id}, pos={self.pos}, d={self.d}, v={self.v}, a={self.a}, v_max={self.v_max}, virtual_leader={self.virtual_leader}, soon_colliding_cars={self.soon_colliding_cars}, leaders={self.leaders}, next_road={self.next_road}, color={closest_color(self.color)})"
-
-    @property
-    def d(self):
-        return self._d
-
-    @d.setter
-    def d(self, d):
-        """car.d.setter : quand car.d est mis à jour, cette fonction est exécutée et met à jour la distance totale
-        parcourue et l'historique de cette distance en fonction du temps par la même occasion."""
-        self.total_d += d - self._d
-        self._d = d
-        self.d_t[round(self.road.simulation.t, 4)] = self.total_d / sc.scale
+        return f"Car(id={self.id}, pos={self.pos}, d={self.d}, v={self.v}, a={self.a}, v_max={self.v_max}, " \
+               f"virtual_leader={self.virtual_leader}, soon_colliding_cars={self.soon_colliding_cars}, " \
+               f"leaders={self.leaders}, next_road={self.next_road}, color={closest_color(self.color)})"
 
     @property
     def pos(self):
@@ -82,8 +82,9 @@ class Car:
 
     @pos.setter
     def pos(self, pos):
-        """car.pos.setter : quand car.pos est mis à jour, cette fonction est exécutée est met à jour les sommets pour
-        l'affichage et les sommets des zones de collision par la même occasion."""
+        """car.pos.setter : quand car.pos est mis à jour, cette fonction est exécutée est met à jour les autres
+        attributs de la voiture qui en dépendent (sommets pour l'affichage, les sommets des zones de collision) par la
+        même occasion."""
         self._pos = pos
 
         vd = self.road.vd  # on récupère le vecteur directeur de la route
@@ -93,7 +94,7 @@ class Car:
             self.width / 2)  # vecteur normal de la route normé pour la largeur de la voiture
         vn_ddm = normal_vector(
             self.road.vd,
-            self.delta_d_min / 2)  # vn de la route normé pour la distance de sécurité
+            self.delta_d_min / 2)  # vn de la route normé pour la longueur de la zone de collision de devant
 
         # sommets d'affichage
         c1 = self.pos + vn_w - vd_l  # derrière droit
@@ -103,7 +104,7 @@ class Car:
         self.vertices = c1, c2, c3, c4
 
         # sommets de la zone de collision devant
-        vd_ddmp = vd * (self.delta_d_min/2 + self.v * self.t_react)  # vecteur directeur de la route normé pour la distance de sécurité et la vitesse de la voiture
+        vd_ddmp = vd * (self.delta_d_min + self.v * self.t_react)  # vecteur directeur de la route normé pour la distance de sécurité et la vitesse de la voiture
         c1 = self.pos + vn_w + vd_l + vd_ddmp  # devant droit
         c2 = self.pos - vn_w + vd_l + vd_ddmp  # devant gauche
         c3 = self.pos - vn_w - vn_ddm + vd_l  # derrière gauche
@@ -125,19 +126,60 @@ class Car:
 
     def update(self, dt):
         """
-        Actualise les coordonnées du mouvement (position, vitesse, accéleration) de la voiture.
+        Actualise les coordonnées du mouvement (position, vitesse, accélération) de la voiture :
+        - calcul le leader vituel équivalent de la voiture
+        - en déduit son accélération, puis sa vitesse et sa position sur la route
+        - met à jour sa position sur la fenêtre et ses attributs qui en dépendent
 
-        :param dt: durée du mouvement
+        Args:
+            dt: durée du mouvement
         """
-        leader_coords = self.virtual_leader  # récupération du leader virtuel
-
         if sc.use_idm:
-            self.a = iidm(self, leader_coords)  # si l'IDM est utilisé, on met à jour l'accélération
+            self.a = iidm(self, self.virtual_leader)  # si l'IDM est utilisé, on met à jour l'accélération
 
-        update_taylor(self, dt)  # mise à jour de d et v par développement de Taylor
+        update_taylor(self, dt)  # mise à jour de d et v par développement de Taylor (en place)
 
-        self.v_t[round(self.road.simulation.t, 4)] = self.a / sc.scale  # mise à jour de l'historique des vitesses
-        self.a_t[round(self.road.simulation.t, 4)] = self.v / sc.scale  # et des accélérations
+        self.pos = self.road.dist_to_pos(self.d)  # mise à jour de la position et ce qui en dépend
+
+    @property
+    def virtual_leader(self):
+        """Renvoie la distance au et la vitesse d'un leader virtuel équivalent de la voiture, i.e. un couple (d, v) où :
+
+        - si la voiture est en prévision de collision avec d'autres voitures, c'est-à-dire si ``car.bumping_cars``
+        n'est pas vide, alors d est la moyenne des distances à vol d'oiseau entre la voiture et les voitures de
+        ``car.bumping_cars`` et v est la moyenne de leurs vitesses projetées selon le vecteur directeur de sa route
+
+        - sinon, d est la moyenne des distances par la route jusqu'aux voitures représentées dans ``car.leaders`` et v
+        la moyenne de leurs vitesses."""
+        # si la voiture va peut être rentrer dans d'autres voitures, seules celles-ci seront prises en compte
+        if self.soon_colliding_cars:
+            # on fait la moyenne des distances à vol d'oiseau et la moyenne des vitesses pondérées par le produit
+            # scalaire des vecteurs directeurs des routes
+            virtual_leader_coords = npz(2)
+
+            for other_car in self.soon_colliding_cars:
+                d = max(distance(self.pos, other_car.pos) - self.length / 2 - other_car.length / 2, 0)
+                v = other_car.v * (self.road.vd @ other_car.road.vd)
+                virtual_leader_coords += npa([d, v])
+
+            return virtual_leader_coords / len(self.soon_colliding_cars)
+
+        # sinon, si la simulation/route fournit des leaders, on prend la moyenne de leurs distances/vitesses
+        elif self.leaders:
+            virtual_leader_d = 0
+            virtual_leader_v = 0
+            total_p = 0
+
+            for leader, d, p in self.leaders:
+                virtual_leader_d += d * p
+                virtual_leader_v += leader.v * p
+                total_p += p
+
+            return virtual_leader_d / total_p, virtual_leader_v / total_p
+
+        # sinon, on renvoie None
+        else:
+            return None
 
     def may_collide_with(self, other_car: "Car"):
         """Renvoie si la voiture va **percuter** ``other_car``, c'est-à-dire si ``car.front_bumper_hitbox``  et
@@ -146,8 +188,7 @@ class Car:
 
     def might_collide_with(self, other_car: "Car"):
         """Renvoie si la voiture et ``other_car`` vont se rentrer dedans, c'est-à-dire si ``car.front_bumper_hitbox``
-        et ``other_car.front_bumper_hitbox`` s'intersectent. Équivalent à
-        ``other_car.might_collide_with(car)``."""
+        et ``other_car.front_bumper_hitbox`` s'intersectent. Équivalent à ``other_car.might_collide_with(car)``."""
         return do_polygons_intersect(self.front_bumper_hitbox, other_car.front_bumper_hitbox)
 
     def has_priority_over(self, other_car):
@@ -168,85 +209,84 @@ class Car:
         # sinon, on compare leurs directions : si l'autre voiture vient de la gauche de la voiture, on est prioritaire
         return np.cross(vd, vd_other) <= 0
 
-    @property
-    def virtual_leader(self):
-        """Renvoie la distance au et la vitesse d'un leader virtuel de la voiture, i.e. un couple (d, v) où :
-
-        - si la voiture est en prévision de collision avec d'autres voitures, c'est-à-dire si ``car.bumping_cars``
-        n'est pas vide, alors d est la moyenne des distances à vol d'oiseau entre la voiture et les voitures de
-        ``car.bumping_cars`` et v est la moyenne de leurs vitesses projetées selon le vecteur directeur de sa route
-
-        - sinon, d est la moyenne des distances par la route jusqu'aux voitures de ``car.leaders`` et v la moyenne de
-        leurs vitesses."""
-        if self.soon_colliding_cars:
-            leader_coords = npz(2)
-            for other_car in self.soon_colliding_cars:
-                d = max(distance(self.pos, other_car.pos) - self.length / 2 - other_car.length / 2, 0)
-                v = other_car.v * (self.road.vd @ other_car.road.vd)
-                leader_coords += npa([d, v])
-            return leader_coords / len(self.soon_colliding_cars)
-
-        elif self.leaders:
-            leader_coords = npz(2)
-            for other_car, d in self.leaders:
-                leader_coords += npa([d, other_car.v])
-            return leader_coords / len(self.leaders)
-
-        else:
-            return None
-
 
 class CarFactory:
     def __init__(self, freq=None, crea=None, obj_id=None):
         """
-        Création de voitures à l'entrée d'une route.
+        Objet CarFactory, qui gère la création de voitures à l'entrée d'une route. Une CarFactory est
+        associée à une et une seule route. Au début de la simulation, elle génère selon les paramètres de l'utilisateur
+        deux fonctions : une fonction de fréquence de création, qui sera appellée à chaque itération de la simulation
+        et renvoie un booléen indicant si une voiture doit être créée ou non, et une fonction de création, qui sera
+        appellée si la fonction de fréquence de création renvoie une réponse positive et renvoie un objet Car étant la
+        nouvelle voiture crée.
 
-        :param freq: fréquence de création de voiture, peut être de type ``[a, b]`` pour une pause aléatoire d'une durée entre a et b secondes entre la création de deux voiture, ``a`` pour une fréquence constante, une fonction ``f(t: float) -> bool`` ou vide pour aucune création
-        :param crea: manière de choisir la voiture à créer, peut être de type ``{"arg": val, ...}``, ``"rand_color"``, ``"rand_length"`` et/ou ``"rand_width"``, une fonction ``f(t: float) -> Car`` ou vide pour la voiture par défaut
+        Ainsi, pour un CarFactory, une itération de la simulation se déroule généralement de la manière suivante :      \n
+        - la simulation exécute la fonction de fréquence de création en lui fournissant les arguments requis
+          (typiquement, le temps)
+        - si elle renvoie True, la fonction de création est exécutée et renvoie une nouvelle voiture
+
+        Args:
+            freq: fréquence de création de voiture, peut être de type ``[a, b]`` pour une pause aléatoire d'une durée
+                entre a et b secondes entre la création de deux voiture, ``a`` pour une fréquence constante, une fonction
+                ``f(t: float) -> bool`` ou vide pour aucune création
+            crea: manière de choisir la voiture à créer, peut être de type ``{"arg": val, ...}``, ``"rand_color"``,
+                ``"rand_length"`` et/ou ``"rand_width"``, une fonction ``f(t: float) -> Car`` ou vide pour la voiture
+                par défaut
+            obj_id: éventuel identifiant
         """
+        # attributs constants
         self.id = new_id(self, obj_id)
         self.road = ...
         self.args = [freq, crea]
 
-        self.next_t = ...  # éventuellement utilisé pour fréquence aléatoire
+        # éventuellement utilisé pour fréquence aléatoire, prochain instant où une voiture doit être créée
+        self.next_t = ...
 
-        self.freq_func = self.init_freqfunc(freq)  # définit dans road.init_car_factory()
-        self.crea_func = self.init_creafunc(crea)  # définit dans road.init_car_factory()
+        # initialisation des fonctions
+        self.freq_func = self.init_freqfunc(freq)
+        self.crea_func = self.init_creafunc(crea)
 
     def __repr__(self):
         return f"CarFactory(id={self.id}, freq_arg={self.args[0]}, crea_arg={self.args[1]})"
 
     def init_freqfunc(self, arg):
-        """Génère une fonction de fréquence de création."""
+        """Génère une fonction de fréquence de création, en fonction de ce qu'a fourni l'utilisateur (voir doc de
+        self.__init__)."""
         if isinstance(arg, (int, float)) or (isinstance(arg, (tuple, list)) and arg[0] == arg[1]):
             # si de type a ou [a, a], renvoie True toutes les a secondes
             if isinstance(arg, (list, tuple)):
+                # si de type [a, a], on récupère le a
                 a = arg[0]
             else:
                 a = arg
 
             def freq_func(t):
-                right_time = round(t, 2) % a == 0
-                if self.road.cars and not sc.car_fact_force_crea:
+                right_time = round(t, 2) % a == 0  # True toute les a secondes
+                # on vérifie qu'il y a de la place sur la route, sauf si sc.car_fact_force_crea est True
+                if right_time and not sc.car_fact_force_crea and self.road.cars:
                     last_car = self.road.cars[-1]
-                    space_available = last_car.d > last_car.length + sc.delta_d_min  # s'il y a de la place disponible ou non
-                    return right_time and space_available
+                    enough_space_available = last_car.d - last_car.length / 2 > sc.car_fact_rand_length_max + sc.delta_d_min
+                    return enough_space_available
                 else:
                     return right_time
 
             return freq_func
 
         elif isinstance(arg, (tuple, list)):
-            # si de type [a, b], attendre aléatoirement entre a et b secondes
-            self.next_t = np.random.uniform(arg[0], arg[1])
+            # si de type [a, b], attendre aléatoirement entre a et b secondes : self.next_t est le prochain instant ou
+            # la création sera permise, et on lui rajoutera un delai aléatoire entre a et b à chaque fois qu'il sera
+            # dépassé
+            a, b = arg
+            self.next_t = np.random.uniform(a, b)
 
             def freq_func(t):
                 if t >= self.next_t:
-                    delay = np.random.uniform(arg[0], arg[1])
-                    self.next_t = t + delay
-                    if self.road.cars and not sc.car_fact_force_crea:
+                    delay = np.random.uniform(a, b)
+                    self.next_t += delay
+                    # on vérifie qu'il y a de la place sur la route, sauf si sc.car_fact_force_crea est True
+                    if not sc.car_fact_force_crea and self.road.cars:
                         last_car = self.road.cars[-1]
-                        space_available = last_car.d > last_car.length + sc.delta_d_min  # s'il y a de la place disponible ou non
+                        space_available = last_car.d - last_car.length / 2 > sc.car_fact_rand_length_max + sc.delta_d_min
                         return space_available
                     else:
                         return True
@@ -254,24 +294,27 @@ class CarFactory:
                     return False
 
             return freq_func
-        elif arg is None:
+
+        elif arg is None:  # si aucune création
             return None
+
         else:  # si une fonction du temps est fournie
             def freq_func(t):
                 right_time = arg(t)
-                if self.road.cars and not sc.CAR_FACT_FORCE_CREA:
+                # on vérifie qu'il y a de la place sur la route, sauf si sc.car_fact_force_crea est True
+                if self.road.cars and not sc.car_fact_force_crea:
                     last_car = self.road.cars[-1]
-                    space_available = last_car.d > last_car.length + sc.delta_d_min  # s'il y a de la place disponible ou non
+                    space_available = last_car.d - last_car.length / 2 > sc.car_fact_rand_length_max + sc.delta_d_min
                     return right_time and space_available
                 else:
                     return right_time
 
             return freq_func
 
-    @staticmethod
-    def init_creafunc(arg):
-        """Génère une fonction de création."""
+    def init_creafunc(self, arg):
+        """Génère une fonction de création, en fonction de ce qu'a fourni l'utilisateur (voir doc de self.__init__)."""
         if not isinstance(arg, (str, list, dict, type(None))):
+            # si arg est une fonction, on l'utilise
             return arg
 
         if not isinstance(arg, list):
@@ -286,18 +329,21 @@ class CarFactory:
                 return Car()
 
             if "rand_color" in args:
-                attrs["color"] = [np.random.randint(sc.car_rand_color_min, sc.car_rand_color_max) for _ in range(3)]
+                attrs["color"] = [np.random.randint(sc.car_fact_rand_color_min, sc.car_fact_rand_color_max) for _ in range(3)]
 
             if "rand_length" in args:
-                attrs["length"] = np.random.randint(sc.car_rand_length_min, sc.car_rand_length_max)
+                attrs["length"] = np.random.randint(sc.car_fact_rand_length_min, sc.car_fact_rand_length_max)
 
             if "rand_width" in args:
-                attrs["width"] = np.random.randint(sc.car_rand_width_min, sc.car_rand_width_max)
+                attrs["width"] = np.random.randint(sc.car_fact_rand_width_min, sc.car_fact_rand_width_max)
 
             for a in args:
                 if isinstance(a, dict):
                     for key in a:
                         attrs[key] = a[key]
+
+            if attrs.get("v") is None:
+                attrs["v"] = self.road.v_max / sc.scale  # /sc.scale car Car prend des arguments en unités SI
 
             return Car(**attrs)
 
@@ -307,8 +353,11 @@ class CarFactory:
         """
         Renvoie une voiture générée par la fonction de création si la fonction de fréquence de création l'autorise.
 
-        :param args_fact: dictionnaire d'arguments pour la fonction de fréquence de création
-        :param args_crea: dictionnaire d'arguments pour la fonction de création
+        Args:
+            args_fact: dictionnaire d'arguments pour la fonction de
+                fréquence de création
+            args_crea: dictionnaire d'arguments pour la fonction de
+                création
         """
         # si une fonction de fréquence de création est définie et qu'elle autorise la création
         if self.freq_func is not None and self.freq_func(**args_fact):
@@ -319,30 +368,45 @@ class CarFactory:
 class CarSorter:
     def __init__(self, method=None, obj_id=None):
         """
-        Gestion des voitures à la sortie d'une route, en fait décidé dès l'entrée de la voiture sur la route.
+        Objet CarSorter, gèrant les prochaines routes des voitures quittant la route. Au démarrage de la
+        simulation, chaque route se voit assigné un CarSorter, dont elle appellera la fonction de tri dès qu'une
+        voiture la rejoint pour définir sa prochaine route.
 
-        :param method: id de route, dictionnaire id -> proba, fonction f(t) -> id ou None (voir la doc de simulation.set_road_graph)
+        Ainsi, pour un CarSorter, une itération de la simulation se déroule généralement de la manière suivante :       \n
+        - la route associée reçoit éventuellement une nouvelle voiture
+        - elle appelle la fonction de tri de son CarSorter et assigne le résultat à l'attribut next_road de la voiture
+
+        Args:
+            method: id de route, dictionnaire id -> proba, fonction f(t) -> id ou None (voir la doc de
+                simulation.set_road_graph)
         """
+        # attributs constants
         self.id = new_id(self, obj_id)
+        self.method = method  # méthode de tri
 
+        # initialisation de la fonction de tri
         self.sorter = self.init_sorter(method)
-        self.method = method
 
     def __repr__(self):
         return f"CarSorter(id={self.id}, method={self.method})"
 
-    def init_sorter(self, method):
-        if not method:
+    def init_sorter(self, arg):
+        """Génère une fonction de tri selon l'argument fourni."""
+        if not arg:
+            # si l'argument est None, renvoie une fonction renvoyant toujours None
             self.method = None
             return empty_function
 
-        elif isinstance(method, int):
-            return lambda *_, **__: get_by_id(method)
+        elif isinstance(arg, int):
+            # si l'argument est un id de route, renvoie une fonction renvoyant toujours la route associée
+            return lambda *_, **__: get_by_id(arg)
 
-        elif isinstance(method, dict):
+        elif isinstance(arg, dict):
+            # si l'argument est un disctionnaire associant un id de route à une proba, renvoie une fonction prenant une
+            # des routes aléatoirement
             probs, roads = [], []
-            for road in method:
-                probs.append(method[road])
+            for road in arg:
+                probs.append(arg[road])
                 roads.append(road)
 
             def sort_func(*_, **__):
@@ -351,29 +415,40 @@ class CarSorter:
             return sort_func
 
         else:
+            # si l'argument est une fonction fournie par l'utilisateur, on l'utilise
             self.method = "user func"
-            return lambda t: get_by_id(method(t))
+            return lambda t: get_by_id(arg(t))
 
 
 class TrafficLight:
     def __init__(self, state_init: int, static=False, obj_id: int = None):
         """
-        Feu tricolore de signalisation.
+        Objet du feu tricolore de signalisation. Au démarrage de la simulation, chaque route se voit
+        assigné un élément de signalisation : soit l'utilisateur en fournit un pour la route, soit la simulation
+        donne un feu constamment vert. A un état du feu (vert, orange, rouge) est associé une fausse voiture, qui sera
+        donnée comme leader à la première voiture de la route, ce qui imite la réaction d'un conducteur face au feu.
 
-        :param state_init: état initial du feu : 0 = rouge, 1 = orange, 2 = vert
-        :param static: si le feu change d'état pendant la simulation
-        :param obj_id: éventuel identifiant
+        Ainsi, pour un feu, une itération de la simulation se déroule généralement de la manière suivante :             \n
+        - la simulation met à jour l'état du feu, ce actualise la fausse voiture du feu
+        - la route récupère cette voiture et la fournit à sa première voiture
+
+        Args:
+            state_init: état initial du feu : 0 = rouge, 1 = orange, 2 =
+                vert
+            static: si l'état du feu reste invariant pendant la simulation
+            obj_id: éventuel identifiant
         """
+        # attributs constants
         self.id = new_id(self, obj_id)
-        self._road: Road = ...  # route auquelle le feu est rattaché
-        self.pos = npz(2)  # position
-        self.vertices = npz((4, 2))  # sommets pour affichage
-        self.width = sc.tl_width  # épaisseur du trait représentant le feu
-
-        self.state = self.state_init = state_init  # signalisation du feu : rouge 0, orange 1 ou vert 2
         self.static = static  # si le feu change d'état durant la simulation
+        self.width = sc.tl_width  # épaisseur du trait représentant le feu
+        self._road: Road = ...  # route auquelle le feu est rattaché
+        self.pos = npz(2)  # position, définie dans road.setter
+        self.vertices = npz((4, 2))  # sommets pour affichage, définis dans road.setter
+        self.dummy_cars = {}  # fausses voitures du feu, définies dans road.setter
 
-        self.dummy_cars = {}  # fausses voitures du feu, définies dans traffic_light.road.setter
+        # état du feu
+        self.state = self.state_init = state_init  # signalisation du feu : rouge 0, orange 1 ou vert 2
 
     def __repr__(self):
         return f"TrafficLight(id={self.id}, state={self.state}, state_init={self.state_init}, static={self.static})"
@@ -388,16 +463,16 @@ class TrafficLight:
         jour la postion, les sommets d'affichage et les fausses voitures du feu par la même occasion."""
         self._road = road
 
-        self.pos = road.dist_to_pos(road.length - self.width/2)
+        self.pos = road.dist_to_pos(road.length - self.width/2)  # position du feu
 
         vd = self.road.vd * sc.tl_width / 2
         vn = normal_vector(vd, self.road.width / 2)
-        self.vertices = self.pos - vd + vn, self.pos - vd - vn, self.pos + vd - vn, self.pos + vd + vn
+        self.vertices = self.pos - vd + vn, self.pos - vd - vn, self.pos + vd - vn, self.pos + vd + vn  # sommets pour l'affichage
 
-        dummy_car_red = Car(v=0, length=0, pos_id=False)
-        dummy_car_red._d = self.road.length  # contourne car.d.setter
-        dummy_car_orange = Car(v=0, length=0, pos_id=False)
-        dummy_car_orange._d = self.road.length + sc.delta_d_min / sc.tl_orange_slow_down_coeff  # contourne car.d.setter
+        dummy_car_red = Car(v=0, length=0, pos_id=False)  # fausse voiture pour le feu rouge
+        dummy_car_red.d = self.road.length
+        dummy_car_orange = Car(v=0, length=0, pos_id=False)  # fausse voiture pour le feu orange
+        dummy_car_orange.d = self.road.length + sc.delta_d_min / sc.tl_orange_deceleration_coeff
         dummy_car_red._pos = dummy_car_orange._pos = self.pos  # contourne car.pos.setter
         self.dummy_cars = {0: dummy_car_red, 1: dummy_car_orange}  # dictionnaire qui à l'état du feu associe la fausse voiture
 
@@ -426,15 +501,23 @@ class TrafficLight:
 class StopSign:
     def __init__(self, obj_id: int = None):
         """
-        Panneau de signalisation Stop.
+        Objet panneau de signalisation stop. Au démarrage de la simulation, chaque route se voit
+        assigné un élément de signalisation : soit l'utilisateur en fournit un pour la route, soit la simulation
+        donne un feu constamment vert. Chaque panneau stop a une fausse voiture, qui sera donnée comme leader à la
+        première voiture de la route, ce qui imite la réaction d'un conducteur face au panneau stop.
 
-        :param obj_id: éventuel identifiant
+        Ainsi, pour un panneau stop, une itération de la simulation se déroule généralement de la manière suivante :    \n
+        - la route récupère la fausse voiture du panneau stop et la fournit à sa première voiture
+
+        Args:
+            obj_id: éventuel identifiant
         """
+        # attributs constants
         self.id = new_id(self, obj_id)
-        self.pos = npz(2)
-        self.vertices = npz((4, 2))
-        self._road = ...
-        self.dummy_car = ...
+        self.pos = npz(2)  # position dans sur la fenêtre
+        self.vertices = npz((4, 2))  # sommets pour l'affichage
+        self._road = ...  # route du panneau, définie dans road.init_sign
+        self.dummy_car = ...  # fausse voiture, définie dans self.road.setter
 
     def __repr__(self):
         return f"StopSign(id={self.id})"
@@ -446,7 +529,8 @@ class StopSign:
     @road.setter
     def road(self, road):
         """stop_sign.road.setter : quand stop_sign.road est mis à jour, cette fonction est exécutée et met à jour la
-        postion, les sommets d'affichage et la fausse voiture du panneau stop par la même occasion."""
+        postion, les sommets d'affichage et la fausse voiture du panneau stop par la même occasion.
+        """
         self._road = road
         self.pos = road.dist_to_pos(road.length)
 
@@ -455,7 +539,7 @@ class StopSign:
         self.vertices = self.pos - vd, self.pos - vn, self.pos + vd, self.pos + vn
 
         dummy_car = Car(v=0, length=0, pos_id=False)
-        dummy_car._d = road.length + 2.5 * sc.delta_d_min
+        dummy_car.d = road.length + 3 * sc.delta_d_min/sc.ss_deceleration_coeff
         dummy_car._pos = self.pos
         self.dummy_car = dummy_car
 
@@ -464,25 +548,38 @@ class Sensor:
     def __init__(self, position: float = 1, attributes_to_monitor: Optional[str] | Sequence[Optional[str]] = ("v", "a"),
                  obj_id=None):
         """
-        Capteur qui récupère des données de la simulation.
+        Objet capteur. Un capteur est associé à une route et récupère des données de la simulation, plus précisement
+        des attributs des voitures qui dépasse la position du capteur au sein de la route. Ces attributs sont définis
+        par l'utilisateur lors de la création du capteur. A la fin de la simulation, l'utilisateur peut récupérer ces
+        données, sous forme de graphes ou en les exportant dans des fichiers de différents types. Une route peut avoir
+        plusieurs capteurs.
 
-        :param position: proportion de la route où sera placé le capteur (0 = au tout début, 0.5 = au milieu, 1 = à la toute fin)
-        :param attributes_to_monitor: les attributs des voitures à surveiller, en chaînes de caractères : None pour juste compter le nombre de voitures, ou autant que voulu parmi ``v``, ``a``, ``length``, ``width``, ``color`` et ``total_d`` ou parmi ``d(t)``, ``v(t)`` et ``a(t)``
+        Ainsi, pour un capteur, une itération se déroule généralement de la manière suivante :
+        - il regarde chaque voiture de la route
+        - pour celles qu'il n'a jamais vu et qui l'ont dépassé, il enregistre certains de leurs attributs et note la
+        date
+
+        Args:
+            position: proportion de la route où sera placé le capteur (0
+                = au tout début, 0.5 = au milieu, 1 = à la toute fin)
+            attributes_to_monitor: les attributs des voitures à
+                surveiller, en chaînes de caractères : None pour juste
+                compter le nombre de voitures, ou autant que voulu parmi
+                ``v``, ``a``, ``length``, ``width``, ``color`` et
+                ``total_d`` ou parmi ``d(t)``, ``v(t)`` et ``a(t)``
         """
-        if not 0 <= position <= 1:
-            raise ValueError(f"La position du capteur doit être entre 0 et 1, pas {position}.")
-
+        #  attributs constants
         self.id = new_id(self, obj_id)
-        self.d_ratio = position
-        self.vertices = npz((4, 2))
-
-        self.data = []
+        self.d_ratio = position  # position en fraction de la longueur de la route
+        self.vertices = npz((4, 2))  # sommets d'affichage, définis dans self.road.setter
+        self._road = ...  # route à laquelle le capteur est rattaché, définie dans road.init_sensor
+        self.d = 0  # distance entre le capteur et le début de la route, définie dans self.road.setter
         self.data_is_vals = True  # si le capteur récupère les valeurs instantanées des attributs des voitures ou l'historique de ces valeurs
-        self.already_seen_cars_id = []
-        self.attributes_to_monitor = self.init_atm(attributes_to_monitor)
+        self.attributes_to_monitor = self.init_atm(attributes_to_monitor)  # attributs des voitures surveillés
 
-        self.road = ...  # route à laquelle le capteur est rattaché, définie dans road.init_sensor()
-        self._d = 0  # distance entre le capteur et le début de la route
+        # stockage des données
+        self.data = []
+        self.already_seen_cars_id = {}
 
     def __repr__(self):
         return f"Sensor(id={self.id}, position={self.d_ratio}, attributes_to_monitor={self.attributes_to_monitor})"
@@ -499,16 +596,17 @@ class Sensor:
         return list(atm)
 
     @property
-    def d(self):
-        return self._d
+    def road(self):
+        return self._road
 
-    @d.setter
-    def d(self, d):
-        self._d = d
+    @road.setter
+    def road(self, road):
+        self._road = road
+        self.d = road.length * self.d_ratio
         vn_w = normal_vector(self.road.vd, self.road.width / 2)
         vd = self.road.vd
         vd_l = vd * sc.sensor_width / 2
-        pos = self.road.dist_to_pos(self._d)
+        pos = self.road.dist_to_pos(self.d)
         c1 = pos + vn_w - vd_l
         c2 = pos - vn_w - vd_l
         c3 = pos - vn_w + vd_l
@@ -523,7 +621,7 @@ class Sensor:
             return pd.DataFrame(data=self.data, columns=["t (s)", "car_id"] + atm_with_units)
 
         else:
-            multi_index = pd.MultiIndex.from_product([self.already_seen_cars_id, atm_with_units], names=["car_id", "f(t)"])
+            multi_index = pd.MultiIndex.from_product([self.already_seen_cars_id.keys(), atm_with_units], names=["car_id", "f(t)"])
             data = []
             dt = get_by_id(0).dt
             t_max = max(data_t for data_t, *_ in self.data)
@@ -556,7 +654,7 @@ class Sensor:
                 val /= sc.scale  # si l'attribut a une longueur dans ses unités, on la remet à l'échelle
             data_row.append(val)
         self.data.append(data_row)
-        self.already_seen_cars_id.append(car.id)
+        self.already_seen_cars_id[car.id] = 1
 
     def watch_road(self, t):
         for car in self.road.cars:
@@ -595,29 +693,53 @@ class Sensor:
 
 
 class Road:
-    def __init__(self, start, end, width, color, v_max, with_arrows, priority, car_factory, sign, sensors, obj_id):
+    def __init__(self, start, end, color, v_max, with_arrows, priority, heavily_traveled, car_factory, sign, sensors, obj_id):
         """
-        Route droite.
+        Objet route droite. Une route droite gère des voitures, un élement de signalisation et des capteurs, et est
+        utilise un CarFactory qui gère la création de ses voitures et un CarSorter qui gère le tri des voitures qui
+        sortent de la route. Une route va d'un point à un autre, a une limite de vitesse et un indice de priorité (si
+        son indice de priorité est plus grand que celui d'une autre route, ses voitures seront prioritaires devant
+        celles de l'autre route). Ses prédécesseures et successeures sont définies dans le graphe des routes, que
+        l'utilisateur définie au début de la simulation.
 
-        :param start: coordonnées du début
-        :param end: coordonnées de la fin
-        :param width: largeur
-        :param color: couleur
-        :param v_max: limite de vitesse de la route
-        :param with_arrows: si des flèches seront affichées sur la route ou non
-        :param priority: priorité des voitures de la route
-        :param car_factory: éventuelle CarFactory
-        :param sign: éventuel élément de signalisation : feu de signalisation ou panneau stop
-        :param sensors: éventuels capteurs
-        :param obj_id: éventuel identifiant
+        Ainsi, pour une route droite, une itération de la simulation de déroule généralement de la manière suivante :
+        - la simulation détermine les leaders de la première voiture de la route (qu'on appelera "leaders de la route")
+        en cherchant les prochaines voitures parmi les autres routes
+        - la route actualise ses voitures une par une, en donnant comme leaders à la première voiture soit la fausse
+        voioture de son élément de signalisation si elle existe, soit les leaders de la route, et au autres voitures la
+        voiture qu'elle ont devant elle
+        - si une voiture a dépassé une certaine distance, la route met à jour son v_max pour le faire varier doucement
+        vers celui de sa prochaine route
+        - si une voiture a dépassé la longueur de la route, on soustrait à sa distance parcourue la longueur de la
+        route et, si elle existe, on l'ajoute à sa prochaine route
+        - la simulation met à jour son élément de signalisation et ses capteurs, et utilise son CarFactory pour créer
+        une voiture si besoin, qui se voit assigner une prochaine route en utilisant le CarSorter
+
+        Args:
+            start: coordonnées du début
+            end: coordonnées de la fin
+            color: couleur
+            v_max: limite de vitesse de la route
+            with_arrows: si des flèches seront affichées sur la route ou
+                non
+            priority: priorité des voitures de la route
+            heavily_traveled: si la route est dans une zone de trafic dense, où les collisions doivent être détectées
+            car_factory: éventuelle CarFactory
+            sign: éventuel élément de signalisation : feu de
+                signalisation ou panneau stop
+            sensors: éventuels capteurs
+            obj_id: éventuel identifiant
         """
+        # attributs constants
         self.id = new_id(self, obj_id)
         self.simulation = get_by_id(0)
-        self.start, self.end = npa((start, end))
-        self.width = width
+        self.start, self.end = start, end
+        self.width = sc.road_width * sc.scale
         self.color = color
-        self.with_arrows = with_arrows
-        self.priority = priority
+        self.with_arrows = with_arrows  # si la simulation affiche des flèches pour la route ou non
+        self.priority = priority  # indice de priorité de la route
+        self.is_heavily_traveled = heavily_traveled  # si dans une zone de trafic dense ou non
+        self.v_max = v_max  # vitesse limite de la route
 
         self.length = distance(self.start, self.end)  # longueur de la route
         self.vd = direction_vector(self.start, self.end)  # vecteur directeur de la route, normé
@@ -625,29 +747,16 @@ class Road:
         self.vertices = self.start + vn, self.start - vn, self.end - vn, self.end + vn  # coordonnées des sommets, pour l'affichage
         self.angle = angle_of_vect(self.vd)  # angle de la route par rapport à l'axe des abscisses
 
-        self.cars: list[Car] = []  # liste des voitures appartenant à la route
-        self.v_max = v_max  # vitesse limite de la route
-
         self.car_sorter = CarSorter()
         self.car_factory = self.init_car_factory(car_factory)
-        self.arrows_coords = self.init_arrows_coords()
         self.sign = self.init_sign(sign)
         self.sensors = self.init_sensors(sensors)
 
+        # liste des voitures appartenant à la route
+        self.cars: list[Car] = []
+
     def __repr__(self):
         return f"Road(id={self.id}, start={self.start}, end={self.end}, length={self.length}, vd={self.vd}, color={closest_color(self.color)})"
-
-    def init_arrows_coords(self):
-        """Renvoie les coordonnées des flèches de la route."""
-        if not self.with_arrows:
-            return []
-        rarete = sc.road_arrow_period  # inverse de la fréquence des flèches
-        num = round(self.length / rarete)  # nombre de flèches pour la route
-        arrows = []
-        for i in range(num):
-            x, y = self.dist_to_pos((i + 0.5) * rarete)  # "+ O.5" pour centrer les flèches sur la longueur
-            arrows.append((x, y, self.angle))
-        return arrows
 
     def init_car_factory(self, car_factory):
         if car_factory is None:
@@ -668,48 +777,61 @@ class Road:
 
     def init_sensors(self, sensors):
         if isinstance(sensors, Sensor):
-            sensors = [sensors]
+            sensors.road = self
+            return [sensors]
+
         elif sensors is None:
-            sensors = []
+            return []
 
-        for sensor in sensors:
-            sensor.road = self
-            sensor.d = self.length * sensor.d_ratio
-
-        return sensors
+        else:
+            for sensor in sensors:
+                sensor.road = self  # sensor.road.setter gère tout
+            return sensors
 
     def dist_to_pos(self, d):
         """Renvoie les coordonnées d'un objet de la route à une distance ``d`` du début de la route."""
         return self.start + self.vd * d
 
     def update_cars(self, dt, leaders):
-        """
-        Bouge les voitures de la route à leurs positions après dt.
+        """Bouge les voitures de la route à leurs positions après dt.
 
-        :param dt: durée du mouvement
-        :param leaders: voitures leaders de la première voiture de la route
+        Args:
+            dt: durée du mouvement
+            leaders: voitures leaders de la première voiture de la route
         """
         sign_car = self.sign.dummy_car  # on récupère la fausse voiture du feu/stop de la route
 
-        for index, car in enumerate(self.cars):
-            if index > 0:  # pour toutes les voitures sauf la première, donner la voiture devant
-                leading_car = self.cars[index - 1]
-                car.leaders = [(leading_car, leading_car.d - leading_car.length/2 - car.d - car.length/2)]
-            elif sign_car is not None:  # si la fausse voiture n'est pas None, on l'utilise pour la première voiture
-                leading_car = sign_car
-                car.leaders = [(leading_car, leading_car.d - leading_car.length/2 - car.d - car.length/2)]
-            else:  # sinon pour la première voiture, donner la prochaine voiture
-                car.leaders = [(leader, self.length - car.d - car.length/2 + d) for leader, d in leaders]
+        for i, car in enumerate(self.cars):
+            if i > 0:
+                # pour toutes les voitures sauf la première, donner la voiture suivante
+                leading_car = self.cars[i - 1]
+                car.leaders = [(leading_car, (leading_car.d - leading_car.length/2) - (car.d + car.length/2), 1)]
 
-            # mise à jour de d, v et a
+            elif sign_car is not None:
+                # si l'élement de signalisation est actif et que le leader le plus proche est assez loin, on utilise sa
+                # fausse voiture pour la première voiture
+                if leaders:
+                    closer_road_leader_tuple = min(leaders, key=lambda leader: leader[1])
+                    closer_road_leader_length = closer_road_leader_tuple[0].length
+                    closer_road_leader_d = closer_road_leader_tuple[1]
+                    if closer_road_leader_d - closer_road_leader_length/2 - sc.delta_d_min > 0:
+                        car.leaders = [(sign_car, sign_car.d - (car.d + car.length/2), 1)]
+                    else:
+                        car.leaders = [(leader, d + self.length - (car.d + car.length / 2), p) for leader, d, p in
+                                       leaders]
+                else:
+                    car.leaders = [(sign_car, sign_car.d - (car.d + car.length/2), 1)]
+
+            else:
+                # sinon pour la première voiture, donner les leaders de la route en ajustant les distances
+                car.leaders = [(leader, d + self.length - (car.d + car.length/2), p) for leader, d, p in leaders]
+
+            # mise à jour des vecteurs du mouvmement de la voiture
             car.update(dt)
             car.soon_colliding_cars = []
 
             # transition douce du v_max avec celui de la prochaine route
             car.v_max = self.v_max_transition(car)
-
-            # mise à jour de la position et des sommets d'affichage
-            car.pos = self.dist_to_pos(car.d)
 
             if car.d > self.length:  # si la voiture sort de la route
                 car.d -= self.length  # on initialise le prochain d
@@ -718,6 +840,7 @@ class Road:
                 self.cars.remove(car)  # on retire la voiture de la liste des voitures (pas d'impact sur la boucle avec enumerate)
 
     def update_sensors(self, t):
+        """Met à jour les capteurs de la route."""
         for sensor in self.sensors:
             sensor.watch_road(t)
 
@@ -749,101 +872,72 @@ class Road:
         self.cars.append(car)
 
     def v_max_transition(self, car: Car):
-        if isinstance(self, SRoad):
+        """Fonction pour faire une transition douce entre deux routes qui n'ont pas la même limite de vitesse."""
+        d_min_for_transition = self.length * (1 - sc.road_transition_size)  # d minimum pour faire la tansition
+
+        if isinstance(self, SRoad) or (car.next_road is None) or (car.d <= d_min_for_transition):
+            # si la route est une SRoad, que la voiture n'a pas de prochaine route ou qu'elle est trop loin
             return car.v_max
 
-        elif car.next_road is not None and car.d >= self.length * (1 - sc.road_transition_size):
-            alpha = (car.d - self.length * (1 - sc.road_transition_size)) / (self.length * sc.road_transition_size)
+        else:
+            alpha = (car.d - d_min_for_transition) / (self.length * sc.road_transition_size)
             v_max1 = self.v_max
             v_max2 = car.next_road.v_max
             return alpha * v_max2 + (1 - alpha) * v_max1
 
-        else:
-            return car.v_max
-
 
 class SRoad(Road):
-    def __init__(self, start, end, width, color, v_max, priority, obj_id):
-        """Sous-route droite composant ArcRoad, dérivant de Road."""
-        super().__init__(start, end, width, color, v_max, False, priority, None, None, None, obj_id)
+    def __init__(self, start, end, color, v_max, priority, heavily_traveled, obj_id):
+        """Route droite composant une ArcRoad, dérivant de Road. Elle n'a ni flèches, ni élément de signalisation, ni
+        capteurs, ni CarFactory."""
+        super().__init__(start, end, color, v_max, False, priority, heavily_traveled, None, None, None, obj_id)
 
     def __repr__(self):
         return "S" + super().__repr__()
 
 
 class ArcRoad:
-    def __init__(self, start, end, vdstart, vdend, v_max, n, width, color, priority, car_factory, obj_id):
+    def __init__(self, start, end, vdstart, vdend, v_max, with_arrows, heavily_traveled, n, color, priority, obj_id):
         """
-        Route courbée, composée de multiples routes droites.
+        Objet route courbée, composée de multiples routes droites SRoad. N'est pas une route en soit mais un objet qui
+        gère la création d'un ensemble de routes, puis qui n'est plus utilisé de la simulation.
 
-        :param start: coordonnées du début
-        :param end: coordonnées de la fin
-        :param vdstart: vecteur directeur de la droite asymptote au début
-        :param vdend: vecteur directeur de la droite asymptote à la fin
-        :param n: nombre de routes droites formant la route courbée
-        :param width: largeur
-        :param color: couleur
-        :param car_factory: éventuelle CarFactory
-        :param obj_id: éventuel identifiant
+        Args:
+            start: coordonnées du début
+            end: coordonnées de la fin
+            vdstart: vecteur directeur de la droite asymptote au début
+            vdend: vecteur directeur de la droite asymptote à la fin
+            n: nombre de routes droites formant la route courbée
+            color: couleur
+            obj_id: éventuel identifiant
         """
         self.id = new_id(self, obj_id)
-        self.start, self.end = npa((start, end))
-        self.width = width
-        self.color = color
-        self.length = 0
+        self.start, self.end = start, end
+        self.with_arrows = with_arrows
+        self.v_max = v_max * sc.arcroad_deceleration_coeff
         self.n = n
-        self.v_max = v_max * sc.arcroad_slow_coeff
-
-        self.car_factory = self.init_car_factory(car_factory)
-        self.sign, self.update_sign = None, empty_function
-        self.sensors, self.update_sensors = [], empty_function
 
         intersec = lines_intersection(start, vdstart, end, vdend)
         self.points = bezier_curve(self.start, intersec, self.end, n + 1)  # n + 1 points pour n routes
         self.length = sum(distance(self.points[i], self.points[i + 1]) for i in range(n))
+        self.sroads = self.init_sroads(self.v_max, n, color, priority, heavily_traveled)
 
-        self.sroads = []
-        self.sroad_end_to_arcroad_end = {}
+        self.car_factory = CarFactory()
+        self.sign, self.update_sign = None, empty_function
+        self.sensors, self.update_sensors = [], empty_function
+
+    def init_sroads(self, v_max, n, color, priority, heavily_traveled):
+        sroads = []
         for i in range(n):
             rstart = self.points[i]
             rend = self.points[i + 1]
-            sroad = SRoad(rstart, rend, width, color, self.v_max, priority, None)
-            self.sroads.append(sroad)
+            sroad = SRoad(rstart, rend, color, v_max, priority, heavily_traveled, None)
+            sroads.append(sroad)
 
-        for index, sroad in enumerate(self.sroads):
-            if index < n - 1:
-                sroad.car_sorter = CarSorter(method={self.sroads[index + 1].id: 1})
+        return sroads
 
     def __repr__(self):
-        return f"ArcRoad(id={self.id}, start={self.start}, end={self.end}, color={closest_color(self.color)}, length={self.length}, sroads={self.sroads})"
-
-    def __eq__(self, other):
-        return self.id == other.id
-
-    @staticmethod
-    def init_car_factory(car_factory):
-        if car_factory is None:
-            return CarFactory()
-        else:
-            return car_factory
-
-    @property
-    def cars(self):
-        car_list = []
-        for sroad in self.sroads:
-            car_list += sroad.cars
-        return car_list
-
-    def update_cars(self, dt, leaders):
-        # parcours des sroads à l'envers pour ne pas actualiser une même voiture plusieurs fois
-        for i in range(self.n - 1, -1, -1):
-            if leaders is None:
-                # s'il n'y a pas de voitures après la route
-                self.sroads[i].update_cars(dt, None)
-            else:
-                # s'il en a, on les donne avec le bon d pour chaque route
-                d_ajusted_leaders = [(leader, d + (i + 1) * self.sroads[i].length) for leader, d in leaders]
-                self.sroads[i].update_cars(dt, d_ajusted_leaders)
+        return f"ArcRoad(id={self.id}, start={self.start}, end={self.end}, length={self.length}, sroads={self.sroads})"
 
     @property
     def car_sorter(self):
@@ -852,8 +946,3 @@ class ArcRoad:
     @car_sorter.setter
     def car_sorter(self, car_sorter):
         self.sroads[-1].car_sorter = car_sorter
-
-    def new_car(self, car):
-        if car is None:
-            return
-        self.sroads[0].new_car(car)
