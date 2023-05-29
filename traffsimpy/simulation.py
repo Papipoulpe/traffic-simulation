@@ -147,7 +147,7 @@ class Simulation:
                 self.show_sign(road.sign)
 
                 # actualisation des objets de la route
-                road_leaders = self.get_road_leaders(road, avg=sc.get_road_leaders_method_avg)
+                road_leaders = self.get_road_leaders(road, avg=sc.average_leaders)
                 road.update_cars(self.dt, road_leaders)
                 road.update_sensors(self.t)
                 road.update_sign(self.t)
@@ -249,167 +249,6 @@ class Simulation:
         elif event.type == pygame.MOUSEBUTTONUP:
             # si l'utilisateur ne clique plus
             self.dragging = False
-
-    def show_info(self, info: str):
-        """Affiche des informations en haut à gauche de la fenêtre et l'échelle si besoin."""
-        if sc.show_infos:
-            text_width, text_height = self.FONT.size(info)
-            draw_rect(self.surface, sc.info_background_color, npz(2), text_width + 30, text_height + 20)
-            draw_text(self.surface, sc.font_color, npa((10, 10)), info, self.FONT)
-
-        if sc.show_scale:
-            self.show_scale()
-
-    def show_scale(self):
-        """Affiche l'échelle en bas à gauche de la fenêtre."""
-        _, h = self.size
-        n = 10
-        x, y = 30, h - 40
-        text = f"{n * sc.scale}px = {n}m"
-        tw, th = self.FONT.size(text)
-        draw_rect(self.surface, BLACK, npa((x, y)), n * sc.scale, 10)  # affiche la barre de n*SCALE pixels
-        for i in range(1, n, 2):  # affiche les graduations
-            draw_rect(self.surface, self.bg_color, npa((x + i * sc.scale, y + 1)), sc.scale - 2 / n, 8)
-        draw_text(self.surface, BLACK, npa((x + (n * sc.scale - tw) / 2,
-                                            y - th - 2)), text, self.FONT)  # affiche la description
-
-    def show_car(self, car: Car):
-        """Affiche une voiture."""
-        if sc.car_show_hitboxes:  # si on affiche les zones de collision
-            brightness = 1.1 if is_inside_circle(car.pos, self.heavy_traffic_area) else 0.9
-            brighten = lambda color: min(int(color * brightness), 255)
-
-            r, g, b = car.color
-
-            side_bumper_color = (brighten(r * 1.2), brighten(g), brighten(b))  # même couleur plus claire et plus rouge
-            draw_polygon(self.surface, side_bumper_color, car.side_bumper_hurtbox, self.off_set)
-
-            front_bumper_color = (brighten(r), brighten(g * 1.2), brighten(b))  # même couleur plus claire et plus verte
-            draw_polygon(self.surface, front_bumper_color, car.front_bumper_hitbox, self.off_set)
-
-        if sc.car_show_bounding_boxes:
-            aabb_vertices = car.aabb[0], npa([car.aabb[0][0], car.aabb[1][1]]), car.aabb[1], npa([car.aabb[1][0], car.aabb[0][1]])
-            draw_empty_polygon(self.surface, car.color, aabb_vertices, self.off_set)
-
-        if sc.car_show_leader_links:
-            if car.soon_colliding_cars:
-                for leader in car.soon_colliding_cars:
-                    draw_line(self.surface, car.color, car.pos, leader.pos, self.off_set)
-            else:
-                for leader, *_ in car.leaders:
-                    draw_line(self.surface, car.color, car.pos, leader.pos, self.off_set)
-
-        if sc.car_speed_coded_color:  # si la couleur de la voiture dépend de sa vitesse
-            car_color = red_to_blue_gradient(car.v / (sc.v_max * sc.scale))
-        else:
-            car_color = car.color
-
-        draw_polygon(self.surface, car_color, car.vertices,
-                     self.off_set)  # affiche le rectangle qui représente la voiture
-
-        if sc.car_show_direction:  # si on affiche la direction de la voiture
-            rotated_arrow = self.roads_rotated_arrows[car.road.id]["small_arrow"]
-            draw_image(self.surface, rotated_arrow, car.road.dist_to_pos(car.d), self.off_set)
-
-        roof_text = ""
-
-        if sc.car_show_speed_ms:  # si on affiche la vitesse de la voiture en m/s
-            text = str(round(car.v / sc.scale))
-            roof_text += text
-        if sc.car_show_speed_kmh:  # si on affiche la vitesse en km/h
-            text = str(round(3.6 * car.v / sc.scale))
-            roof_text += ("|" if roof_text else "") + text
-        if sc.car_show_id:  # si on affiche l'id de la voiture
-            text = str(car.id)
-            roof_text += ("|" if roof_text else "") + text
-        if roof_text:
-            text_width, text_height = self.SMALL_FONT.size(roof_text)
-            x = car.pos[0] - text_width / 2
-            y = car.pos[1] - text_height / 2
-            draw_text(self.surface, sc.font_color, npa((x, y)), roof_text, self.SMALL_FONT, off_set=self.off_set)
-
-    def show_roads(self, road_list: Sequence[Road | ArcRoad]):
-        """Affiche des routes."""
-        for road in road_list:  # on affiche d'abord les rectangles des routes
-            draw_polygon(self.surface, road.color, road.vertices, self.off_set)
-
-        for road in road_list:  # puis les flèches
-            if road.with_arrows:
-                rotated_arrows = self.roads_rotated_arrows[road.id]
-
-                for arrow_coord in rotated_arrows["coordinates"]:
-                    draw_image(self.surface, rotated_arrows["large_arrow"], arrow_coord, self.off_set)
-
-    def show_sign(self, sign: TrafficLight | StopSign):
-        """Affiche un élément de signalisation."""
-        if isinstance(sign, TrafficLight) and not sign.static:
-            color = {0: sc.tl_red, 1: sc.tl_orange, 2: sc.tl_green}[sign.state]
-            draw_polygon(self.surface, color, sign.vertices, self.off_set)
-        elif isinstance(sign, StopSign):
-            draw_polygon(self.surface, sc.ss_color, sign.vertices, self.off_set)
-
-    def show_sensor(self, sensor: Sensor):
-        """Affiche un capteur."""
-        draw_polygon(self.surface, sc.sensor_color, sensor.vertices, self.off_set)
-
-    def show_heavy_traffic_area(self):
-        """Affiche la zone où les collisions sont gérées."""
-        center, radius = self.heavy_traffic_area
-        if sc.show_heavy_traffic_area and radius < INF:
-            da = lambda color: int(color * 0.93)
-            r, g, b = self.bg_color
-            draw_circle(self.surface, (da(r), da(g), da(b)), center, radius, self.off_set)
-
-    def print_sensor_results(self, sensor: Sensor):
-        """Affiche les résultats d'un capteur dans la sortie standard."""
-        res_str = sensor.results()
-        if res_str.strip():
-            text = tbold(f"Résulats à t={round(self.t, 2)}s de {sensor} sur Road(id={sensor.road.id}) :\n") + res_str + "\n"
-            print(text)
-
-    def print_sensors_results(self, *sensors_id):
-        """Affiche les résulats de capteurs dans la sortie standard."""
-        if not sensors_id:
-            for road in self.roads:
-                for sensor in road.sensors:
-                    self.print_sensor_results(sensor)
-        else:
-            for sensor_id in sensors_id:
-                sensor = get_by_id(sensor_id)
-                self.print_sensor_results(sensor)
-
-    def export_sensor_results(self, sensor: Sensor, describe: bool):
-        """Exporte les résultats d'un capteur dans un fichier Excel .xlsx."""
-        file_name = f"{self.title}_capteur{sensor.id}_{strftime('%H%M%S_%d%m%y')}.xlsx"
-        sheet_name = f"{self.title} ({round(self.t, 2)}s) capteur {sensor.id}"
-        sensor.export_results(file_name, sheet_name, describe)
-
-    def export_sensors_results(self, *sensors_id, describe: bool = True):
-        """Exporte les résultats de capteurs dans des fichiers Excel .xlsx."""
-        if not sensors_id:
-            for road in self.roads:
-                for sensor in road.sensors:
-                    self.export_sensor_results(sensor, describe)
-        else:
-            for sensor_id in sensors_id:
-                sensor = get_by_id(sensor_id)
-                self.export_sensor_results(sensor, describe)
-
-    def plot_sensors_results(self, *sensors_id):
-        """Affiche les résulats de capteurs sous forme d'un graphe de fonctions."""
-        if not sensors_id:
-            for road in self.roads:
-                for sensor in road.sensors:
-                    sensor.plot_results()
-        else:
-            for sensor_id in sensors_id:
-                if isinstance(sensor_id, int):
-                    get_by_id(sensor_id).plot_results()
-                else:
-                    s_id, x = sensor_id
-                    get_by_id(s_id).plot_results(x)
-
-        plt.show()
 
     def create_road(self, **kw):
         """Créer une route, renvoie la route."""
@@ -551,6 +390,196 @@ class Simulation:
 
         self.road_graph = processed_graph
 
+    def set_heavy_traffic_area(self, center: tuple[float, float] | Coordinates = None, radius: float = INF):
+        """Définie la zone circulaire où le trafic sera probablement dense et où la simulation utilisera les hitbox et
+        hurtbox des voitures pour éviter les collisions. La détection de collision sera automatiquement activée, même si
+        ``USE_BUMPING_BOXES = False``.
+
+        Args:
+            center: centre du disque décrivant la zone, centre de la
+                fenêtre par défaut
+            radius: rayon du disque décrivant la zone, en **pixels**,
+                +inf par défaut
+        """
+        sc.use_hitboxes = True
+
+        if center is None:
+            center = self.size[0] / 2, self.size[1] / 2
+
+        self.heavy_traffic_area = (self.rc_to_sc(center), radius)
+
+    def show_info(self, info: str):
+        """Affiche des informations en haut à gauche de la fenêtre et l'échelle si besoin."""
+        if sc.show_infos:
+            text_width, text_height = self.FONT.size(info)
+            draw_rect(self.surface, sc.info_background_color, npz(2), text_width + 30, text_height + 20)
+            draw_text(self.surface, sc.font_color, npa((10, 10)), info, self.FONT)
+
+        if sc.show_scale:
+            self.show_scale()
+
+    def show_scale(self):
+        """Affiche l'échelle en bas à gauche de la fenêtre."""
+        _, h = self.size
+        n = 10
+        x, y = 30, h - 40
+        text = f"{n * sc.scale}px = {n}m"
+        tw, th = self.FONT.size(text)
+        draw_rect(self.surface, BLACK, npa((x, y)), n * sc.scale, 10)  # affiche la barre de n*SCALE pixels
+        for i in range(1, n, 2):  # affiche les graduations
+            draw_rect(self.surface, self.bg_color, npa((x + i * sc.scale, y + 1)), sc.scale - 2 / n, 8)
+        draw_text(self.surface, BLACK, npa((x + (n * sc.scale - tw) / 2,
+                                            y - th - 2)), text, self.FONT)  # affiche la description
+
+    def show_car(self, car: Car):
+        """Affiche une voiture."""
+        if sc.car_show_hitboxes:  # si on affiche les zones de collision
+            brightness = 1.1 if is_inside_circle(car.pos, self.heavy_traffic_area) else 0.9
+            brighten = lambda color: min(int(color * brightness), 255)
+
+            r, g, b = car.color
+
+            side_bumper_color = (brighten(r * 1.2), brighten(g), brighten(b))  # même couleur plus claire et plus rouge
+            draw_polygon(self.surface, side_bumper_color, car.side_bumper_hurtbox, self.off_set)
+
+            front_bumper_color = (brighten(r), brighten(g * 1.2), brighten(b))  # même couleur plus claire et plus verte
+            draw_polygon(self.surface, front_bumper_color, car.front_bumper_hitbox, self.off_set)
+
+        if sc.car_show_bounding_boxes:
+            aabb_vertices = car.aabb[0], npa([car.aabb[0][0], car.aabb[1][1]]), car.aabb[1], npa([car.aabb[1][0], car.aabb[0][1]])
+            draw_empty_polygon(self.surface, car.color, aabb_vertices, self.off_set)
+
+        if sc.car_show_leader_links:
+            if car.soon_colliding_cars:
+                for leader in car.soon_colliding_cars:
+                    draw_line(self.surface, car.color, car.pos, leader.pos, self.off_set)
+            else:
+                for leader, *_ in car.leaders:
+                    draw_line(self.surface, car.color, car.pos, leader.pos, self.off_set)
+
+        if sc.car_speed_coded_color:  # si la couleur de la voiture dépend de sa vitesse
+            car_color = red_to_blue_gradient(car.v / (sc.v_max * sc.scale))
+        else:
+            car_color = car.color
+
+        draw_polygon(self.surface, car_color, car.vertices,
+                     self.off_set)  # affiche le rectangle qui représente la voiture
+
+        if sc.car_show_direction:  # si on affiche la direction de la voiture
+            rotated_arrow = self.roads_rotated_arrows[car.road.id]["small_arrow"]
+            draw_image(self.surface, rotated_arrow, car.road.dist_to_pos(car.d), self.off_set)
+
+        roof_text = ""
+
+        if sc.car_show_speed_ms:  # si on affiche la vitesse de la voiture en m/s
+            text = str(round(car.v / sc.scale))
+            roof_text += text
+        if sc.car_show_speed_kmh:  # si on affiche la vitesse en km/h
+            text = str(round(3.6 * car.v / sc.scale))
+            roof_text += ("|" if roof_text else "") + text
+        if sc.car_show_id:  # si on affiche l'id de la voiture
+            text = str(car.id)
+            roof_text += ("|" if roof_text else "") + text
+        if roof_text:
+            text_width, text_height = self.SMALL_FONT.size(roof_text)
+            x = car.pos[0] - text_width / 2
+            y = car.pos[1] - text_height / 2
+            draw_text(self.surface, sc.font_color, npa((x, y)), roof_text, self.SMALL_FONT, off_set=self.off_set)
+
+    def show_roads(self, road_list: Sequence[Road | ArcRoad]):
+        """Affiche des routes."""
+        for road in road_list:  # on affiche d'abord les rectangles des routes
+            draw_polygon(self.surface, road.color, road.vertices, self.off_set)
+
+        for road in road_list:  # puis les flèches
+            if road.with_arrows:
+                rotated_arrows = self.roads_rotated_arrows[road.id]
+
+                for arrow_coord in rotated_arrows["coordinates"]:
+                    draw_image(self.surface, rotated_arrows["large_arrow"], arrow_coord, self.off_set)
+
+    def show_sign(self, sign: TrafficLight | StopSign):
+        """Affiche un élément de signalisation."""
+        if isinstance(sign, TrafficLight) and not sign.static:
+            color = {0: sc.tl_red, 1: sc.tl_orange, 2: sc.tl_green}[sign.state]
+            draw_polygon(self.surface, color, sign.vertices, self.off_set)
+        elif isinstance(sign, StopSign):
+            draw_polygon(self.surface, sc.ss_color, sign.vertices, self.off_set)
+
+    def show_sensor(self, sensor: Sensor):
+        """Affiche un capteur."""
+        draw_polygon(self.surface, sc.sensor_color, sensor.vertices, self.off_set)
+
+    def show_heavy_traffic_area(self):
+        """Affiche la zone où les collisions sont gérées."""
+        center, radius = self.heavy_traffic_area
+        if sc.show_heavy_traffic_area and radius < INF:
+            da = lambda color: int(color * 0.93)
+            r, g, b = self.bg_color
+            draw_circle(self.surface, (da(r), da(g), da(b)), center, radius, self.off_set)
+
+    def compute_sensors_results(self, *sensors_id, since=0, how_many=INF):
+        """Calcule les résultats de capteurs."""
+        if not sensors_id:
+            for road in self.roads:
+                for sensor in road.sensors:
+                    sensor.compute_results(since, how_many)
+        else:
+            for sensor_id in sensors_id:
+                sensor = get_by_id(sensor_id)
+                sensor.compute_results(since, how_many)
+
+    def print_sensor_results(self, sensor: Sensor):
+        """Affiche les résultats d'un capteur dans la sortie standard."""
+        res_str = sensor.results()
+        if res_str.strip():
+            text = tbold(f"Résulats à t={round(self.t, 2)}s de {sensor} :\n") + res_str + "\n"
+            print(text)
+
+    def print_sensors_results(self, *sensors_id):
+        """Affiche les résulats de capteurs dans la sortie standard."""
+        if not sensors_id:
+            for road in self.roads:
+                for sensor in road.sensors:
+                    self.print_sensor_results(sensor)
+        else:
+            for sensor_id in sensors_id:
+                sensor = get_by_id(sensor_id)
+                self.print_sensor_results(sensor)
+
+    def export_sensor_results(self, sensor: Sensor, describe: bool):
+        """Exporte les résultats d'un capteur dans un fichier Excel .xlsx."""
+        file_name = f"{self.title}_capteur{sensor.id}_{strftime('%H%M%S_%d%m%y')}.xlsx"
+        sheet_name = f"{self.title} ({round(self.t, 2)}s) capteur {sensor.id}"
+        sensor.export_results(file_name, sheet_name, describe)
+
+    def export_sensors_results(self, *sensors_id, describe: bool = True):
+        """Exporte les résultats de capteurs dans des fichiers Excel .xlsx."""
+        if not sensors_id:
+            for road in self.roads:
+                for sensor in road.sensors:
+                    self.export_sensor_results(sensor, describe)
+        else:
+            for sensor_id in sensors_id:
+                sensor = get_by_id(sensor_id)
+                self.export_sensor_results(sensor, describe)
+
+    def plot_sensors_results(self, *sensors_id, **plot_kwargs):
+        """Affiche les résulats de capteurs sous forme d'un graphe de fonctions."""
+        if not sensors_id:
+            for road in self.roads:
+                for sensor in road.sensors:
+                    sensor.plot_results(plot_kwargs=plot_kwargs)
+        else:
+            for sensor_id in sensors_id:
+                if isinstance(sensor_id, int):
+                    get_by_id(sensor_id).plot_results(plot_kwargs=plot_kwargs)
+                else:
+                    s_id, x = sensor_id
+                    get_by_id(s_id).plot_results(x, plot_kwargs=plot_kwargs)
+
+        plt.show()
+
     def get_road_leaders(self, road, avg=False):
         """Renvoie les éventuels leaders de la première voiture de la route, dans une liste de tuples de la forme
         ``(voiture, distance, proba)``.
@@ -616,24 +645,6 @@ class Simulation:
                 dfs(first_car.next_road, 0, 1)
 
         return leaders
-
-    def set_heavy_traffic_area(self, center: tuple[float, float] | Coordinates = None, radius: float = INF):
-        """Définie la zone circulaire où le trafic sera probablement dense et où la simulation utilisera les hitbox et
-        hurtbox des voitures pour éviter les collisions. La détection de collision sera automatiquement activée, même si
-        ``USE_BUMPING_BOXES = False``.
-
-        Args:
-            center: centre du disque décrivant la zone, centre de la
-                fenêtre par défaut
-            radius: rayon du disque décrivant la zone, en **pixels**,
-                +inf par défaut
-        """
-        sc.use_hitboxes = True
-
-        if center is None:
-            center = self.size[0] / 2, self.size[1] / 2
-
-        self.heavy_traffic_area = (self.rc_to_sc(center), radius)
 
     def pair_of_cars_maybe_interacting(self):
         """Renvoie la liste des couples de voitures en potentielle interaction (bientôt en collision, etc...), en

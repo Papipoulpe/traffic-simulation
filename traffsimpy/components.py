@@ -71,6 +71,11 @@ class Car:
         self.leaders = []  # leaders de la voiture : liste de couples (d, v) où d est la distance par la route à une autre voiture et v sa vitesse
         self.soon_colliding_cars = []  # voitures en potentielle collision avec la voiture : liste de Car
 
+        # historique de certains attributs et sauvegarde de données pour les capteurs
+        self.date_of_birth = 0  # seconde où la voiture est créée
+        self.d_traveled = 0  # distance totale parcourue
+        self.attr_history = {"d(t)": {}, "v(t)": {}, "a(t)": {}}  # attributs en fonction du temps
+
     def __repr__(self):
         return f"Car(id={self.id}, pos={self.pos}, d={self.d}, v={self.v}, a={self.a}, v_max={self.v_max}, " \
                f"virtual_leader={self.virtual_leader}, soon_colliding_cars={self.soon_colliding_cars}, " \
@@ -134,12 +139,28 @@ class Car:
         Args:
             dt: durée du mouvement
         """
+        prev_d = self.d
+
         if sc.use_idm:
             self.a = iidm(self, self.virtual_leader)  # si l'IDM est utilisé, on met à jour l'accélération
 
         update_taylor(self, dt)  # mise à jour de d et v par développement de Taylor (en place)
 
         self.pos = self.road.dist_to_pos(self.d)  # mise à jour de la position et ce qui en dépend
+
+        # sauvergarde des attributs
+        t = round(self.road.simulation.t, 2)
+        delta_d = self.d - prev_d
+        self.d_traveled += delta_d
+
+        atm_sensors = sc.dynamic_data["atm_sensors"]
+
+        if atm_sensors.get("d(t)"):
+            self.attr_history["d(t)"][t] = scale_to_si_unit("d(t)", self.d_traveled)
+        if atm_sensors.get("v(t)"):
+            self.attr_history["v(t)"][t] = scale_to_si_unit("v(t)", self.v)
+        if atm_sensors.get("a(t)"):
+            self.attr_history["a(t)"][t] = scale_to_si_unit("a(t)", self.a)
 
     @property
     def virtual_leader(self):
@@ -565,34 +586,40 @@ class Sensor:
             attributes_to_monitor: les attributs des voitures à
                 surveiller, en chaînes de caractères : None pour juste
                 compter le nombre de voitures, ou autant que voulu parmi
-                ``v``, ``a``, ``length``, ``width``, ``color`` et
-                ``total_d`` ou parmi ``d(t)``, ``v(t)`` et ``a(t)``
+                ``v``, ``a``, ``length``, ``width``, ``color``, ``age``, ``date_of_birth`` et
+                ``d_travelled`` ou parmi ``d(t)``, ``v(t)`` et ``a(t)``
         """
-        #  attributs constants
+        # attributs constants
         self.id = new_id(self, obj_id)
         self.d_ratio = position  # position en fraction de la longueur de la route
+        self.d = 0  # distance entre le capteur et le début de la route, définie dans self.road.setter
         self.vertices = npz((4, 2))  # sommets d'affichage, définis dans self.road.setter
         self._road = ...  # route à laquelle le capteur est rattaché, définie dans road.init_sensor
-        self.d = 0  # distance entre le capteur et le début de la route, définie dans self.road.setter
-        self.data_is_vals = True  # si le capteur récupère les valeurs instantanées des attributs des voitures ou l'historique de ces valeurs
-        self.attributes_to_monitor = self.init_atm(attributes_to_monitor)  # attributs des voitures surveillés
+        self.inst_data = True  # si le capteur récupère les valeurs instantanées des attributs des voitures ou l'historique de ces valeurs
+        self.attributes_to_monitor = self.init_atm(attributes_to_monitor)  # attributs des voitures surveillées
 
         # stockage des données
-        self.data = []
-        self.already_seen_cars_id = {}
+        self.already_seen_cars_id = {}  # id des voitures déjà vues
+        self.data = []  # données brutes, de la forme [t, car_id, attr1, ...]
+        self.df = None  # données sous forme de DataFrame, calculées dans self.compute_results()
 
     def __repr__(self):
-        return f"Sensor(id={self.id}, position={self.d_ratio}, attributes_to_monitor={self.attributes_to_monitor})"
+        return f"Sensor(id={self.id}, position={self.d_ratio}, attributes_to_monitor={self.attributes_to_monitor}, road_id={self.road.id})"
 
     def init_atm(self, atm):
         if atm is None:
             return []
+
         elif isinstance(atm, str):
             atm = [atm]
-        if any(arg in atm for arg in ["d(t)", "v(t)", "a(t)"]):
-            self.data_is_vals = False
+
+        if any(attr in ["d(t)", "v(t)", "a(t)"] for attr in atm):
+            self.inst_data = False
+            for attr in atm:
+                sc.dynamic_data["atm_sensors"][attr] = True
         else:
-            self.data_is_vals = True
+            self.inst_data = True
+
         return list(atm)
 
     @property
@@ -613,46 +640,86 @@ class Sensor:
         c4 = pos + vn_w + vd_l
         self.vertices = c1, c2, c3, c4
 
-    @property
-    def df(self):
-        atm_with_units = [f"{attr} ({UNITS_OF_ATTR[attr]})" for attr in self.attributes_to_monitor]
+    def compute_results(self, since, how_many):
+        """Création du DataFrame à partir des données brutes du capteur.
 
-        if self.data_is_vals:
-            return pd.DataFrame(data=self.data, columns=["t (s)", "car_id"] + atm_with_units)
+        Args:
+            since: date minimum pour les données
+            how_many: nombre de dernières voitures à garder
+        """
+        # liste des attributs avec leurs unités
+        atm_with_units = [f"{attr} ({UNITS_OF_ATTR.get(attr, '')})" for attr in self.attributes_to_monitor]
+
+        if self.inst_data:
+            # pour des données instantanées, on crée un simple DataFrame en retirant les données trop veilles
+            data = self.data.copy()  # copie des données pour traitement
+
+            if how_many < INF:
+                # on retire des données des premières voitures
+                data = data[-how_many::]
+
+            if since > 0:
+                # on retire les données trop vieilles
+                processed_data = []
+                for data_row in data:
+                    if data_row[0] >= since:
+                        processed_data.append(data_row)
+                data = processed_data
+
+            # création du DataFrame
+            self.df = pd.DataFrame(data=data, columns=["t (s)", "car_id"] + atm_with_units)
 
         else:
-            multi_index = pd.MultiIndex.from_product([self.already_seen_cars_id.keys(), atm_with_units], names=["car_id", "f(t)"])
-            data = []
-            dt = get_by_id(0).dt
-            t_max = max(data_t for data_t, *_ in self.data)
-            t = 0
+            # pour des fonctions du temps, on utilise un MultiIndex avec un produit des noms des fonctions et des id des
+            # voitures
+            index = set()  # index du DataFrame, union des ensembles de définition des fonctions du temps
+            cars_id = []  # id des voitures dont les données n'ont pas été retirées pendant le traitement
+            data = self.data.copy()  # copie des données pour traitement
 
-            while t <= t_max:
+            if how_many < INF:
+                # on retire les données des premières voitures
+                data = data[-how_many::]
+
+            for data_t, car_id, time_to_vals_dic, *_ in data:
+                # on construit l'index en gardant les dates nécessaires
+                if data_t >= since:
+                    index = index.union(set(time_to_vals_dic.keys()))
+                    cars_id.append(car_id)
+
+            index = sorted(index)  # tri des dates et conversion en liste
+            processed_data = []
+
+            for t in index:
+                # on retire les données trop vieilles en utilisant les dates de l'index
                 row = []
-                for data_row in self.data:
-                    _, _, *time_to_val_dics = data_row
-                    for time_to_val_dic in time_to_val_dics:
-                        val = time_to_val_dic.get(round(t, 4))
-                        row.append(val)
-                t += dt
-                data.append(row)
+                for _, car_id, *time_to_val_dics in data:
+                    if car_id in cars_id:
+                        for time_to_val_dic in time_to_val_dics:
+                            val = time_to_val_dic.get(round(t, 4))
+                            row.append(val)
 
-            index = []
-            t = 0
-            while t <= t_max:
-                index.append(round(t, 4))
-                t += dt
+                processed_data.append(row)
 
-            return pd.DataFrame(data=data, columns=multi_index, index=index)
+            # création du MultiIndex
+            multi_index = pd.MultiIndex.from_product([cars_id, atm_with_units], names=["car_id", "f(t)"])
+
+            # création du DataFrame
+            self.df = pd.DataFrame(data=processed_data, columns=multi_index, index=index)
 
     def watch_car(self, car, t):
         data_row = [t, car.id]
+
         for attr in self.attributes_to_monitor:
-            real_attr = {"d(t)": "d_t", "v(t)": "v_t", "a(t)": "a_t"}.get(attr, attr)
-            val = car.__getattribute__(real_attr)
-            if "m" in UNITS_OF_ATTR[attr] and isinstance(val, (int, float)):
-                val /= sc.scale  # si l'attribut a une longueur dans ses unités, on la remet à l'échelle
+            if attr == "age":
+                val = t - car.date_of_birth
+            elif self.inst_data:
+                val = car.__getattribute__(attr)
+            else:
+                val = car.attr_history[attr]
+
+            val = scale_to_si_unit(attr, val)
             data_row.append(val)
+
         self.data.append(data_row)
         self.already_seen_cars_id[car.id] = 1
 
@@ -662,10 +729,10 @@ class Sensor:
                 self.watch_car(car, t)
 
     def results(self, form: str = "string", describe: bool = True, **kwargs):
+        df = self.df
+
         if describe:
-            df = pd.concat([self.df, self.df.describe()])
-        else:
-            df = self.df
+            df = pd.concat([df, df.describe()])
 
         if form == "str":
             return str(df)
@@ -674,22 +741,26 @@ class Sensor:
             return getattr(df, f"to_{form}")(**kwargs)
 
     def export_results(self, file_path: str, sheet_name: str, describe: bool = True):
-        if describe:
-            pd.concat([self.df, self.df.describe()]).to_excel(file_path, sheet_name)
-        else:
-            self.df.to_excel(file_path, sheet_name)
+        df = self.df
 
-    def plot_results(self, x="t"):
-        if x == "t" and not self.data_is_vals:
+        if describe:
+            pd.concat([df, df.describe()]).to_excel(file_path, sheet_name)
+        else:
+            df.to_excel(file_path, sheet_name)
+
+    def plot_results(self, x="t", **plot_kwargs):
+        if x == "t" and not self.inst_data:
             x = None
         if isinstance(x, str):
             x += f" ({UNITS_OF_ATTR.get(x, '')})"
 
         df = self.df
+
         if df.empty:
             return
+
         else:
-            df.loc[:, df.columns != "car_id"].plot_results(x=x)
+            df.loc[:, df.columns != "car_id"].plot(x=x, title=str(self), **plot_kwargs)
 
 
 class Road:

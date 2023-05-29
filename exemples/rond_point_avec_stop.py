@@ -2,10 +2,7 @@
 entrée du rond-point.
 """
 
-from traffsimpy import Simulation, CarFactory, StopSign, simulation_configuration
-
-simulation_configuration.debug = True
-
+from traffsimpy import Simulation, CarFactory, StopSign
 
 w, h = 1440, 840  # taille de la fenêtre
 s = 140  # taille du rond point

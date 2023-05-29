@@ -19,7 +19,7 @@ class SimulationConfiguration:
         self.speed = 1  # vitesse initiale de la simulation
         self.max_speed = 4  # vitesse maximum possible, peu d'effets au-delà de 4 pour un processeur classique
         self.scale = 10  # pixels/m, échelle de la simulation
-        self.get_road_leaders_method_avg = False  # méthode pour déterminer le leader de la première voiture d'une route. True = dernières voitures des prochaines routes, coefficientées par la probabilité que la voiture aille sur ces routes. False = dernière voiture de la prochaine route de la voiture.
+        self.average_leaders = False  # méthode pour déterminer le leader de la première voiture d'une route. True = dernières voitures des prochaines routes, coefficientées par la probabilité que la voiture aille sur ces routes. False = dernière voiture de la prochaine route de la voiture.
         self.use_hitboxes = True  # si la simulation utilise les hitbox et hurtbox des voitures pour éviter les collisions
 
         # Ressources
@@ -95,6 +95,9 @@ class SimulationConfiguration:
         self._debug = False
         self._use_idm = True
         self._presentation_mode = False
+
+        # Données dynamiques
+        self.dynamic_data = {"atm_sensors": {}}
 
         # Sauvegarde des paramètres par défaut
         self.def_settings = self.__dict__.copy()

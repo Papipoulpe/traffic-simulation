@@ -256,3 +256,13 @@ def print_errors(exception):
     """Affiche la dernière erreur dans la sortie standard."""
     if sc.print_errors:
         print(tred(f"\n*** Erreur : {exception} ***\n\n{traceback.format_exc()}"))
+
+
+def scale_to_si_unit(attr, val):
+    unit = UNITS_OF_ATTR.get(attr, "")
+
+    if "m" in unit and isinstance(val, (int, float)):
+        return val / sc.scale
+
+    else:
+        return val
