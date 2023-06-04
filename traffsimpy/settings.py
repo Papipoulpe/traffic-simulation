@@ -21,6 +21,7 @@ class SimulationConfiguration:
         self.scale = 10  # pixels/m, échelle de la simulation
         self.average_leaders = False  # méthode pour déterminer le leader de la première voiture d'une route. True = dernières voitures des prochaines routes, coefficientées par la probabilité que la voiture aille sur ces routes. False = dernière voiture de la prochaine route de la voiture.
         self.use_hitboxes = True  # si la simulation utilise les hitbox et hurtbox des voitures pour éviter les collisions
+        self.screenshot_type = "jpg"  # format des captures d'écran : jpg, png, bmp ou tga
 
         # Ressources
         self.font_path = DEF_FONT_PATH  # chemin à la police de caractère du texte
@@ -53,6 +54,7 @@ class SimulationConfiguration:
         self.car_length = 3  # m, longueur par défaut des voitures
         self.car_color = BLUE_GREEN_CAR  # couleur par défaut des voitures
         self.car_speed_coded_color = True  # si la couleur des voitures représente leurs vitesses (de rouge = lent à bleu = rapide)
+        self.a_min = -INF  # m/s², décélération minimum d'une voiture
 
         self.car_show_hitboxes = False  # si on affiche les zones de collision (hitbox, hurtbox) des voitures
         self.car_show_bounding_boxes = False  # si on affiche les boites englobantes des voitures
@@ -66,8 +68,7 @@ class SimulationConfiguration:
         self.delta_d_min = 2  # m, distance minimum entre deux voitures successives d'une même route
         self.v_max = 13.9  # m/s, limite de vitesse des routes droites (50 km/h = 13.9 m/s, 30 km/h = 8.3 m/s)
         self.a_max = 1  # m/s², accéleration maximum d'une voiture
-        self.a_min = -2.5  # m/s², décélération minimum d'une voiture
-        self.a_min_conf = 10  # m/s², décélération confortable d'une voiture
+        self.a_min_conf = 1.5  # m/s², décélération confortable d'une voiture en valeur absolue
         self.a_exp = 4  # exposant de l'accéleration, contrôle la "douceur"
         self.t_react = 1  # s, temps de réaction du conducteur
 
@@ -82,7 +83,7 @@ class SimulationConfiguration:
         self.tl_orange_deceleration_coeff = 0.5  # coefficient de ralentissement du feu orange
 
         self.ss_width = 8  # pixels, largeur du losange représentant un panneau stop
-        self.ss_deceleration_coeff = 0.15  # coefficient de ralentissement des panneaux stop
+        self.ss_deceleration_coeff = 0.14  # coefficient de ralentissement des panneaux stop
         self.ss_color = RED_SS  # couleur du panneau stop
 
         # Capteurs

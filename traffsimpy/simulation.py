@@ -15,10 +15,10 @@ class Simulation:
             title: titre de la fenêtre
             width: largeur de la fenêtre, en pixels. Détectée
                 automatiquement si non fourni, puis récupérable avec
-                Simulation.size[0].
+                ``Simulation.size[0]``.
             height: hauteur de la fenêtre, en pixels. Détectée
                 automatiquement si non fourni, puis récupérable avec
-                Simulation.size[1].
+                ``Simulation.size[1]``.
         """
         self.id = 0
         ids[0] = self
@@ -234,7 +234,7 @@ class Simulation:
                 self.off_set = (0, 0)
             elif event.key == pygame.K_s:
                 # si l'utilisateur appuie sur S, enregistrer la fenêtre
-                filename = f"screenshot_{self.title}_{self.t}.jpg"
+                filename = f"screenshot_{self.title}_{self.t}." + sc.screenshot_type
                 pygame.image.save(self.surface, filename)
 
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -253,6 +253,7 @@ class Simulation:
     def create_road(self, **kw):
         """Créer une route, renvoie la route."""
         # récupération des paramètres communs à tous les types de route
+        road_type = kw.get("type", kw.get("t", "road"))  # type ou son alias t, par défaut road
         start = kw.get("start", kw.get("s", (0, 0)))  # start ou son alias s, par défaut (0, 0)
         end = kw.get("end", kw.get("e", self.size))  # end ou son alias e, par défaut (height, width) de la fenêtre
         v_max = kw.get("v_max", sc.v_max)  # v_max, par défaut sc.v_max
@@ -288,7 +289,7 @@ class Simulation:
             vdend = kw.get("vdend", kw.get("vde", kw.get("ve")))  # vdend ou ses alias vde et ve
             vdend = self.rc_to_sc(vdend, is_vect=True)  # conversion en coordonnées pygame
 
-        if kw.get("type", "road") in ["road", "r"]:  # si on crée une route droite
+        if road_type in ["road", "r"]:  # si on crée une route droite
             car_factory = kw.get("car_factory", kw.get("cf"))  # car_factory ou son alias cf, par défaut None
             sign = kw.get("sign", kw.get("sg"))  # sign ou son alias sg, par défaut None
             sensors = kw.get("sensors", kw.get("srs"))  # sensors ou son alias srs, par défaut None
@@ -298,7 +299,7 @@ class Simulation:
 
             self.roads.append(road)
 
-        elif kw["type"] in ["arcroad", "arc", "a"]:  # si on crée une route courbée
+        elif road_type in ["arcroad", "arc", "a"]:  # si on crée une route courbée
             n = kw.get("n", sc.arcroad_num_of_sroads)  # n, par défaut sc.arcroad_num_of_sroads
             road = ArcRoad(start=start, end=end, vdstart=vdstart, vdend=vdend, n=n, v_max=v_max,
                            with_arrows=with_arrows, heavily_traveled=heavily_traveled, color=color, priority=priority,
@@ -308,7 +309,7 @@ class Simulation:
                 self.roads.append(sroad)
 
         else:
-            raise ValueError(f'Le type de route doit être parmi "", "road", "r", "arcroad", "arc" ou "a", pas "{kw["type"]}".')
+            raise ValueError(f'Le type de route doit être parmi "road", "r", "arcroad", "arc", "a" ou "", pas "{kw["type"]}".')
 
         return road
 
@@ -569,14 +570,14 @@ class Simulation:
         if not sensors_id:
             for road in self.roads:
                 for sensor in road.sensors:
-                    sensor.plot_results(plot_kwargs=plot_kwargs)
+                    sensor.plot_results(**plot_kwargs)
         else:
             for sensor_id in sensors_id:
                 if isinstance(sensor_id, int):
-                    get_by_id(sensor_id).plot_results(plot_kwargs=plot_kwargs)
+                    get_by_id(sensor_id).plot_results(**plot_kwargs)
                 else:
                     s_id, x = sensor_id
-                    get_by_id(s_id).plot_results(x, plot_kwargs=plot_kwargs)
+                    get_by_id(s_id).plot_results(x=x, **plot_kwargs)
 
         plt.show()
 

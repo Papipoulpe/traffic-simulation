@@ -94,8 +94,8 @@ def update_taylor(car, dt: float):
         car.d -= 1 / 2 * car.v * car.v / car.a
         car.v = 0
     else:
-        car.v += car.a * dt  # dev de taylor ordre 1
-        car.d += car.v * dt + 1 / 2 * car.a * dt * dt  # dev de taylor ordre 2
+        car.v += car.a * dt  # devéloppent de Taylor à l'ordre 1
+        car.d += car.v * dt + 1 / 2 * car.a * dt * dt  # devéloppement de Taylor à l'ordre 2
 
 
 def idm(car, leader_coords: Optional[tuple[float, float]]) -> float:
@@ -105,10 +105,10 @@ def idm(car, leader_coords: Optional[tuple[float, float]]) -> float:
 
         delta_v = car.v - lead_v
 
-        dd_parfait = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * sc.a_min_conf * car.a_max))
+        desired_delta_d = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * sc.a_min_conf * car.a_max))
         if delta_d == 0:
             delta_d = 1e-4
-        a_interaction = (temp := (dd_parfait / delta_d)) * temp
+        a_interaction = (temp := (desired_delta_d / delta_d)) * temp
     else:
         a_interaction = 0
 
@@ -129,8 +129,8 @@ def iidm(car, leader_coords: Optional[tuple[float, float]]) -> float:
     else:
         delta_d, lead_v = leader_coords
         delta_v = car.v - lead_v
-        perfect_delta_d = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * sc.a_min_conf * car.a_max))
-        z = perfect_delta_d / delta_d if delta_d > 0 else INF
+        desired_delta_d = car.delta_d_min + max(0, car.v * car.t_react + car.v * delta_v / np.sqrt(2 * sc.a_min_conf * car.a_max))
+        z = desired_delta_d / delta_d if delta_d > 0 else INF
 
         if car.v <= car.v_max:
             a_free_road = car.a_max * (1 - (car.v / car.v_max) ** car.a_exp)

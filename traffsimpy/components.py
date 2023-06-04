@@ -45,8 +45,8 @@ class Car:
         # coordonnées, vitesse et accélération
         self.d = 0  # distance du centre du véhicule jusqu'au début de la route
         self._pos = npz(2)  # position du centre du véhicule
-        self.v = v * sc.scale if v is not None else None  # vitesse, sera remplacée par self.road.v_max si None
-        self.a = a * sc.scale  # accélération
+        self.v = v * sc.scale if v is not None else None  # vitesse instantanée, sera remplacée par self.road.v_max si None
+        self.a = a * sc.scale  # accélération instantanée
 
         # paramètres de l'IDM
         self.delta_d_min = sc.delta_d_min * sc.scale  # commun à tous les véhicules
@@ -142,7 +142,8 @@ class Car:
         prev_d = self.d
 
         if sc.use_idm:
-            self.a = iidm(self, self.virtual_leader)  # si l'IDM est utilisé, on met à jour l'accélération
+            a_iidm = iidm(self, self.virtual_leader)  # si l'IDM est utilisé, on met à jour l'accélération
+            self.a = max(a_iidm, self.a_min)
 
         update_taylor(self, dt)  # mise à jour de d et v par développement de Taylor (en place)
 
@@ -187,16 +188,14 @@ class Car:
 
         # sinon, si la simulation/route fournit des leaders, on prend la moyenne de leurs distances/vitesses
         elif self.leaders:
-            virtual_leader_d = 0
-            virtual_leader_v = 0
+            virtual_leader_coords = npz(2)
             total_p = 0
 
             for leader, d, p in self.leaders:
-                virtual_leader_d += d * p
-                virtual_leader_v += leader.v * p
+                virtual_leader_coords += npa([d, leader.v]) * p
                 total_p += p
 
-            return virtual_leader_d / total_p, virtual_leader_v / total_p
+            return virtual_leader_coords / total_p
 
         # sinon, on renvoie None
         else:
@@ -350,7 +349,8 @@ class CarFactory:
                 return Car()
 
             if "rand_color" in args:
-                attrs["color"] = [np.random.randint(sc.car_fact_rand_color_min, sc.car_fact_rand_color_max) for _ in range(3)]
+                attrs["color"] = [np.random.randint(sc.car_fact_rand_color_min, sc.car_fact_rand_color_max) for _ in
+                                  range(3)]
 
             if "rand_length" in args:
                 attrs["length"] = np.random.randint(sc.car_fact_rand_length_min, sc.car_fact_rand_length_max)
@@ -484,7 +484,7 @@ class TrafficLight:
         jour la postion, les sommets d'affichage et les fausses voitures du feu par la même occasion."""
         self._road = road
 
-        self.pos = road.dist_to_pos(road.length - self.width/2)  # position du feu
+        self.pos = road.dist_to_pos(road.length - self.width / 2)  # position du feu
 
         vd = self.road.vd * sc.tl_width / 2
         vn = normal_vector(vd, self.road.width / 2)
@@ -505,7 +505,9 @@ class TrafficLight:
         state_init_delay = {0: sc.tl_green_delay + sc.tl_orange_delay,
                             1: sc.tl_green_delay,
                             2: 0}[self.state_init]
+
         t2 = (t + state_init_delay) % (sc.tl_red_delay + sc.tl_orange_delay + sc.tl_green_delay)
+
         if 0 <= t2 < sc.tl_green_delay:
             self.state = 2
         elif sc.tl_green_delay <= t2 < sc.tl_green_delay + sc.tl_orange_delay:
@@ -560,7 +562,7 @@ class StopSign:
         self.vertices = self.pos - vd, self.pos - vn, self.pos + vd, self.pos + vn
 
         dummy_car = Car(v=0, length=0, pos_id=False)
-        dummy_car.d = road.length + 3 * sc.delta_d_min/sc.ss_deceleration_coeff
+        dummy_car.d = road.length + sc.delta_d_min + 10 / sc.ss_deceleration_coeff
         dummy_car._pos = self.pos
         self.dummy_car = dummy_car
 
@@ -748,11 +750,18 @@ class Sensor:
         else:
             df.to_excel(file_path, sheet_name)
 
-    def plot_results(self, x="t", **plot_kwargs):
-        if x == "t" and not self.inst_data:
-            x = None
-        if isinstance(x, str):
-            x += f" ({UNITS_OF_ATTR.get(x, '')})"
+    def plot_results(self, **plot_kwargs):
+        if "x" not in plot_kwargs:
+            plot_kwargs["x"] = "t"
+
+        if plot_kwargs["x"] == "t" and not self.inst_data:
+            plot_kwargs["x"] = None
+
+        if isinstance(plot_kwargs["x"], str):
+            plot_kwargs["x"] += f" ({UNITS_OF_ATTR.get(plot_kwargs['x'], '')})"
+
+        if "title" not in plot_kwargs:
+            plot_kwargs["title"] = str(self)
 
         df = self.df
 
@@ -760,7 +769,7 @@ class Sensor:
             return
 
         else:
-            df.loc[:, df.columns != "car_id"].plot(x=x, title=str(self), **plot_kwargs)
+            df.loc[:, df.columns != "car_id"].plot(**plot_kwargs)
 
 
 class Road:
@@ -876,26 +885,29 @@ class Road:
             if i > 0:
                 # pour toutes les voitures sauf la première, donner la voiture suivante
                 leading_car = self.cars[i - 1]
-                car.leaders = [(leading_car, (leading_car.d - leading_car.length/2) - (car.d + car.length/2), 1)]
+                car.leaders = [(leading_car, (leading_car.d - leading_car.length / 2) - (car.d + car.length / 2), 1)]
 
             elif sign_car is not None:
                 # si l'élement de signalisation est actif et que le leader le plus proche est assez loin, on utilise sa
                 # fausse voiture pour la première voiture
                 if leaders:
-                    closer_road_leader_tuple = min(leaders, key=lambda leader: leader[1])
-                    closer_road_leader_length = closer_road_leader_tuple[0].length
-                    closer_road_leader_d = closer_road_leader_tuple[1]
-                    if closer_road_leader_d - closer_road_leader_length/2 - sc.delta_d_min > 0:
-                        car.leaders = [(sign_car, sign_car.d - (car.d + car.length/2), 1)]
+                    closest_road_leader_tuple = min(leaders, key=lambda leader: leader[1])
+                    closest_road_leader_d = closest_road_leader_tuple[1] + self.length - \
+                                            car.d - closest_road_leader_tuple[0].length / 2 - car.length / 2
+
+                    sign_car_d = sign_car.d - self.length - car.length/2
+
+                    if sign_car_d < closest_road_leader_d:
+                        car.leaders = [(sign_car, sign_car_d, 1)]
                     else:
-                        car.leaders = [(leader, d + self.length - (car.d + car.length / 2), p) for leader, d, p in
+                        car.leaders = [(leader, closest_road_leader_d, p) for leader, d, p in
                                        leaders]
                 else:
-                    car.leaders = [(sign_car, sign_car.d - (car.d + car.length/2), 1)]
+                    car.leaders = [(sign_car, sign_car.d - (car.d + car.length / 2), 1)]
 
             else:
                 # sinon pour la première voiture, donner les leaders de la route en ajustant les distances
-                car.leaders = [(leader, d + self.length - (car.d + car.length/2), p) for leader, d, p in leaders]
+                car.leaders = [(leader, d + self.length - (car.d + car.length / 2), p) for leader, d, p in leaders]
 
             # mise à jour des vecteurs du mouvmement de la voiture
             car.update(dt)
