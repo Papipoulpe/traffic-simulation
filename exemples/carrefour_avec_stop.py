@@ -15,7 +15,7 @@ y_sud = h / 2 - s
 
 car_factory_settings = {"freq": [3, 7.5], "crea": "rand_color"}
 
-sim = Simulation("Carrefour", w, h)
+sim = Simulation("Carrefour avec stop", w, h)
 
 road_list = [
     {"id": 1, "type": "road", "start": (-marg, h / 2 - ec), "end": (x_ouest, h / 2 - ec),  # routes de gauche

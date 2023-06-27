@@ -1,0 +1,33 @@
+[build-system]
+requires      = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project]
+name = "traffsimpy"
+version = "0.1.12"
+description = "Simulate traffic flow"
+readme = "README.md"
+authors = [{ name = "Hippolyte Cosserat", email = "hippolytecosserat@gmail.com" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+]
+keywords = ["simulation", "traffic", "vehicules", "roads"]
+dependencies = [
+    "colorama>=0.4.6",
+    "matplotlib>=3.7.0",
+    "numpy>=1.24.2",
+    "pandas>=1.5.3",
+    "pygame>=2.1.3",
+    "PyYAML>=6.0",
+    "webcolors>=1.12"]
+
+requires-python = ">=3.10"
+
+[project.urls]
+Homepage = "https://github.com/hcosserat/traffsimpy"

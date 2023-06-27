@@ -13,7 +13,7 @@ x_est = w / 2 + s
 y_nord = h / 2 + s
 y_sud = h / 2 - s
 
-car_factory_settings = {"freq": [3, 7.5], "crea": "rand_color"}
+car_factory_settings = {"freq": [3, 7.5]}
 
 sim = Simulation("Carrefour", w, h)
 

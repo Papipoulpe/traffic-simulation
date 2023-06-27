@@ -2,7 +2,9 @@
 entrée du rond-point.
 """
 
-from traffsimpy import Simulation, CarFactory, StopSign
+from traffsimpy import Simulation, CarFactory, StopSign, simulation_configuration
+
+simulation_configuration.debug = True
 
 w, h = 1440, 840  # taille de la fenêtre
 s = 140  # taille du rond point
@@ -24,9 +26,9 @@ vd_nord_est = (-1, 1)
 nord_ouest = x_ouest + s * (1 - ex_coeff), y_nord - s * (1 - ex_coeff)
 vd_nord_ouest = (-1, -1)
 
-car_factory_settings = {"freq": [3, 7.5], "crea": "rand_color"}
+car_factory_settings = {"freq": [3, 7.5]}
 
-sim = Simulation("Rond-point", w, h)
+sim = Simulation("Rond-point avec panneaux stop", w, h)
 
 road_list = [
     {"id": 1, "type": "road", "start": (-marg, h / 2 - ec), "end": (x_ouest, h / 2 - ec),  # routes de gauche

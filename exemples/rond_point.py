@@ -23,7 +23,7 @@ vd_nord_est = (-1, 1)
 nord_ouest = x_ouest + s * (1 - ex_coeff), y_nord - s * (1 - ex_coeff)
 vd_nord_ouest = (-1, -1)
 
-car_factory_settings = {"freq": [3, 8], "crea": "rand_color"}
+car_factory_settings = {"freq": [3, 8]}
 
 sim = Simulation("Rond-point", w, h)
 
@@ -44,21 +44,21 @@ road_list = [
      "car_factory": CarFactory(**car_factory_settings)},
     {"id": 8, "s": (w / 2 + ec, y_nord), "e": (w / 2 + ec, h + marg)},
 
-    {"id": 9, "type": "a", "s": 1, "e": sud_ouest, "vde": vd_sud_ouest, "p": 1},  # routes du rond-point
-    {"id": 10, "type": "a", "s": sud_ouest, "vds": vd_sud_ouest, "e": 6},
-    {"id": 11, "type": "a", "s": sud_ouest, "vds": vd_sud_ouest, "e": sud_est, "vde": vd_sud_est, "p": 1},
+    {"id": 9, "t": "a", "s": 1, "e": sud_ouest, "vde": vd_sud_ouest, "p": 1},  # routes du rond-point
+    {"id": 10, "t": "a", "s": sud_ouest, "vds": vd_sud_ouest, "e": 6},
+    {"id": 11, "t": "a", "s": sud_ouest, "vds": vd_sud_ouest, "e": sud_est, "vde": vd_sud_est, "p": 1},
 
-    {"id": 12, "type": "a", "s": 5, "e": sud_est, "vde": vd_sud_est, "p": 1},
-    {"id": 13, "type": "a", "s": sud_est, "vds": vd_sud_est, "e": 4},
-    {"id": 14, "type": "a", "s": sud_est, "vds": vd_sud_est, "e": nord_est, "vde": vd_nord_est, "p": 1},
+    {"id": 12, "t": "a", "s": 5, "e": sud_est, "vde": vd_sud_est, "p": 1},
+    {"id": 13, "t": "a", "s": sud_est, "vds": vd_sud_est, "e": 4},
+    {"id": 14, "t": "a", "s": sud_est, "vds": vd_sud_est, "e": nord_est, "vde": vd_nord_est, "p": 1},
 
-    {"id": 15, "type": "a", "s": 3, "e": nord_est, "vde": vd_nord_est, "p": 1},
-    {"id": 16, "type": "a", "s": nord_est, "vds": vd_nord_est, "e": 8},
-    {"id": 17, "type": "a", "s": nord_est, "vds": vd_nord_est, "e": nord_ouest, "vde": vd_nord_ouest, "p": 1},
+    {"id": 15, "t": "a", "s": 3, "e": nord_est, "vde": vd_nord_est, "p": 1},
+    {"id": 16, "t": "a", "s": nord_est, "vds": vd_nord_est, "e": 8},
+    {"id": 17, "t": "a", "s": nord_est, "vds": vd_nord_est, "e": nord_ouest, "vde": vd_nord_ouest, "p": 1},
 
-    {"id": 18, "type": "a", "s": 7, "e": nord_ouest, "vde": vd_nord_ouest, "p": 1},
-    {"id": 19, "type": "a", "s": nord_ouest, "vds": vd_nord_ouest, "e": 2},
-    {"id": 20, "type": "a", "s": nord_ouest, "vds": vd_nord_ouest, "e": sud_ouest, "vde": vd_sud_ouest, "p": 1}]
+    {"id": 18, "t": "a", "s": 7, "e": nord_ouest, "vde": vd_nord_ouest, "p": 1},
+    {"id": 19, "t": "a", "s": nord_ouest, "vds": vd_nord_ouest, "e": 2},
+    {"id": 20, "t": "a", "s": nord_ouest, "vds": vd_nord_ouest, "e": sud_ouest, "vde": vd_sud_ouest, "p": 1}]
 
 road_graph = {
     1: 9, 5: 12, 3: 15, 7: 18,
