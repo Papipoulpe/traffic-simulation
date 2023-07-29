@@ -62,5 +62,12 @@ Elle restera ouverte jusqu'à ce que l'utilisateur quitte. Pendant la simulation
 
 ## Utilisation
 
-TODO
+De manière générale, une modélisation se fait de la manière suivante :
 
+* Éventuelle définition de paramètres dans `simulation_configuration`
+* Création d'une _Simulation_
+* Définition d'objets de la simulation
+* Définition de la liste des routes
+* Définition du graphe des routes
+* Lancement de la simulation
+* Éventuels traitement et affichage de données de capteurs
